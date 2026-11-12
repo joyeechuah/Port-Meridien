@@ -17,7 +17,7 @@ npm start        # http://127.0.0.1:4173/index.html
 
 Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an internet connection to load three.js and the fonts.
 
-## What works today (carried over from White Isle Drive)
+## What works today
 
 - Driving: keyboard, touch pads, tilt and game controllers; 24 cars with paint and customisation; collision damage and repairs.
 - A world with roads, traffic, day and night, a map with GPS, and Photo Mode.
@@ -37,7 +37,7 @@ Run one Playwright instance at a time: the test server uses port 4173.
 
 - The game is `index.html` and nothing else. `package.json` holds only test tooling.
 - Every fix or feature comes with a test that fails without it.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the code inherited from White Isle Drive.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the current implementation and development constraints.
 
 ## Privacy
 

@@ -1,4 +1,4 @@
-// Island Passport: 18 landmarks found by driving to them, each paying once, a one-time bonus for all 18, and
+// Explorer Passport: 18 landmarks found by driving to them, each paying once, a one-time bonus for all 18, and
 // progress that survives a reload. The car is driven in by an autopilot following the GPS, as a player would.
 const { test, expect } = require("./support/game");
 
@@ -43,7 +43,7 @@ async function ready(game, save) {
   });
 }
 
-test.describe("island passport", () => {
+test.describe("explorer passport", () => {
   test("18 landmarks with unique ids and names, each on a drivable road and well apart", async ({ game }) => {
     await game.open();
     const r = await game.eval(() => {
@@ -117,7 +117,7 @@ test.describe("island passport", () => {
     await driveTo(game, 0);
     expect((await game.eval(() => __T.save.cr)) - cr0).toBe(2500 + 30000);
     expect(await game.eval(() => __T.save.passBonus)).toBe(true);
-    expect((await game.toastLog()).filter((t) => t.startsWith("ISLAND PASSPORT COMPLETE"))).toHaveLength(1);
+    expect((await game.toastLog()).filter((t) => t.startsWith("EXPLORER PASSPORT COMPLETE"))).toHaveLength(1);
     // the same landmark again, and a landmark forgotten and found again: no second bonus
     const again = await game.eval(() => {
       const T = __T,
