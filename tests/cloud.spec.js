@@ -1,0 +1,592 @@
+// Cloud save (optional sign-in): guests play as before; SAVE MY PROGRESS signs in (a fake Google account and cloud
+// here, kept in this browser's storage so a second "device" is the same browser with the game's own data wiped);
+// the first sign-in keeps the guest's progress; another device restores it; when both differ the player chooses and
+// nothing is added together; it backs up by itself, says when it last did, and keeps working offline.
+// The real Firebase service can't be reached from the tests: its code is checked by hand (see CLOUD_SETUP.md).
+const { test, expect, Game } = require("./support/game");
+
+const FAKE_CLOUD = () => {
+  const K = "__fakeCloud",
+    st = () => JSON.parse(localStorage.getItem(K) || "null") || { docs: {}, user: null, fail: false, puts: 0, acct: { uid: "u1", name: "Jo", email: "jo@example.com" } },
+    keep = (s) => localStorage.setItem(K, JSON.stringify(s)),
+    down = () => Promise.reject(Object.assign(new Error("offline"), { code: "unavailable" }));
+  window.__cloudGap = 0;
+  window.__cloudAdapter = {
+    init: () => (st().fail ? down() : Promise.resolve(st().user)),
+    signIn() {
+      const s = st();
+      if (s.fail) return down();
+      s.user = s.acct;
+      keep(s);
+      return Promise.resolve(s.user);
+    },
+    signOut() {
+      const s = st();
+      s.user = null;
+      keep(s);
+      return Promise.resolve();
+    },
+    get: (uid) => (st().fail ? down() : Promise.resolve(st().docs[uid] || null)),
+    put(uid, data, rev) {
+      const s = st();
+      if (s.fail) return down();
+      const cur = s.docs[uid] || null;
+      if (((cur && cur.rev) || 0) !== rev) return Promise.resolve({ ok: false, doc: cur });
+      s.docs[uid] = Object.assign({}, data, { rev: rev + 1, at: Date.now() });
+      s.puts++;
+      keep(s);
+      return Promise.resolve({ ok: true, rev: rev + 1 });
+    },
+  };
+};
+const cloud = (game) => game.eval(() => JSON.parse(localStorage.getItem("__fakeCloud") || "null"));
+const setCloud = (game, f) =>
+  game.eval((f) => {
+    const s = JSON.parse(localStorage.getItem("__fakeCloud") || "null") || { docs: {}, user: null, fail: false, puts: 0, acct: { uid: "u1", name: "Jo", email: "jo@example.com" } };
+    new Function("s", f)(s);
+    localStorage.setItem("__fakeCloud", JSON.stringify(s));
+  }, f);
+const status = (game) => game.eval(() => ({ st: __T.CL.st, uid: __T.CL.meta.uid, line: document.getElementById("gCloud").textContent, stat: document.getElementById("clStat").textContent }));
+// sign in from the garage: the pill opens the panel, then SIGN IN WITH GOOGLE
+async function signIn(page, game) {
+  await page.locator("#gCloud").click();
+  await expect(page.locator("#cloud")).toBeVisible();
+  await page.locator("#clIn").click();
+}
+// a "new device": the same browser with the game's save and cloud note wiped (the fake account and cloud stay)
+async function newDevice(game) {
+  await game.eval(() => {
+    localStorage.removeItem(__T.SAVE_KEY);
+    localStorage.removeItem(__T.CLOUD_KEY);
+    const s = JSON.parse(localStorage.getItem("__fakeCloud"));
+    s.user = null;
+    localStorage.setItem("__fakeCloud", JSON.stringify(s));
+  });
+  await game.reload();
+}
+// progress this device has made: credits earned, a car bought, a paint colour (and customisation), a landmark
+const progress = (game, cr) =>
+  game.eval((cr) => {
+    const T = __T;
+    T.save.cr = cr;
+    T.save.xp = 50000;
+    T.save.owned.push("mini");
+    T.save.paint.golf = 0x1d4aa8;
+    // a customisation, where this version of the game has them
+    if (T.save.mods) T.save.mods.golf = { wing: 4, plate: "JO 1" };
+    T.save.found[Object.keys(T.save.found)[0] || "lm1"] = 1;
+    T.save.ghost.e1 = { c: "golf", t: 61, d: [1, 2, 3, 4, 5, 6, 7, 8] };
+    T.persist();
+  }, cr);
+
+test.describe("cloud save", () => {
+  test("guests play as before: no sign-in in the way, and nothing is downloaded until SAVE MY PROGRESS is opened", async ({ game, page }) => {
+    await game.open();
+    const r = await game.eval(() => ({
+      fb: [...document.scripts].some((s) => /firebase/.test(s.src)),
+      lcloud: !document.getElementById("lcloud").classList.contains("hide"),
+      label: document.getElementById("lstart").textContent,
+      st: __T.CL.st,
+    }));
+    expect(r).toEqual({ fb: false, lcloud: false, label: "PLAY AS GUEST", st: "guest" });
+    // and no visit counter either: it only runs on the game's own site (this is the test server)
+    expect(game.external.filter((u) => /cloudflareinsights|firebase|gstatic/.test(u))).toEqual([]);
+    expect(await game.eval(() => [...document.scripts].some((s) => /cloudflareinsights/.test(s.src)))).toBe(false);
+    // this game has no cloud project yet: the panel says cloud saves aren't set up
+    await game.eval(() => __T.clOpen());
+    await expect(page.locator("#clStat")).toHaveText(/aren't set up/);
+    await expect(page.locator("#clIn")).toBeDisabled();
+    expect(await game.eval(() => [...document.scripts].some((s) => /firebase/.test(s.src)))).toBe(false);
+    await game.key("Escape");
+    await expect(page.locator("#cloud")).toBeHidden();
+    expect(await game.eval(() => __T.state)).toBe("GARAGE");
+  });
+
+  test("the Firebase scripts come from cdnjs (as three.js does), pass their hashes, and start the service", async ({ game }) => {
+    await game.open();
+    // the same three files from the npm package: the browser checks each against the page's hash before running it.
+    // Firebase may then try to reach Google, which the test server blocks
+    game.allowErrors.push(/ERR_BLOCKED_BY_CLIENT/);
+    const r = await game.eval(async () => {
+      // this game has no Firebase project yet: made-up values stand in for one, so the service can start
+      if (!__T.FIREBASE_CONFIG.apiKey) Object.assign(__T.FIREBASE_CONFIG, { apiKey: "test-key", authDomain: "test.firebaseapp.com", projectId: "test", appId: "1:1:web:1" });
+      const ad = __T.fbAdapter();
+      let err = null,
+        user;
+      await ad.init().then((u) => (user = u), (e) => (err = e.message));
+      return {
+        err,
+        user,
+        loaded: ad.loaded,
+        ver: window.firebase && window.firebase.SDK_VERSION,
+        parts: window.firebase ? [typeof window.firebase.auth, typeof window.firebase.firestore] : null,
+        tags: [...document.scripts].filter((s) => /firebase/.test(s.src)).map((s) => ({ src: s.src, sri: s.integrity, co: s.crossOrigin })),
+      };
+    });
+    expect(r.err).toBe(null);
+    expect(r.user).toBe(null);
+    expect([r.loaded, r.ver, r.parts]).toEqual([true, "10.12.2", ["function", "function"]]);
+    expect(r.tags.map((t) => t.src.split("/").pop()).sort()).toEqual(["firebase-app-compat.js", "firebase-auth-compat.js", "firebase-firestore-compat.js"]);
+    for (const t of r.tags) {
+      expect(t.src).toMatch(/^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/firebase\/10\.12\.2\/firebase-(app|auth|firestore)-compat\.js$/);
+      expect(t.sri).toMatch(/^sha384-/);
+      expect(t.co).toBe("anonymous");
+    }
+  });
+
+  test("if a Firebase script can't load, sign-in says so and names the file in the console", async ({ game, page }) => {
+    await game.open();
+    await page.route(/firebase-app-compat\.js$/, (r) => r.abort("failed"));
+    game.allowErrors.push(/ERR_FAILED/);
+    const warns = [];
+    page.on("console", (m) => m.type() === "warning" && warns.push(m.text()));
+    const err = await game.eval(() => __T.fbAdapter().init().then(() => null, (e) => e.message));
+    expect(err).toBe("Couldn't load Google sign-in. Try again.");
+    expect(warns.join()).toContain("firebase-app-compat.js");
+  });
+
+  test("the page's security policy allows the hosts Firebase needs once a project is set up, and no frames until then", async ({ game }) => {
+    await game.open();
+    const r = await game.eval(() => ({
+      csp: document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,
+      auth: __T.FIREBASE_CONFIG.authDomain,
+    }));
+    const dir = Object.fromEntries(r.csp.split(";").map((d) => d.trim().split(/\s+/)).filter((d) => d[0]).map(([k, ...v]) => [k, v]));
+    const allows = (d, url) => (dir[d] || dir["default-src"]).some((src) => src === new URL(url).origin);
+    for (const u of ["https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.js", "https://apis.google.com/js/api.js"]) expect(allows("script-src", u), u).toBe(true);
+    for (const u of ["https://identitytoolkit.googleapis.com/v1/accounts:lookup", "https://securetoken.googleapis.com/v1/token", "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel"])
+      expect(allows("connect-src", u), u).toBe(true);
+    // the sign-in frame is the project's own address: none while there is no project, exactly that one once there is
+    expect(dir["frame-src"]).toEqual(r.auth ? ["https://" + r.auth] : ["'none'"]);
+  });
+
+  test("first sign-in keeps the guest's progress: it goes to the account, and the time of the backup shows", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await expect(page.locator("#gCloud")).toHaveText("SAVE MY PROGRESS");
+    await progress(game, 345678);
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    const c = await cloud(game),
+      doc = c.docs.u1,
+      sv = JSON.parse(doc.save);
+    expect(sv.cr).toBe(345678);
+    expect(sv.owned).toContain("mini");
+    expect(sv.paint.golf).toBe(0x1d4aa8);
+    if (sv.mods) expect(sv.mods.golf).toEqual({ wing: 4, plate: "JO 1" });
+    // ghost laps stay on the device (they can pass the cloud's size limit)
+    expect(sv.ghost).toBeUndefined();
+    expect(doc.summary).toMatchObject({ cr: 345678, cars: 6 });
+    const s = await status(game);
+    expect(s.line).toBe("BACKED UP JUST NOW");
+    expect(s.stat).toMatch(/Last backed up: .*just now/);
+    await expect(page.locator("#clWho")).toContainText("Jo");
+  });
+
+  test("on another device, signing in brings the account's progress back", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await progress(game, 222333);
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await newDevice(game);
+    expect(await game.eval(() => __T.save.cr)).toBe(120000);
+    await signIn(page, game);
+    // the game starts again from the account's save
+    await page.waitForEvent("load");
+    await game.boot();
+    const r = await game.eval(() => ({ cr: __T.save.cr, mini: __T.save.owned.includes("mini"), paint: __T.save.paint.golf, uid: __T.CL.meta.uid }));
+    expect(r).toEqual({ cr: 222333, mini: true, paint: 0x1d4aa8, uid: "u1" });
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    // and nothing was asked: a device with no progress of its own just takes the account's
+    await expect(page.locator("#cloudPick")).toBeHidden();
+  });
+
+  for (const keep of ["device", "account"]) {
+    test(`when this device and the account differ, the player chooses (${keep}); credits are never added together`, async ({ game, page }) => {
+      await page.addInitScript(FAKE_CLOUD);
+      await game.open();
+      // the account already has progress from elsewhere: 500,000 credits
+      await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.cr=500000;sv.xp=90000;sv.owned=sv.owned.concat(["tt"]);delete sv.ghost;s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()-3600e3};`);
+      // and this guest has 300,000 of their own
+      await progress(game, 300000);
+      await signIn(page, game);
+      await expect(page.locator("#cloudPick")).toBeVisible();
+      await expect(page.locator("#cpkDev")).toContainText("300,000");
+      await expect(page.locator("#cpkAcc")).toContainText("500,000");
+      await expect(page.locator("#cpkAcc")).toContainText("Saved 1 h ago");
+      if (keep === "device") {
+        await page.locator("#cpkKeepDev").click();
+        await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+        const sv = JSON.parse((await cloud(game)).docs.u1.save);
+        expect(sv.cr).toBe(300000);
+        expect(sv.owned).not.toContain("tt");
+        expect(await game.eval(() => __T.save.cr)).toBe(300000);
+      } else {
+        await page.locator("#cpkKeepAcc").click();
+        await page.waitForEvent("load");
+        await game.boot();
+        const r = await game.eval(() => ({ cr: __T.save.cr, tt: __T.save.owned.includes("tt"), mini: __T.save.owned.includes("mini"), ghost: !!__T.save.ghost.e1 }));
+        // exactly the account's credits and cars; this device's ghost laps stay
+        expect(r).toEqual({ cr: 500000, tt: true, mini: false, ghost: true });
+        // and the account still holds exactly its own progress
+        await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+        const acc = JSON.parse((await cloud(game)).docs.u1.save);
+        expect([acc.cr, acc.owned.includes("tt"), acc.owned.includes("mini")]).toEqual([500000, true, false]);
+      }
+    });
+  }
+
+  test("signed in, progress backs itself up a few seconds after it changes; offline it waits, keeps the copy here, and catches up", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await game.eval(() => __T.earn(12345));
+    await expect.poll(() => cloud(game).then((c) => JSON.parse(c.docs.u1.save).cr), { timeout: 10000 }).toBe(132345);
+    // offline: the change stays on this device, and the pill says when the last backup was
+    await setCloud(game, "s.fail=true;");
+    await game.eval(() => __T.earn(1000));
+    await expect.poll(() => status(game).then((s) => s.st), { timeout: 10000 }).toBe("offline");
+    const s = await status(game);
+    expect(s.line).toMatch(/^OFFLINE · LAST BACKED UP/);
+    expect(await game.eval(() => JSON.parse(localStorage.getItem(__T.SAVE_KEY)).cr)).toBe(133345);
+    // back online: it catches up
+    await setCloud(game, "s.fail=false;");
+    await game.eval(() => window.dispatchEvent(new Event("online")));
+    await expect.poll(() => cloud(game).then((c) => JSON.parse(c.docs.u1.save).cr), { timeout: 10000 }).toBe(133345);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+  });
+
+  test("another device saved meanwhile: the next backup doesn't overwrite it, the player chooses (after the drive, not during it)", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    // this device earns 5,000 while the backup can't get through
+    await setCloud(game, "s.fail=true;");
+    await game.eval(() => __T.earn(5000));
+    await expect.poll(() => status(game).then((s) => s.st), { timeout: 10000 }).toBe("offline");
+    // meanwhile another device backs up 900,000 credits
+    await setCloud(game, `s.fail=false;const sv=JSON.parse(s.docs.u1.save);sv.cr=900000;sv.xp=1e6;s.docs.u1.save=JSON.stringify(sv);s.docs.u1.rev++;`);
+    await page.locator("#clClose").click();
+    await game.driveOut();
+    await game.eval(() => __T.clSync());
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("conflict");
+    // not over the drive: the choice waits for the pause menu
+    await expect(page.locator("#cloudPick")).toBeHidden();
+    expect(JSON.parse((await cloud(game)).docs.u1.save).cr).toBe(900000);
+    await game.key("Escape");
+    await game.waitState("PAUSE");
+    await game.eval(() => __T.clOpen());
+    await expect(page.locator("#cloudPick")).toBeVisible();
+    await expect(page.locator("#cpkAcc")).toContainText("900,000");
+    await expect(page.locator("#cpkDev")).toContainText("125,000");
+  });
+
+  test("steady progress doesn't put the backup off: it goes a few seconds after the first change", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    const puts = (await cloud(game)).puts;
+    // a change every second for 9 s (each used to restart the 4 s wait, so nothing went until the changes stopped)
+    for (let i = 0; i < 9; i++) {
+      await game.eval(() => __T.earn(100));
+      await page.waitForTimeout(1000);
+    }
+    expect((await cloud(game)).puts).toBeGreaterThan(puts);
+  });
+
+  test("if the browser won't store the account's progress, nothing changes and saving carries on", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.cr=500000;delete sv.ghost;s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()};`);
+    // the next write of the game's save fails (storage full)
+    await game.eval(() => {
+      const set = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (k, v) {
+        if (k === __T.SAVE_KEY) {
+          Storage.prototype.setItem = set;
+          throw new Error("QuotaExceededError");
+        }
+        return set.call(this, k, v);
+      };
+    });
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("error");
+    await expect(page.locator("#clStat")).toContainText("won't store the restored progress");
+    expect(await game.eval(() => __T.CL.applying)).toBe(false);
+    // progress made now is saved here (it used to be dropped until a reload), and goes on to the account
+    await game.eval(() => __T.earn(1000));
+    expect(await game.eval(() => JSON.parse(localStorage.getItem(__T.SAVE_KEY)).cr)).toBe(121000);
+    // and the choice comes back, to try again
+    await expect.poll(() => status(game).then((s) => s.st), { timeout: 10000 }).toBe("conflict");
+    await expect(page.locator("#cloudPick")).toBeVisible();
+  });
+
+  test("if the service didn't load when the panel opened, SIGN IN only loads it; the next tap opens Google's window", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await page.addInitScript(() => {
+      // like Firebase: loaded once init succeeds; and count the times Google's window would open
+      const ad = window.__cloudAdapter,
+        init = ad.init,
+        signIn = ad.signIn;
+      ad.loaded = false;
+      ad.opened = 0;
+      ad.init = () => init().then((u) => ((ad.loaded = true), u));
+      ad.signIn = function () {
+        ad.opened++;
+        return signIn.call(this);
+      };
+    });
+    await game.open();
+    await setCloud(game, "s.fail=true;");
+    await page.locator("#gCloud").click();
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("offline");
+    await setCloud(game, "s.fail=false;");
+    // a phone would block a window opened after the wait for the download, so this tap opens none
+    await page.locator("#clIn").click();
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("guest");
+    await expect(page.locator("#clStat")).toContainText("Ready");
+    expect(await game.eval(() => __T.CL.ad.opened)).toBe(0);
+    await page.locator("#clIn").click();
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    expect(await game.eval(() => __T.CL.ad.opened)).toBe(1);
+  });
+
+  test("progress made while a backup is on its way is backed up next", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    // backups take a second to get through
+    await game.eval(() => {
+      const ad = __T.CL.ad,
+        put = ad.put;
+      ad.put = (...a) => new Promise((r) => setTimeout(r, 1000)).then(() => put(...a));
+    });
+    await game.eval(() => __T.earn(100));
+    await expect.poll(() => game.eval(() => __T.CL.busy), { timeout: 10000 }).toBe(true);
+    await game.eval(() => __T.earn(5000));
+    await expect.poll(() => cloud(game).then((c) => JSON.parse(c.docs.u1.save).cr), { timeout: 15000 }).toBe(125100);
+  });
+
+  for (const pick of ["use", "new"]) {
+    test(`a different Google account on this browser is asked before this device's progress goes to it (${pick})`, async ({ game, page }) => {
+      await page.addInitScript(FAKE_CLOUD);
+      await game.open();
+      await progress(game, 345678);
+      await signIn(page, game);
+      await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+      await page.locator("#clOut").click();
+      await expect.poll(() => status(game).then((s) => s.uid)).toBe(null);
+      // someone else signs in here, with an account that has nothing saved
+      await setCloud(game, `s.acct={uid:"u2",name:"Sam",email:"sam@example.com"};`);
+      await page.locator("#clIn").click();
+      await expect(page.locator("#cloudPick")).toBeVisible();
+      await expect(page.locator("#cpkTitle")).toHaveText("Use this device's progress for this account?");
+      await expect(page.locator("#cpkP")).toContainText("Jo's Google account");
+      await expect(page.locator("#cpkAcc")).toContainText("No progress saved yet");
+      await expect(page.locator("#cpkKeepAcc")).toHaveText("START NEW");
+      // nothing went to the new account before the choice
+      expect((await cloud(game)).docs.u2).toBeUndefined();
+      if (pick === "use") {
+        await page.locator("#cpkKeepDev").click();
+        await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+        expect(JSON.parse((await cloud(game)).docs.u2.save).cr).toBe(345678);
+      } else {
+        await page.locator("#cpkKeepAcc").click();
+        await page.waitForEvent("load");
+        await game.boot();
+        expect(await game.eval(() => [__T.save.cr, __T.save.owned.includes("mini")])).toEqual([120000, false]);
+        await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+        expect(JSON.parse((await cloud(game)).docs.u2.save).cr).toBe(120000);
+      }
+      // the first account's backup is untouched either way
+      expect(JSON.parse((await cloud(game)).docs.u1.save).cr).toBe(345678);
+    });
+  }
+
+  test("reconnecting after a failed account lookup still asks before sharing progress", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await progress(game, 345678);
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await page.locator("#clOut").click();
+    await expect.poll(() => status(game).then((s) => s.uid)).toBe(null);
+    await setCloud(game, 's.acct={uid:"u2",name:"Second player",email:""};');
+    await game.eval(() => {
+      const ad = window.__cloudAdapter, get = ad.get;
+      ad.get = (uid) => {
+        ad.get = get;
+        return Promise.reject(Object.assign(new Error("offline"), { code: "unavailable" }));
+      };
+    });
+    await page.locator("#clIn").click();
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("offline");
+    await game.eval(() => window.dispatchEvent(new Event("online")));
+    await expect(page.locator("#cloudPick")).toBeVisible();
+    expect((await cloud(game)).docs.u2).toBeUndefined();
+  });
+
+  test("a repaint is progress: signing in to an account with a save asks, instead of replacing it", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.cr=500000;delete sv.ghost;s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()};`);
+    await game.eval(() => {
+      __T.save.paint.golf = 0x1d4aa8;
+      __T.persist();
+    });
+    await signIn(page, game);
+    await expect(page.locator("#cloudPick")).toBeVisible();
+    expect(await game.eval(() => __T.save.paint.golf)).toBe(0x1d4aa8);
+  });
+
+  test("the ghost car switch is a setting, not progress", async ({ game }) => {
+    await game.open();
+    const r = await game.eval(() => {
+      const a = __T.clProg(__T.save);
+      __T.save.ghostOn = !__T.save.ghostOn;
+      return a === __T.clProg(__T.save);
+    });
+    expect(r).toBe(true);
+  });
+
+  test("signing out stops the backups and keeps the progress on this device; failures to sign in leave the game as it was", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await setCloud(game, "s.fail=true;");
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("offline");
+    await expect(page.locator("#clStat")).toContainText("offline");
+    expect(await game.eval(() => __T.state)).toBe("GARAGE");
+    await setCloud(game, "s.fail=false;");
+    await page.locator("#clIn").click();
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await page.locator("#clOut").click();
+    await expect.poll(() => status(game).then((s) => s.uid)).toBe(null);
+    const puts = (await cloud(game)).puts;
+    await game.eval(() => __T.earn(777));
+    await page.waitForTimeout(5000);
+    expect((await cloud(game)).puts).toBe(puts);
+    expect(await game.eval(() => __T.save.cr)).toBe(120777);
+    await expect(page.locator("#gCloud")).toHaveText("SAVE MY PROGRESS");
+  });
+
+  test("a failed sign-out keeps the account connected and lets the player retry", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await signIn(page, game);
+    await expect.poll(() => status(game).then(s => s.st)).toBe("synced");
+    await game.eval(() => {
+      const ad = window.__cloudAdapter, signOut = ad.signOut;
+      ad.signOut = () => {
+        ad.signOut = signOut;
+        return Promise.reject(new Error("Storage unavailable"));
+      };
+    });
+    await page.locator("#clOut").click();
+    await expect(page.locator("#clStat")).toContainText("Couldn't sign out");
+    expect((await status(game)).uid).toBe("u1");
+    await page.locator("#clOut").click();
+    await expect.poll(() => status(game).then(s => s.uid)).toBe(null);
+  });
+
+  test("a backup finishing after sign-out leaves the signed-out state intact", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await signIn(page, game);
+    await expect.poll(() => status(game).then(s => s.st)).toBe("synced");
+    await game.eval(() => {
+      __T.earn(500);
+      const ad = window.__cloudAdapter, put = ad.put;
+      ad.put = (...args) => new Promise(resolve => { window.__finishBackup = () => resolve(put(...args)); });
+      window.__backup = __T.clSync();
+    });
+    await page.locator("#clOut").click();
+    await expect.poll(() => status(game).then(s => s.uid)).toBe(null);
+    const result = await game.eval(async () => {
+      window.__finishBackup();
+      await window.__backup;
+      return { state: __T.CL.st, revision: __T.CL.meta.rev, busy: __T.CL.busy, credits: __T.save.cr };
+    });
+    expect(result).toEqual({ state: "guest", revision: 0, busy: false, credits: 120500 });
+  });
+
+  test("reopening an unchanged cloud save keeps the actual backup time", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open({ save: { v: 3, todMode: 2, tod: 13 } });
+    await signIn(page, game);
+    await expect.poll(() => status(game).then(s => s.st)).toBe("synced");
+    const count = (await cloud(game)).puts;
+    await setCloud(game, "s.docs.u1.at=Date.now()-7200000;");
+    const lastBackup = (await cloud(game)).docs.u1.at;
+    await game.reload();
+    await expect.poll(() => status(game).then(s => s.st)).toBe("synced");
+    expect((await cloud(game)).puts).toBe(count);
+    expect(await game.eval(() => __T.CL.meta.at)).toBe(lastBackup);
+  });
+
+  test("the start screen: PLAY AS GUEST, or SAVE MY PROGRESS; once signed in it says PLAY and when it last backed up", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open({ autostart: false });
+    await expect(page.locator("#lstart")).toBeVisible({ timeout: 240000 });
+    await expect(page.locator("#lstart")).toHaveText("PLAY AS GUEST");
+    await expect(page.locator("#lcloud")).toBeVisible();
+    // as plain to see as PLAY AS GUEST: the same size and gold (it was an outline), and a line saying what it's for
+    const look = await game.eval(() => {
+      const a = document.getElementById("lstart").getBoundingClientRect(),
+        b = document.getElementById("lcloud").getBoundingClientRect();
+      return { w: [Math.round(a.width), Math.round(b.width)], h: [Math.round(a.height), Math.round(b.height)], bg: [getComputedStyle(document.getElementById("lstart")).backgroundColor, getComputedStyle(document.getElementById("lcloud")).backgroundColor] };
+    });
+    expect(look.w[1]).toBe(look.w[0]);
+    expect(look.h[1]).toBe(look.h[0]);
+    expect(look.bg[1]).toBe(look.bg[0]);
+    await expect(page.locator("#lcl")).toContainText("Sign in with Google");
+    await page.locator("#lcloud").click();
+    await game.waitState("GARAGE");
+    await expect(page.locator("#cloud")).toBeVisible();
+    await page.locator("#clIn").click();
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await page.reload();
+    await expect(page.locator("#lstart")).toHaveText("PLAY", { timeout: 240000 });
+    await expect(page.locator("#lcloud")).toBeHidden();
+    await expect(page.locator("#lcl")).toContainText("Signed in as Jo");
+  });
+});
+
+test.describe("one game tab at a time", () => {
+  test("a second tab takes over; the first stops and saves nothing, so credits earned in either aren't lost; PLAY IN THIS TAB switches back", async ({ game, page }) => {
+    await game.open();
+    const page2 = await page.context().newPage(),
+      game2 = new Game(page2);
+    await game2.open();
+    // the first tab stops and says why
+    await expect(page.locator("#tabIdle")).toBeVisible();
+    await expect(page2.locator("#tabIdle")).toBeHidden();
+    const stored = (g) => g.eval(() => JSON.parse(localStorage.getItem(__T.SAVE_KEY)).cr);
+    // earn 100 in the new tab, then the old one tries to earn 50: the old one writes nothing
+    await game2.eval(() => __T.earn(100));
+    await game.eval(() => __T.earn(50));
+    expect(await stored(game2)).toBe(120100);
+    // it used to come out at 120,050 (the old tab's copy over the new one's)
+    await game2.eval(() => __T.earn(25));
+    expect(await stored(game2)).toBe(120125);
+    // the game's keys do nothing in the stopped tab (Enter would press its focused PLAY IN THIS TAB, as on any page)
+    await game.key("ArrowRight");
+    await game.key("Escape");
+    expect(await game.eval(() => __T.state)).toBe("GARAGE");
+    // play in the first tab again: it reloads with the latest save, and the second tab stops
+    await page.locator("#tiHere").click();
+    await page.waitForEvent("load");
+    await game.boot();
+    expect(await game.eval(() => __T.save.cr)).toBe(120125);
+    await expect(page2.locator("#tabIdle")).toBeVisible();
+    await game.eval(() => __T.earn(5));
+    await game2.eval(() => __T.earn(1000));
+    expect(await stored(game)).toBe(120130);
+    await page2.close();
+  });
+});
