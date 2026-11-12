@@ -17,6 +17,10 @@ npm start        # http://127.0.0.1:4173/index.html
 
 Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an internet connection to load three.js and the fonts.
 
+## On foot
+
+Stop the car and press `F` (or tap **GET OUT**, or `B` on a controller) to get out. The driving controls walk: gas goes forward, brake steps back, steering turns, and `Shift` or the handbrake runs. Walk back to the car and press `E` or `F` (or tap the prompt) to get in. Traffic stops for you if you stand in the road.
+
 ## What works today (carried over from White Isle Drive)
 
 - Driving: keyboard, touch pads, tilt and game controllers; 24 cars with paint and customisation; collision damage and repairs.

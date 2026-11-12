@@ -142,6 +142,39 @@ test.describe("on foot", () => {
     expect(sea.ground).toBeGreaterThan(-0.4);
   });
 
+  test("traffic stops for you when you stand in the road, and drives on when you step aside", async ({ game }) => {
+    await parked(game);
+    await game.key("f");
+    const r = await game.eval(() => {
+      const T = __T,
+        F = T.FOOT;
+      // one traffic car on a long straight road, 40 m back from where you stand in its lane; the rest are put away
+      const t = T.TRAFFIC[0];
+      for (const o of T.TRAFFIC) if (o !== t) { o.e = null; o.lost = false; o.wx = o.wz = 1e6; }
+      const e = T.EDGES.filter((q) => q.type !== "drive" && q.len > 200).find((q) => { const a = T.edgePos(q, 60), b = T.edgePos(q, 140); return a.dx * b.dx + a.dz * b.dz > 0.995; });
+      t.e = e; t.dir = 1; t.s = 60; t.lane = 0; t.lost = false; t.stopT = 0; t.passT = 0; t.waitT = 0; t.damage = 0;
+      t.off = t.offCur = T.RT[e.type].lanes[0] * (T.save.side === "R" ? 1 : -1);
+      t.base = t.v = 12;
+      const q = T.edgePos(e, 100);
+      F.x = q.x - q.dz * t.off; F.z = q.z + q.dx * t.off; F.y = T.footGround(F.x, F.z);
+      // your own car is parked far from this road
+      T.P.x = F.x + 300; T.P.z = F.z + 300; F.car = [T.P.x, T.P.z];
+      let min = 1e9;
+      for (let i = 0; i < 480; i++) { T.driveUpdate(1 / 60); min = Math.min(min, Math.hypot(t.wx - F.x, t.wz - F.z)); }
+      const stopped = { v: t.v, gap: Math.hypot(t.wx - F.x, t.wz - F.z), min };
+      // step off the road, to the side
+      F.x += q.dx * 0 - q.dz * 8 * Math.sign(t.off || 1); F.z += q.dx * 8 * Math.sign(t.off || 1);
+      for (let i = 0; i < 300; i++) T.driveUpdate(1 / 60);
+      return { stopped, after: t.v, on: F.on };
+    });
+    expect(r.on).toBe(true);
+    expect(r.stopped.v).toBeLessThan(0.2);
+    // it pulls up short of you: it never touches you
+    expect(r.stopped.min).toBeGreaterThan(3);
+    expect(r.stopped.gap).toBeLessThan(12);
+    expect(r.after).toBeGreaterThan(5);
+  });
+
   test("near the car a prompt offers to get in; E gets in, and the car drives again", async ({ game, page }) => {
     await parked(game);
     await game.key("f");
