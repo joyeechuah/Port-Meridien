@@ -21,6 +21,8 @@ Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an in
 
 Stop the car and press `F` (or tap **GET OUT**, or `B` on a controller) to get out. The driving controls walk: gas goes forward, brake steps back, steering turns, and `Shift` or the handbrake runs. Walk back to the car and press `E` or `F` (or tap the prompt) to get in. Traffic stops for you if you stand in the road.
 
+On foot you can also take any traffic car that has stopped: stand in its lane so it stops, walk to it and press `E` or `F`. The car you came from stays where you left it, and you can walk back and drive it again. A taken car isn't yours: it is not saved, and it's gone when you go home.
+
 ## What works today (carried over from White Isle Drive)
 
 - Driving: keyboard, touch pads, tilt and game controllers; 24 cars with paint and customisation; collision damage and repairs.
