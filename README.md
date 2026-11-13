@@ -23,6 +23,12 @@ Stop the car and press `F` (or tap **GET OUT**, or `B` on a controller) to get o
 
 On foot you can also take any traffic car that has stopped: stand in its lane so it stops, walk to it and press `E` or `F`. The car you came from stays where you left it, and you can walk back and drive it again. A taken car isn't yours: it is not saved, and it's gone when you go home.
 
+## The harbour and the boat
+
+A pier stands on the east coast, straight out from the town past the end of its main avenue: look for the mast with a red marker. There is no road to it yet, so drive down across the open ground, park on the shore, and walk on (cars don't fit between the bollards).
+
+Walk along the pier to the motorboat and press `E` or `F` to board. The driving controls sail it: gas for power, brake for reverse, steering to turn (a boat only turns while it's moving). It stays in deep water and turns back at the open sea. To get off, come back beside the pier, slow to a stop, and press `E` or `F`. The boat stays where you leave it.
+
 ## What works today
 
 - Driving: keyboard, touch pads, tilt and game controllers; 24 cars with paint and customisation; collision damage and repairs.
