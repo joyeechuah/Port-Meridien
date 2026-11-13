@@ -10,9 +10,35 @@ Each step ships as its own pull requests, with tests. Earlier steps are playable
 | 3 | Police and a wanted level: patrol cars chase you, and losing them clears it | Planned |
 | 4 | Weapons: pick up guns, shoot on foot, health, being arrested or taken out. One setting controls how violence is shown | Planned |
 
+## How the new city arrives (decided 13 Nov 2026)
+
+Jo Yee's decision, after Codex's review showed the first district is too small to hold today's races, contracts and landmarks:
+
+1. **First, the city is built on the island.** The Old Quay waterfront district replaces the island's existing town. The rest of the island stays as it is, so every race, contract and landmark keeps working. This is temporary.
+2. **Then the new city is built as its own world**, with its own routes and activities designed for it.
+3. **The game ends up with two worlds**: the new city, and the island as a second place to drive.
+
+What this means for the work:
+
+- Step 1's district goes where the island's town is now, not on an empty map.
+- Nothing is removed from the island to make room for the city beyond that town.
+- Records and ghosts belong to the world and route they were set on. That needs a world id in the save before the second world exists.
+- Loading and unloading a world, and travelling between the two, is part of building the second world, not of step 1.
+
+## Before selling the game
+
+Not legal advice: a list of things to check and record.
+
+| Item | State | To do |
+| --- | --- | --- |
+| Music (`audio/cruise.mp3`, `highway.mp3`, `showroom.mp3`) | Jo Yee believes they were made with Google's Flow Music under a paid Google AI plan, for White Isle Drive's Ibiza setting. Not confirmed | Confirm the tool and the account; save proof of the plan and its commercial-use terms on the day of release; consider new tracks made for this city |
+| Car names | Real makes and models (Volkswagen Golf GTI, BMW M3 and others) | Replace with made-up makes and models, and review the body shapes |
+| Fonts and three.js | Loaded from Google Fonts and cdnjs | Record their licences; bundle them for a downloadable edition |
+| Age rating and stores | See `docs/DISTRIBUTION_REVIEW.md` | Decide the first sales channel before building weapons |
+
 ## Decisions
 
-- **A new city, not White Isle's island.** Step 1 replaces the map with a first district and the city grows from there.
+- **A new city, arriving in two stages.** See "How the new city arrives" above.
 - **Original content only.** No names, places, characters or layouts from other games.
 - **Mature violence, behind one setting**, so a no-gore version can ship without rework.
 - **Racing features stay for now** (events, championships, contracts). Whether they belong in this game is decided in step 2.
