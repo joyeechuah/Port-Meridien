@@ -26,6 +26,22 @@ const foot = (game) =>
     };
   });
 
+// Capture before and after each scripted interval in one browser task.
+// Separate evaluate() calls let real animation frames move the walker during the measurement.
+const footMove = (game, n, held = {}) =>
+  game.eval(
+    ([n, held]) => {
+      const T = __T, F = T.FOOT, P = T.P;
+      const snap = () => ({ x: F.x, z: F.z, h: F.h, car: [P.x, P.z, Math.hypot(P.vx, P.vz)] });
+      for (const k in held) T.keys[k] = held[k];
+      const before = snap();
+      for (let i = 0; i < n; i++) T.driveUpdate(1 / 60);
+      for (const k in held) T.keys[k] = false;
+      return { before, after: snap() };
+    },
+    [n, held]
+  );
+
 test.describe("on foot", () => {
   test("F gets out beside the car; the car stays put while you walk, run, turn and step back", async ({ game, page }) => {
     await parked(game);
@@ -38,27 +54,41 @@ test.describe("on foot", () => {
     await expect(page.locator("#speedo")).toBeHidden();
     await expect(page.locator("#chFoot")).toBeHidden();
     // 2 s walking: about 1.9 m/s, and the car hasn't moved
-    await game.steps(120, { w: true });
-    const b = await foot(game);
-    const walked = Math.hypot(b.x - a.x, b.z - a.z);
+    const walk = await footMove(game, 120, { w: true });
+    const walked = Math.hypot(walk.after.x - walk.before.x, walk.after.z - walk.before.z);
     expect(walked).toBeGreaterThan(3);
     expect(walked).toBeLessThan(4.2);
-    expect([b.car[0], b.car[1], b.car[2]]).toEqual([a.car[0], a.car[1], 0]);
-    // 2 s running (Shift): well over twice as far
-    await game.steps(120, { w: true, shift: true });
-    const c = await foot(game);
-    expect(Math.hypot(c.x - b.x, c.z - b.z)).toBeGreaterThan(8.5);
-    // steering turns you (right is clockwise seen from above, as in the car), and brake steps back
-    await game.steps(30, { d: true });
-    const d = await foot(game);
-    expect(Math.abs(d.h - c.h)).toBeGreaterThan(0.8);
-    await game.steps(20, {});
-    const e0 = await foot(game);
-    await game.steps(60, { s: true });
-    const e = await foot(game);
-    const back = (e.x - e0.x) * Math.sin(e.h) + (e.z - e0.z) * Math.cos(e.h);
+    expect(walk.after.car).toEqual([a.car[0], a.car[1], 0]);
+    // 2 s running (Shift): measure only the simulated interval.
+    const run = await footMove(game, 120, { w: true, shift: true });
+    expect(Math.hypot(run.after.x - run.before.x, run.after.z - run.before.z)).toBeGreaterThan(8.5);
+    // Steering turns; the brake steps back. Neither assertion includes idle browser frames.
+    const turn = await footMove(game, 30, { d: true });
+    expect(Math.abs(turn.after.h - turn.before.h)).toBeGreaterThan(0.8);
+    await footMove(game, 20);
+    const reverse = await footMove(game, 60, { s: true });
+    const back = (reverse.after.x - reverse.before.x) * Math.sin(reverse.after.h) + (reverse.after.z - reverse.before.z) * Math.cos(reverse.after.h);
     expect(back).toBeLessThan(-0.8);
     expect(back).toBeGreaterThan(-1.4);
+  });
+
+  test("the get-in prompt and action are available immediately on exit, without an intervening frame", async ({ game }) => {
+    await parked(game);
+    const r = await game.eval(() => {
+      const T = __T;
+      const exited = T.footExit();
+      const prompt = document.getElementById("prompt");
+      const visible = !prompt.classList.contains("hide");
+      const label = document.getElementById("promptTxt").textContent;
+      // The real prompt action must already be installed, not just the DOM text.
+      const actionReady = typeof T.promptAct === "function";
+      if (actionReady) T.promptAct();
+      return { exited, visible, label, actionReady, backInCar: !T.FOOT.on };
+    });
+    expect(r.exited).toBe(true);
+    expect(r.visible).toBe(true);
+    expect(r.label).toMatch(/^Get in · /);
+    expect([r.actionReady, r.backInCar]).toEqual([true, true]);
   });
 
   test("you get out only from a car that has stopped, and not during a race", async ({ game }) => {
