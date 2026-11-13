@@ -224,6 +224,56 @@ test.describe("on foot", () => {
   });
 });
 
+test.describe("the character", () => {
+  test("is a jointed figure of human height whose knees and elbows bend as it walks, and stand straight at rest", async ({ game }) => {
+    await game.open();
+    await game.driveOut();
+    await game.park();
+    await game.key("f");
+    const r = await game.eval(() => {
+      const T = __T,
+        F = T.FOOT,
+        m = F.m,
+        box = new THREE.Box3().setFromObject(m.G),
+        out = { h: box.max.y - box.min.y, w: box.max.x - box.min.x, parts: [m.legs.length, m.knees.length, m.arms.length, m.elbows.length] };
+      const pose = () => [m.knees[0].rotation.x, m.knees[1].rotation.x, m.elbows[0].rotation.x];
+      F.v = 0;
+      F.ph = 0;
+      T.footPlace(0);
+      out.rest = pose();
+      // through one stride at a walk: each knee bends in turn, never backwards
+      let k0 = 0,
+        k1 = 0,
+        min = 9;
+      F.v = 1.9;
+      for (let i = 0; i <= 40; i++) {
+        F.ph = (i / 40) * Math.PI * 2;
+        T.footPlace(0);
+        const p = pose();
+        k0 = Math.max(k0, p[0]);
+        k1 = Math.max(k1, p[1]);
+        min = Math.min(min, p[0], p[1]);
+        out.elbow = p[2];
+      }
+      Object.assign(out, { k0, k1, min });
+      F.v = 0;
+      F.ph = 0;
+      return out;
+    });
+    expect(r.parts).toEqual([2, 2, 2, 2]);
+    // about 1.76 m tall and under 0.7 m across the shoulders and arms
+    expect(r.h).toBeGreaterThan(1.68);
+    expect(r.h).toBeLessThan(1.85);
+    expect(r.w).toBeLessThan(0.7);
+    expect(r.rest[0]).toBeLessThan(0.1);
+    expect(r.rest[2]).toBeGreaterThan(-0.25);
+    expect(r.k0).toBeGreaterThan(0.5);
+    expect(r.k1).toBeGreaterThan(0.5);
+    expect(r.min).toBeGreaterThanOrEqual(0);
+    expect(r.elbow).toBeLessThan(-0.5);
+  });
+});
+
 test.describe("on foot, on a phone", () => {
   test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
 
