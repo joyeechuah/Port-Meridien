@@ -32,7 +32,7 @@ Not legal advice: a list of things to check and record.
 | Item | State | To do |
 | --- | --- | --- |
 | Music (`audio/cruise.mp3`, `highway.mp3`, `showroom.mp3`) | Jo Yee believes they were made with Google's Flow Music under a paid Google AI plan, for White Isle Drive's Ibiza setting. Not confirmed | Confirm the tool and the account; save proof of the plan and its commercial-use terms on the day of release; consider new tracks made for this city |
-| Car names | Real makes and models (Volkswagen Golf GTI, BMW M3 and others) | Replace with made-up makes and models, and review the body shapes |
+| Car names | Made-up makes and models for all 24 cars, approved 13 Nov 2026 (`docs/CAR_NAME_PROPOSAL.md`). Not checked against trademark registers | Search each make and model in the trademark registers of the countries you'll sell in; review the body shapes, lights and badges separately |
 | Fonts and three.js | Loaded from Google Fonts and cdnjs | Record their licences; bundle them for a downloadable edition |
 | Age rating and stores | See `docs/DISTRIBUTION_REVIEW.md` | Decide the first sales channel before building weapons |
 
