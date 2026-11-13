@@ -208,6 +208,44 @@ test.describe("taking cars", () => {
     expect(await game.eval((id) => !!__T.save.ghost[id], r.id)).toBe(true);
   });
 
+  test("visits to the dealer between taken cars don't use up the made-up cars: ten rounds, still bounded", async ({ game }) => {
+    await onFoot(game);
+    const st = await game.eval(STAGE);
+    const r = await game.eval(() => {
+      const T = __T,
+        e = T.TRAFFIC[1].e,
+        out = { took: [], ids: [], street: [], meshes: [], looks: [] };
+      for (let i = 0; i < 10; i++) {
+        const t = T.TRAFFIC[1 + (i % 5)];
+        if (!T.FOOT.on) T.footExit();
+        const P = T.P;
+        Object.assign(t, { e, dir: 1, v: 0, stopT: 1e6, lost: false });
+        t.wx = P.x + Math.sin(P.h) * 12;
+        t.wz = P.z + Math.cos(P.h) * 12;
+        t.yaw = P.h;
+        out.took.push(T.takeTraffic(t));
+        out.ids.push(T.curId);
+        out.looks.push(T.paintOf(T.curId) === t.col && T.carById(T.curId).shape === (t.shape === "hatch" ? "hatch" : T.carById(T.curId).shape));
+        // at the dealer: BUY and SELL park your cars around the one you're in; DRIVE puts you in one of your own
+        T.parkAll(T.curId);
+        if (i % 2) {
+          T.attachCar(T.save.cur);
+          T.parkAll(T.curId);
+        }
+        out.street.push(T.STREET.size);
+        out.meshes.push(Object.keys(T.carMeshes).filter((k) => k.startsWith("st")).length);
+      }
+      return out;
+    });
+    expect(r.took).toEqual(Array(10).fill(true));
+    expect(r.ids.every((id) => /^st\d$/.test(id))).toBe(true);
+    expect(r.looks).toEqual(Array(10).fill(true));
+    // after each visit at most the car you're in is left (none when you drove off in your own)
+    expect(Math.max(...r.street)).toBeLessThanOrEqual(1);
+    expect(r.meshes).toEqual(r.street);
+    expect(st.cur).toBeTruthy();
+  });
+
   test("taking car after car keeps at most three standing, and never loses your own", async ({ game }) => {
     await onFoot(game);
     const st = await game.eval(STAGE);
