@@ -2,7 +2,7 @@
 
 An open-world city game for the browser: walk the streets, take any car, and sail from the harbour. Built with three.js as a single `index.html`, with no install and no build step.
 
-> **Status: early.** This repository starts from the code of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive), a free-roam driving game by the same author. Right now it plays as that game under a new name. The city, the character on foot, and the boats arrive in the steps listed in [ROADMAP.md](ROADMAP.md).
+> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running and taking stopped traffic cars already work. PR #12 adds the harbour boat and pier; once that dependency merges, the connected harbour road and Old Quay district are next. See [ROADMAP.md](ROADMAP.md).
 
 Port Meridien is an original game. Its name, city, characters and story are its own.
 
@@ -31,7 +31,8 @@ Walk along the pier to the motorboat and press `E` or `F` to board. The driving 
 
 ## What works today
 
-- Driving: keyboard, touch pads, tilt and game controllers; 24 cars with paint and customisation; collision damage and repairs.
+- Driving: keyboard, touch pads, tilt and game controllers; 24 fictional-name cars with paint and customisation; collision damage and repairs.
+- On-foot exploration, walking and running, stopped-traffic takeovers and reclaiming parked cars. Taken cars are temporary and do not alter saved ownership.
 - A world with roads, traffic, day and night, a map with GPS, and Photo Mode.
 - Races, time trials, championships and delivery contracts.
 - Saves in the browser. Optional cloud saves are built in but switched off until this game has its own Firebase project (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
@@ -49,7 +50,9 @@ Run one Playwright instance at a time: the test server uses port 4173.
 
 - The game is `index.html` and nothing else. `package.json` holds only test tooling.
 - Every fix or feature comes with a test that fails without it.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the current implementation and development constraints.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the current and PR #12 movement implementations, lifecycle rules and test boundaries.
+- The proposed pier-road plan and baseline-sensitive route checks are in the documents PR #13; its final file path is `docs/PIER_ROAD_CONNECTION_PLAN.md`.
+- Each approved car name still requires trademark clearance; fictional naming does not itself clear car visuals or music licensing.
 
 ## Privacy
 
