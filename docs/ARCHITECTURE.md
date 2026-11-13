@@ -1,6 +1,6 @@
 # Port Meridien — Architecture and Developer Guide
 
-This is a guide to the **current merged implementation on `main`**, not a roadmap. Port Meridien currently runs as a static browser driving game, starting from White Isle Drive’s code. It can be served by GitHub Pages; repository hosting must be enabled separately. Walking, boats and the new city are planned in [ROADMAP.md](../ROADMAP.md). The game itself needs no build step.
+This is a guide to the **current merged implementation on `main`**, not a roadmap. Port Meridien currently runs as a static browser driving game, starting from White Isle Drive’s code. It can be served by GitHub Pages; repository hosting must be enabled separately. Walking, taking traffic cars, and (after the dependency PR #12 is merged) the harbour boat/pier are implemented. The separate city remains planned in [ROADMAP.md](../ROADMAP.md). The game itself needs no build step.
 
 Return to [README](../README.md) · Set up [Cloud Save](../CLOUD_SETUP.md).
 
@@ -24,6 +24,24 @@ The sizeable `index.html` contains the production game, not a framework applicat
 The page loads the three.js library from cdnjs with a Subresource Integrity hash. Startup checks for WebGL support, restores and sanitises saved progress, then `boot()` executes the staged `STEPS` initialisation. These stages construct road networks, terrain, scenery, landmarks, events, traffic and parked vehicles. The `requestAnimationFrame(frame)` loop drives the simulation.
 
 `frame(ts)` clamps the elapsed time, applies day/night and environment updates, delegates based on the current game state, and renders. Representative states are `LOAD`, `GARAGE`, `EXIT`, `DRIVE`, `DEALER`, `MAP`, `PHOTO`, `PAUSE` and `FADE`. `setState()` coordinates state transitions and interaction availability. Photo mode pauses world clocks; a tab that is no longer the active session skips its frame work.
+
+### Player movement modes, pier and parked/taken cars
+
+The game uses one `DRIVE` state with three mutually exclusive player movement paths; **never infer movement from `state` alone**:
+
+| Mode | Runtime selector | Update handler | Position and controls |
+| --- | --- | --- | --- |
+| Car | neither `FOOT.on` nor `BOAT.on` | normal `driveUpdate` physics | `P` and `pc`; steering, throttle, brake |
+| Walking | `FOOT.on` | `footUpdate(dt)` | `FOOT.{x,y,z,h,v}`; gas walks, brake steps backward, Shift/handbrake runs |
+| Boat (#12) | `BOAT.on` | `boatUpdate(dt)` | `BOAT.{x,y,z,h,v}`; gas powers forward, brake reverses, steering turns while moving |
+
+`FOOT` is a singleton **player** entity with animation, camera and input state, not a reusable NPC class. `footClear` resolves collisions against scenery, vehicle and traffic blockers; `footGround` resolves terrain/road height and, after #12, a supported over-water `PIER` deck. A height query alone is **not** an NPC pathfinding interface. `footTarget` and `footPrompt` select reachable car/boat actions; the prompt action is available synchronously on exit (important to #6).
+
+Taking stopped traffic cars creates session-only temporary IDs such as `st0`, recorded in `STREET`; their model data borrows from a stable base `CARS` ID. `LEFT` holds up to three parked-out cars not currently driven, including owned cars. `takeTraffic`, `takeLeft`, `leaveCar`, `driveCar` and `streetReset` handle possession, lifetime and home cleanup. The save must never persist a temporary `st*` current ID: `save.cur` stays an owned car, while ghost records use a stable borrowed base model. The dealer's `parkAll()` transitions must release discarded temporary entries and meshes (fixed in the #4 follow-up). Regression tests cover repeated dealer swaps and temporary car bounds.
+
+The pier and boat code added by PR #12 is in the `HARBOUR + BOAT` section. `buildHarbour()` constructs a pier deck and boat; `onPier` / `footGround` treat the dock as walkable over water. `boatFree` enforces underwater clearance and world bounds, `boatBoard` and `boatLand` switch modes, `boatPlace` renders the hull and wake, `boatEnd` returns to mooring on forced exit. `drawMini` and `syncRenderView` follow the active boat/player; car controls should not run while `BOAT.on`. There is **no drivable road to the pier yet**; a proposed connection is documented in PR #13 (`docs/PIER_ROAD_CONNECTION_PLAN.md`), and the roadmap treats road construction separately. Boat wake rendering requires a scene-attached mesh and visual testing.
+
+**Mode integration:** PR #12 now runs `jobTick(dt)` while walking or boating and makes Photo Mode target the walker or boat with an above-sea camera. Car-engine distance falloff and boat/walking sound remain future audio work; they should be implemented separately without altering player/boat mechanics.
 
 ### Driving and traffic
 
@@ -52,7 +70,7 @@ The game uses Web Audio for engine, tyres, ambient sound and music, with three s
 
 ## Tests and continuous integration
 
-Production `index.html` is loaded fresh for browser tests. `tests/support/instrument.js` inserts controlled inspection hooks into an **in-memory copy**; it does **not** modify the shipping HTML file. Tests can then inspect internal state using `window.__T`. `tests/support/game.js` contains test-driving helpers. The Playwright server is in `tests/support/server.js`.
+Production `index.html` is loaded fresh for browser tests. `tests/support/instrument.js` inserts controlled inspection hooks into an **in-memory copy**; it does **not** modify the shipping HTML file. Tests can then inspect internal state using `window.__T`. `tests/support/game.js` contains test-driving helpers. `tests/on-foot.spec.js` tests player mobility and the immediate exit prompt; `tests/take-cars.spec.js` covers temporary ownership, model/save/ghost invariants and dealer lifecycle; PR #12 adds `tests/boat.spec.js`. The world-baseline regression in PR #10 records authored roads, generated edges, all event polylines, landmarks, contract points and complete contract legs; do not regenerate it automatically when adding the pier-access road. The Playwright server is in `tests/support/server.js`.
 
 `playwright.config.js` defines two projects: `chromium` for logic and interaction without 3D rendering, and `webgl` for tests tagged `@webgl`, drawing with WebGL/SwiftShader as needed. The workflow `.github/workflows/test.yml` installs dependencies, runs lint, then runs `npx playwright test` (both `chromium` and `webgl` projects), and uploads reports and failure artifacts. Its job label says Chromium, but it does not filter out WebGL tests. Run only one Playwright instance at a time because the server uses port 4173. Do not edit the served `index.html` during a test run.
 
@@ -92,4 +110,4 @@ The project uses AI coding assistants for implementation. Human project work inc
 
 The current terrain and road layout remain the inherited island until the waterfront replacement is approved and implemented. Display names now use Port Meridien locations, but event, landmark and contract IDs such as `cubells`, `eivissa_town` and `parcel_eivissa_santaeularia` remain stable to preserve saved progress and route lookups. `ibizaHouse` is an inherited geometry helper, not a network integration. Rename internal identifiers only with a separate compatibility plan. The old save fixture documents its White Isle Drive provenance; it tests schema compatibility, not automatic cross-game save sharing.
 
-Claude owns the on-foot work on `feat/on-foot`. Other work starts from `main` on separate branches; avoid its on-foot section, `driveUpdate`, instrumentation and on-foot tests while that work is pending. Jo Yee merges and deploys.
+The player walking and taking-cars features are merged on `main`. Claude owns gameplay evolution for walking, taking cars, pier and boat, plus subsequent Old Quay district implementation. Codex owns tests, architecture/docs, review and approved isolated wake work. The design in `PEDESTRIAN_INTERFACE_AUDIT.md` is a proposal only; no NPC, police or weapon implementation is authorised by documentation. Jo Yee controls merge/release decisions.
