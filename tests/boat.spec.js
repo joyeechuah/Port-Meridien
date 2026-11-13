@@ -82,11 +82,11 @@ test.describe("harbour and boat", () => {
       out.on = F.on;
       return out;
     });
-    expect(r.deck).toBeCloseTo(1.55, 2);
+    const P = await game.eval(() => __T.PIER);
+    expect(r.deck).toBeCloseTo(P.y, 2);
     expect(r.beside).toBeLessThan(-0.4);
     expect(r.seaUnder).toBeLessThan(-3);
     expect(r.on).toBe(true);
-    const P = await game.eval(() => __T.PIER);
     expect(r.along[0]).toBeGreaterThan(P.x1 - 1.2);
     expect(r.along[0]).toBeLessThan(P.x1);
     expect(r.along[2]).toBeCloseTo(P.y, 1);
