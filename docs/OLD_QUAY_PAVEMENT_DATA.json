@@ -1,0 +1,1132 @@
+{
+  "version": 1,
+  "status": "proposed data only — not active in runtime; no collision or routing guarantee",
+  "district": "Old Quay, existing island town",
+  "source": [
+    "docs/OLD_QUAY_PLAN.md",
+    "index.html defineRoads() original town streets"
+  ],
+  "coordinates": "world metres [x,z], z negative toward north",
+  "constraints": {
+    "preserveDealer": [
+      722,
+      84
+    ],
+    "preserveSafehouse": [
+      430,
+      -430
+    ],
+    "preserveMainAvenueControlPoints": [
+      [
+        560,
+        40
+      ],
+      [
+        640,
+        38
+      ],
+      [
+        720,
+        36
+      ],
+      [
+        800,
+        32
+      ],
+      [
+        880,
+        20
+      ],
+      [
+        940,
+        5
+      ]
+    ],
+    "northStreet": [
+      [
+        560,
+        -120
+      ],
+      [
+        760,
+        -120
+      ]
+    ],
+    "southStreet": [
+      [
+        560,
+        190
+      ],
+      [
+        760,
+        190
+      ]
+    ],
+    "northSouthStreetXs": [
+      560,
+      620,
+      690,
+      760
+    ],
+    "roadHalfWidth": 5.2,
+    "sidewalkWidthBeyondKerb": 2.8,
+    "proposedSidewalkCentreOffsetFromRoadCentre": 7,
+    "note": "These are schematic candidate anchors derived from existing street control points. The main avenue is curved, not a straight line; the z values here are approximate and must be snapped to the runtime-exported road edges. Do not use as precise collision, pedestrian path, or rendered crosswalk data."
+  },
+  "preserved": {
+    "roads": true,
+    "raceRoutes": true,
+    "landmarks": true,
+    "contractStops": true,
+    "dealerForecourt": true
+  },
+  "blocks": [
+    {
+      "id": "north-1",
+      "range": {
+        "x": [
+          560,
+          620
+        ],
+        "z": [
+          -120,
+          40
+        ]
+      },
+      "use": "older-terraces-and-shops",
+      "cornerIds": [
+        "north-1-nw",
+        "north-1-ne",
+        "north-1-se",
+        "north-1-sw"
+      ]
+    },
+    {
+      "id": "south-1",
+      "range": {
+        "x": [
+          560,
+          620
+        ],
+        "z": [
+          35,
+          190
+        ]
+      },
+      "use": "residential-courtyards",
+      "cornerIds": [
+        "south-1-nw",
+        "south-1-ne",
+        "south-1-se",
+        "south-1-sw"
+      ]
+    },
+    {
+      "id": "north-2",
+      "range": {
+        "x": [
+          620,
+          690
+        ],
+        "z": [
+          -120,
+          40
+        ]
+      },
+      "use": "market-courtyard",
+      "cornerIds": [
+        "north-2-nw",
+        "north-2-ne",
+        "north-2-se",
+        "north-2-sw"
+      ]
+    },
+    {
+      "id": "south-2",
+      "range": {
+        "x": [
+          620,
+          690
+        ],
+        "z": [
+          35,
+          190
+        ]
+      },
+      "use": "civic-square",
+      "cornerIds": [
+        "south-2-nw",
+        "south-2-ne",
+        "south-2-se",
+        "south-2-sw"
+      ]
+    },
+    {
+      "id": "north-3",
+      "range": {
+        "x": [
+          690,
+          760
+        ],
+        "z": [
+          -120,
+          40
+        ]
+      },
+      "use": "workshops",
+      "cornerIds": [
+        "north-3-nw",
+        "north-3-ne",
+        "north-3-se",
+        "north-3-sw"
+      ]
+    },
+    {
+      "id": "south-3",
+      "range": {
+        "x": [
+          690,
+          760
+        ],
+        "z": [
+          35,
+          190
+        ]
+      },
+      "use": "auto-gallery-existing",
+      "cornerIds": [
+        "south-3-nw",
+        "south-3-ne",
+        "south-3-se",
+        "south-3-sw"
+      ]
+    }
+  ],
+  "sidewalkCorners": [
+    {
+      "id": "north-1-nw",
+      "block": "north-1",
+      "position": [
+        567,
+        -113
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-1-ne",
+      "block": "north-1",
+      "position": [
+        613,
+        -113
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-1-se",
+      "block": "north-1",
+      "position": [
+        613,
+        31.6
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-1-sw",
+      "block": "north-1",
+      "position": [
+        567,
+        33
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-1-nw",
+      "block": "south-1",
+      "position": [
+        567,
+        47
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-1-ne",
+      "block": "south-1",
+      "position": [
+        613,
+        45.6
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-1-se",
+      "block": "south-1",
+      "position": [
+        613,
+        183
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-1-sw",
+      "block": "south-1",
+      "position": [
+        567,
+        183
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-2-nw",
+      "block": "north-2",
+      "position": [
+        627,
+        -113
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-2-ne",
+      "block": "north-2",
+      "position": [
+        683,
+        -113
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-2-se",
+      "block": "north-2",
+      "position": [
+        683,
+        30.1
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-2-sw",
+      "block": "north-2",
+      "position": [
+        627,
+        31.6
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-2-nw",
+      "block": "south-2",
+      "position": [
+        627,
+        45.6
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-2-ne",
+      "block": "south-2",
+      "position": [
+        683,
+        44.1
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-2-se",
+      "block": "south-2",
+      "position": [
+        683,
+        183
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-2-sw",
+      "block": "south-2",
+      "position": [
+        627,
+        183
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-3-nw",
+      "block": "north-3",
+      "position": [
+        697,
+        -113
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-3-ne",
+      "block": "north-3",
+      "position": [
+        753,
+        -113
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-3-se",
+      "block": "north-3",
+      "position": [
+        753,
+        28.5
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "north-3-sw",
+      "block": "north-3",
+      "position": [
+        697,
+        30.1
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-3-nw",
+      "block": "south-3",
+      "position": [
+        697,
+        44.1
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-3-ne",
+      "block": "south-3",
+      "position": [
+        753,
+        42.5
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-3-se",
+      "block": "south-3",
+      "position": [
+        753,
+        183
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    },
+    {
+      "id": "south-3-sw",
+      "block": "south-3",
+      "position": [
+        697,
+        183
+      ],
+      "survey": "proposed sidewalk-centre point, snap to actual town road after geometry export"
+    }
+  ],
+  "sidewalkSegments": [
+    {
+      "id": "north-1-walk-1",
+      "from": "north-1-nw",
+      "to": "north-1-ne",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-1-walk-2",
+      "from": "north-1-ne",
+      "to": "north-1-se",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-1-walk-3",
+      "from": "north-1-se",
+      "to": "north-1-sw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-1-walk-4",
+      "from": "north-1-sw",
+      "to": "north-1-nw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-1-walk-1",
+      "from": "south-1-nw",
+      "to": "south-1-ne",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-1-walk-2",
+      "from": "south-1-ne",
+      "to": "south-1-se",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-1-walk-3",
+      "from": "south-1-se",
+      "to": "south-1-sw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-1-walk-4",
+      "from": "south-1-sw",
+      "to": "south-1-nw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-2-walk-1",
+      "from": "north-2-nw",
+      "to": "north-2-ne",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-2-walk-2",
+      "from": "north-2-ne",
+      "to": "north-2-se",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-2-walk-3",
+      "from": "north-2-se",
+      "to": "north-2-sw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-2-walk-4",
+      "from": "north-2-sw",
+      "to": "north-2-nw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-2-walk-1",
+      "from": "south-2-nw",
+      "to": "south-2-ne",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-2-walk-2",
+      "from": "south-2-ne",
+      "to": "south-2-se",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-2-walk-3",
+      "from": "south-2-se",
+      "to": "south-2-sw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-2-walk-4",
+      "from": "south-2-sw",
+      "to": "south-2-nw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-3-walk-1",
+      "from": "north-3-nw",
+      "to": "north-3-ne",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-3-walk-2",
+      "from": "north-3-ne",
+      "to": "north-3-se",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-3-walk-3",
+      "from": "north-3-se",
+      "to": "north-3-sw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "north-3-walk-4",
+      "from": "north-3-sw",
+      "to": "north-3-nw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-3-walk-1",
+      "from": "south-3-nw",
+      "to": "south-3-ne",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-3-walk-2",
+      "from": "south-3-ne",
+      "to": "south-3-se",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-3-walk-3",
+      "from": "south-3-se",
+      "to": "south-3-sw",
+      "kind": "sidewalk-planned"
+    },
+    {
+      "id": "south-3-walk-4",
+      "from": "south-3-sw",
+      "to": "south-3-nw",
+      "kind": "sidewalk-planned"
+    }
+  ],
+  "junctionAnchors": [
+    {
+      "id": "junction-560-north",
+      "at": [
+        560,
+        -120
+      ],
+      "kind": "north-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-620-north",
+      "at": [
+        620,
+        -120
+      ],
+      "kind": "north-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-690-north",
+      "at": [
+        690,
+        -120
+      ],
+      "kind": "north-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-760-north",
+      "at": [
+        760,
+        -120
+      ],
+      "kind": "north-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-560-main",
+      "at": [
+        560,
+        40
+      ],
+      "kind": "avenue-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-620-main",
+      "at": [
+        620,
+        38.6
+      ],
+      "kind": "avenue-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-690-main",
+      "at": [
+        690,
+        37.1
+      ],
+      "kind": "avenue-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-760-main",
+      "at": [
+        760,
+        35.5
+      ],
+      "kind": "avenue-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-560-south",
+      "at": [
+        560,
+        190
+      ],
+      "kind": "south-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-620-south",
+      "at": [
+        620,
+        190
+      ],
+      "kind": "south-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-690-south",
+      "at": [
+        690,
+        190
+      ],
+      "kind": "south-cross-street",
+      "surveyRequired": true
+    },
+    {
+      "id": "junction-760-south",
+      "at": [
+        760,
+        190
+      ],
+      "kind": "south-cross-street",
+      "surveyRequired": true
+    }
+  ],
+  "candidateCrossings": [
+    {
+      "id": "cw-north-street-1",
+      "across": "north-street",
+      "at": [
+        590,
+        -120
+      ],
+      "endpoints": [
+        [
+          590,
+          -127
+        ],
+        [
+          590,
+          -113
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-north-street-2",
+      "across": "north-street",
+      "at": [
+        655,
+        -120
+      ],
+      "endpoints": [
+        [
+          655,
+          -127
+        ],
+        [
+          655,
+          -113
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-north-street-3",
+      "across": "north-street",
+      "at": [
+        725,
+        -120
+      ],
+      "endpoints": [
+        [
+          725,
+          -127
+        ],
+        [
+          725,
+          -113
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-south-street-1",
+      "across": "south-street",
+      "at": [
+        590,
+        190
+      ],
+      "endpoints": [
+        [
+          590,
+          183
+        ],
+        [
+          590,
+          197
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-south-street-2",
+      "across": "south-street",
+      "at": [
+        655,
+        190
+      ],
+      "endpoints": [
+        [
+          655,
+          183
+        ],
+        [
+          655,
+          197
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-south-street-3",
+      "across": "south-street",
+      "at": [
+        725,
+        190
+      ],
+      "endpoints": [
+        [
+          725,
+          183
+        ],
+        [
+          725,
+          197
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-main-avenue-1",
+      "across": "main-avenue",
+      "at": [
+        590,
+        39.3
+      ],
+      "endpoints": [
+        [
+          590,
+          32.3
+        ],
+        [
+          590,
+          46.3
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-main-avenue-2",
+      "across": "main-avenue",
+      "at": [
+        655,
+        37.9
+      ],
+      "endpoints": [
+        [
+          655,
+          30.9
+        ],
+        [
+          655,
+          44.9
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-main-avenue-3",
+      "across": "main-avenue",
+      "at": [
+        725,
+        36.3
+      ],
+      "endpoints": [
+        [
+          725,
+          29.3
+        ],
+        [
+          725,
+          43.3
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-vertical-560-north",
+      "across": "north-south-street-x560",
+      "at": [
+        560,
+        -42
+      ],
+      "endpoints": [
+        [
+          553,
+          -42
+        ],
+        [
+          567,
+          -42
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-vertical-560-south",
+      "across": "north-south-street-x560",
+      "at": [
+        560,
+        114
+      ],
+      "endpoints": [
+        [
+          553,
+          114
+        ],
+        [
+          567,
+          114
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-vertical-620-north",
+      "across": "north-south-street-x620",
+      "at": [
+        620,
+        -42
+      ],
+      "endpoints": [
+        [
+          613,
+          -42
+        ],
+        [
+          627,
+          -42
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-vertical-620-south",
+      "across": "north-south-street-x620",
+      "at": [
+        620,
+        114
+      ],
+      "endpoints": [
+        [
+          613,
+          114
+        ],
+        [
+          627,
+          114
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-vertical-690-north",
+      "across": "north-south-street-x690",
+      "at": [
+        690,
+        -42
+      ],
+      "endpoints": [
+        [
+          683,
+          -42
+        ],
+        [
+          697,
+          -42
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-vertical-690-south",
+      "across": "north-south-street-x690",
+      "at": [
+        690,
+        114
+      ],
+      "endpoints": [
+        [
+          683,
+          114
+        ],
+        [
+          697,
+          114
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-vertical-760-north",
+      "across": "north-south-street-x760",
+      "at": [
+        760,
+        -42
+      ],
+      "endpoints": [
+        [
+          753,
+          -42
+        ],
+        [
+          767,
+          -42
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    },
+    {
+      "id": "cw-vertical-760-south",
+      "across": "north-south-street-x760",
+      "at": [
+        760,
+        114
+      ],
+      "endpoints": [
+        [
+          753,
+          114
+        ],
+        [
+          767,
+          114
+        ]
+      ],
+      "type": "candidate-at-midblock",
+      "surveyRequired": true
+    }
+  ],
+  "candidateEntrances": [
+    {
+      "id": "market-north",
+      "to": "north-2",
+      "side": "north",
+      "at": [
+        655,
+        -113
+      ],
+      "use": "market pedestrian entrance",
+      "surveyRequired": true
+    },
+    {
+      "id": "market-avenue",
+      "to": "north-2",
+      "side": "south",
+      "at": [
+        655,
+        30.9
+      ],
+      "use": "market pedestrian entrance",
+      "surveyRequired": true
+    },
+    {
+      "id": "civic-avenue",
+      "to": "south-2",
+      "side": "north",
+      "at": [
+        655,
+        44.9
+      ],
+      "use": "civic square pedestrian entrance",
+      "surveyRequired": true
+    },
+    {
+      "id": "civic-south",
+      "to": "south-2",
+      "side": "south",
+      "at": [
+        655,
+        183
+      ],
+      "use": "civic square pedestrian entrance",
+      "surveyRequired": true
+    },
+    {
+      "id": "shops-west",
+      "to": "north-1",
+      "side": "west",
+      "at": [
+        567,
+        -40
+      ],
+      "use": "terrace shop approach",
+      "surveyRequired": true
+    },
+    {
+      "id": "residential-west",
+      "to": "south-1",
+      "side": "west",
+      "at": [
+        567,
+        110
+      ],
+      "use": "residential courtyard approach",
+      "surveyRequired": true
+    },
+    {
+      "id": "workshops-east",
+      "to": "north-3",
+      "side": "east",
+      "at": [
+        753,
+        -45
+      ],
+      "use": "workshop foot access",
+      "surveyRequired": true
+    }
+  ],
+  "exclusions": [
+    {
+      "name": "auto-gallery-existing",
+      "rectangle": {
+        "x": [
+          690,
+          760
+        ],
+        "z": [
+          38,
+          190
+        ]
+      },
+      "note": "Existing dealership exclusion and forecourt must remain unchanged until surveyed"
+    },
+    {
+      "name": "highway-finish",
+      "near": [
+        930,
+        10
+      ],
+      "note": "No new crossing prompt or obstacle in run-out zone"
+    }
+  ],
+  "verification": [
+    "Snap schematic geometry to actual EDGES and pavement geometry; no linearisation of curved main avenue",
+    "Check corner and crossing points against all building and vegetation colliders",
+    "Keep legal/physical walking room within 2.8 m pavement width",
+    "Verify route continuity, crossing sight lines and both traffic-side settings",
+    "Keep original Old Quay Dash, Coastal Highway, job pickup/delivery and dealer clearances",
+    "The harbour pier and walkable surface over water are reserved for Claude's boat PR; no pier geometry here"
+  ]
+}
