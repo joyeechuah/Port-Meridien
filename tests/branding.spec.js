@@ -44,7 +44,8 @@ test('every car has a made-up make and model, and keeps its id, class and figure
     'vantage: Wychford Vesper R', 'dbs: Wychford Regent', 'r8: Veltren Arc 10', 'urus: Orsini Vale Torra', 'gt3: Kessler Vale Ridge RS', 'f488: Bellora Ventra S',
     'huracan: Orsini Vale Saetta', 'mclaren: Wychford Needle LT', 'apollo: Kessler Vale Anvil S', 'ccx: Norrvik Skeld', 'sf90: Bellora Fulmine H', 'chiron: Montreval Sovereign',
   ]);
-  const real = /Volkswagen|Golf|Mini|Cooper|Mazda|MX-5|Ford|Mustang|Dodge|Challenger|Audi|BMW|Range Rover|Nissan|GT-R|Mercedes|AMG|Porsche|Cayenne|Viper|Aston|Vantage|Lamborghini|Urus|Ferrari|Hurac|McLaren|Gumpert|Apollo|Koenigsegg|Bugatti|Chiron/i;
+  // whole words only: "Wychford" contains "ford"
+  const real = /\b(Volkswagen|Golf|Mini|Cooper|Mazda|MX-5|Ford|Mustang|Dodge|Challenger|Audi|BMW|Range Rover|Nissan|GT-R|Mercedes|AMG|Porsche|Cayenne|Viper|Aston|Vantage|Lamborghini|Urus|Ferrari|Hurac|McLaren|Gumpert|Apollo|Koenigsegg|Bugatti|Chiron)\b/i;
   for (const c of cars) expect(`${c.mk} ${c.md}`).not.toMatch(real);
   // what the names don't touch
   const golf = cars[0], chiron = cars[23];
