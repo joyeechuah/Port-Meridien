@@ -89,7 +89,7 @@ test.describe("customise", () => {
     await expect(page.locator("#cuTotal")).toHaveText(/2,000 CR/);
   });
 
-  test("a paid GT-R plate is visible on both bumpers, including after reload", async ({ game, page }) => {
+  test("a paid Kazan 6 plate is visible on both bumpers, including after reload", async ({ game, page }) => {
     await game.eval(() => __T.gPick(__T.save.owned.indexOf("gtr")));
     const credits = await game.eval(() => __T.save.cr);
     await page.locator("#gCust").click();
@@ -119,7 +119,7 @@ test.describe("customise", () => {
     expect(await game.eval(() => __T.save.cr)).toBe(credits - 500);
   });
 
-  test("the MX-5 has a recessed cockpit and low roll hoops at both graphics levels", async ({ game }) => {
+  test("the Sora 2 has a recessed cockpit and low roll hoops at both graphics levels", async ({ game }) => {
     const views = await game.eval(() => {
       const T = __T;
       return [1, 2].map(gfx => {
