@@ -21,7 +21,7 @@
 ## Current gaps / tests to demand
 - `footClear` returns corrected points but is tied to the player's radius and current car; extracting reusable collision helpers must not modify reserved player behavior without Claude review.
 - Pier geometry in PR #12 has deck but no sidewalk graph and no ramp connection from existing town. The draft pavement map #11 has candidate corners/crossings only; **not** a validated connected navigation graph. Do not populate the harbour until road/walkway is surveyed.
-- Courier timer `jobTick` is presently called from the car-only path. Switching to walker or boat may stop its countdown (a cross-mode consistency risk). Decide and test separately from NPC step 2.
+- PR #12 now calls `jobTick(dt)` from the car, walking and boat paths, with a regression for timed deliveries during mode changes. Preserve that fix during Step 2 extraction: an NPC world tick must not double-count contract time.
 - The boat exit and foot prompts share proximity selection, so pedestrians must never prevent the player from disembarking; reserve a bounded dock exclusion polygon.
 - Controller and touch transitions must not consume a single prompt twice.
 - Run lifecycle test over repeated take-car → leave → board boat → land → return car → garage → fast travel, plus population plateau and no lingering collider/reservation.
