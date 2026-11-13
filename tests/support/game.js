@@ -183,7 +183,9 @@ class Game {
     });
   }
 
-  // stop the car on a quiet open road, away from every prompt (or at x, z)
+  // Stop the car on a quiet road (or at x, z). This moves physics synchronously,
+  // NOT its 3D mesh; tests comparing rendered positions must await real frames
+  // (or explicitly place the mesh) before taking a baseline snapshot.
   park(x = null, z = null) {
     return this.page.evaluate(
       ([x, z]) => {
@@ -216,7 +218,10 @@ class Game {
     );
   }
 
-  // hold keys for n simulation steps of 1/60 s, inside one evaluate; returns the car's state afterwards
+  // Hold keys for n simulation steps of 1/60 s in one evaluate, and return CAR physics at the end.
+  // This is a deterministic physics interval, but it does not freeze the page between
+  // this result and a later eval(). On-foot distance assertions should snapshot both
+  // boundaries inside the same evaluate (see footMove in on-foot.spec.js).
   steps(n, held = {}) {
     return this.page.evaluate(
       ([n, held]) => {

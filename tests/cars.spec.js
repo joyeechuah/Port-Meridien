@@ -219,18 +219,23 @@ test.describe("car models", () => {
     await game.open();
     await game.driveOut();
     await game.park();
+    // park() changes physics first; the driven mesh is placed by the frame loop.
+    await game.frames(3);
     const verts = () =>
       game.eval(() => {
         const T = __T,
           c = T.carMeshes[T.curId];
         return { v: c.shell.children[0].geometry.attributes.position.count, q: c.q, x: c.G.position.x, z: c.G.position.z, same: T.pc === c, all: Object.values(T.carMeshes).map((m) => m.q) };
       });
-    await game.eval(() => (__T.save.gfx = 1));
-    // the car's model moves to where it was parked on the next frame: wait for it, or the first reading can be of
-    // the place it stood before (the house, 1 km away), and "in place" then fails for no reason
-    await game.frames(3);
-    const sharp = await verts();
-    await game.eval(() => __T.pauseOn());
+    // Freeze the scene before the baseline snapshot, in the same JS task.
+    // A separate evaluate between snapshot and pause allowed a live frame to move the mesh.
+    const sharp = await game.eval(() => {
+      const T = __T;
+      T.save.gfx = 1;
+      T.pauseOn();
+      const c = T.carMeshes[T.curId];
+      return { v: c.shell.children[0].geometry.attributes.position.count, q: c.q, x: c.G.position.x, z: c.G.position.z, same: T.pc === c, all: Object.values(T.carMeshes).map((m) => m.q) };
+    });
     // SHARP → SMOOTH, then on round to AUTO
     await page.locator("#pGfx").click();
     const smooth = await verts();
