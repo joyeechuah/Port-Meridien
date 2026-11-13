@@ -461,6 +461,7 @@ body.touch #phExit kbd{display:none}
 <div id="chips" class="hide">
   <button class="chip" id="chMap">MAP</button>
   <button class="chip" id="chCam">CAM</button>
+  <button class="chip" id="chFoot" title="Get out of the car (F)">GET OUT</button>
   <button class="chip" id="chRear" aria-label="Hold to look behind" aria-pressed="false" title="Hold to look behind (B)">REAR</button>
   <button class="chip" id="chPhoto">PHOTO</button>
   <button class="chip" id="chPause">PAUSE</button>
@@ -3065,7 +3066,7 @@ function pollPad(){
   if(tabIdle)return;
   if(clOverlayOpen()){if(hit(1))clEscape();return}
   const inputState=state;
-  if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3))cycleCam();else if(hit(2)&&promptAct)promptAct()}
+  if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on)footExit()}
   // in the pause menu, B or Start closes a screen opened from it (passport, contracts) before the menu itself
   else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}}
   else if(state==="LOAD"){if(hit(0)&&!$("lstart").classList.contains("hide"))$("lstart").click()}
@@ -3121,6 +3122,7 @@ const gasAmt=()=>{const g=gasIn();return g>0?g:kG()?1:0};
    off sideways speed (less with the handbrake or off the asphalt), the yaw rate
    follows the steering angle but is capped by how much grip the tyres have. */
 const P={x:0,y:0,z:0,h:0,vx:0,vz:0,vy:0,r:0,ty:0,air:false,airT:0,steer:0,pitch:0,roll:0,nr:null,onRoad:true,hit:0,hitT:0,water:false};
+const PCAR=P;   // the car's state under a second name, for the few places that follow the walker instead (see ON FOOT)
 let pc=null;        // current car instance
 let shake=0;
 const fwdOf=h=>({x:Math.sin(h),z:Math.cos(h)});
@@ -3537,6 +3539,9 @@ function updateTraffic(dt){
       // counts from wherever it stopped: a car that pulled up more than 16 m back used to wait for good
       if(pv<1.5){t.waitT+=dt;if(t.waitT>2){t.waitT=0;t.passT=4.5}}}
     else t.waitT=Math.max(0,t.waitT-dt);
+    // someone on foot in its way: it stops short and waits (it doesn't pull out round a person)
+    if(FOOT.on){const wx=FOOT.x-t.wx,wz=FOOT.z-t.wz,wa=wx*tx+wz*tz;
+      if(wa>0&&wa<Math.max(14,7+t.v*t.v/14)&&Math.abs(wx*-tz+wz*tx)<1.9){target=Math.min(target,wa<7?0:Math.sqrt(14*(wa-7)));if(wa<9)close=true}}
     const ln=RT[t.e.type].lanes,offT=t.passT>0?(ln.length>1&&t.lane===0?ln[1]:-ln[0])*SIDE():t.off;
     t.offCur+=clamp(offT-t.offCur,-2.2*dt,2.2*dt);
     t.v+=clamp(target-t.v,-(close?20:9)*dt,3*dt);
@@ -3546,7 +3551,7 @@ function updateTraffic(dt){
     if(!t.e)continue;
     const q=edgePos(t.e,t.s),ux=q.dx*t.dir,uz=q.dz*t.dir;
     t.wx=q.x-uz*t.offCur;t.wz=q.z+ux*t.offCur;t.yaw=Math.atan2(ux,uz);
-    const dpx=t.wx-P.x,dpz=t.wz-P.z,d=Math.hypot(dpx,dpz);
+    const me=FOOT.on?FOOT:P,dpx=t.wx-me.x,dpz=t.wz-me.z,d=Math.hypot(dpx,dpz);
     t.c.G.visible=d<560;
     // nose up or down with the road, so a car on a hill sits on all four wheels
     if(t.c.G.visible){const yF=edgeY(t.e,t.s+1.3*t.dir),yB=edgeY(t.e,t.s-1.3*t.dir);t.c.G.position.set(t.wx,(yF+yB)/2+YO,t.wz);t.c.G.rotation.set(-Math.atan((yF-yB)/2.6),t.yaw,0,"YXZ");for(const w of t.c.wheels)w.rotation.x+=t.v*dt/.36;showDamageSmoke(t.c,t.damage||0,dt)}
@@ -4066,6 +4071,7 @@ function carArrow(c,x,z,h,scale,big){
 }
 let miniZoom=2.4;
 function drawMini(){
+  const P=FOOT.on?FOOT:PCAR;   // the map follows the walker when you're out of the car
   const S=MMS,c=mmx,R=S/2,py=R+S*.16;c.setTransform(mmD,0,0,mmD,0,0);c.clearRect(0,0,S,S);
   c.save();c.beginPath();c.arc(R,R,R-1,0,TAU);c.clip();
   c.fillStyle="#163450";c.fillRect(0,0,S,S);
@@ -4877,7 +4883,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>carById(curId);
-function setState(s){state=s;$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
+function setState(s){if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on)}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
 
@@ -5456,7 +5462,7 @@ function closeMap(){if(state!=="MAP")return;
   mptr.clear();mDrag=mPinch=null;
   show("map",false);setState("DRIVE");audioOn(true)
 }
-$("mapClose").onclick=closeMap;$("chMap").onclick=openMap;$("chCam").onclick=cycleCam;$("chPause").onclick=pauseOn;
+$("mapClose").onclick=closeMap;$("chMap").onclick=openMap;$("chCam").onclick=cycleCam;$("chFoot").onclick=footExit;$("chPause").onclick=pauseOn;
 const rearButton=$("chRear");
 rearButton.addEventListener("pointerdown",e=>{
   if(e.button!==0||state!=="DRIVE")return;
@@ -5533,9 +5539,10 @@ addEventListener("keydown",e=>{
   if(k==="enter"){if(kbFocusedButton())return;e.preventDefault()}
   if(e.repeat)return;
   if(state==="DRIVE"){
-    if(k==="escape"||k==="p")pauseOn();else if(k==="m")openMap();else if(k==="c")cycleCam();else if(k==="v")photoEnter();
+    if(k==="escape"||k==="p")pauseOn();else if(k==="m")openMap();else if(k==="c"){if(!FOOT.on)cycleCam()}else if(k==="v")photoEnter();
     else if(k==="e"||k==="enter"){if(promptAct)promptAct()}
-    else if(k==="r"&&!ev)resetToRoad(true);
+    else if(k==="f"){if(FOOT.on)footEnter();else footExit()}
+    else if(k==="r"&&!ev&&!FOOT.on)resetToRoad(true);
   }else if(!$("passport").classList.contains("hide")){if(k==="escape")passportClose()}
   else if(!$("jobs").classList.contains("hide")){if(k==="escape")jobsClose()}
   else if(!$("cups").classList.contains("hide")){if(k==="escape")cupsClose()}
@@ -5870,7 +5877,125 @@ function updateHUD(dt){
   const surf=P.onRoad?0:P.nr&&P.nr.d<P.nr.e.half+2.2?1:2;
   audioUpd(gi.rpm,gi.n,kG()?1:0,slip,surf,Math.abs(vF),P.scrape);
 }
+/* ================================================================ ON FOOT */
+// Getting out of the car and walking. The game stays in the DRIVE state: while FOOT.on, driveUpdate runs footUpdate
+// in place of the car's physics, the car stays where it was left, and the camera follows the walker.
+// Controls are the driving ones: gas walks, brake steps back, steering turns, the handbrake (or Shift) runs.
+const FOOT={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,m:null,cy:0,car:[0,0],cp:new THREE.Vector3(),cl:new THREE.Vector3()};
+const FOOT_V={walk:1.9,run:5.4,back:1.2,turn:2.5,r:.35,reach:3.4,exitMax:6};
+// a simple figure, 1.76 m tall, standing on the group's origin and facing +z; legs and arms swing from hip and shoulder
+function footModel(){
+  if(FOOT.m)return FOOT.m;
+  const G=new THREE.Group(),mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.8,metalness:0});
+  const skin=mat(0xc79a78),top=mat(0x1f5a63),legM=mat(0x23262d),shoe=mat(0x111214),hair=mat(0x2a1d16);
+  const part=(par,g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;par.add(o);return o};
+  const limb=(x,y,len,w,d,m)=>{const pv=new THREE.Group();pv.position.set(x,y,0);G.add(pv);part(pv,new THREE.BoxGeometry(w,len,d),m,0,-len/2,0);return pv};
+  part(G,new THREE.BoxGeometry(.44,.6,.24),top,0,1.17,0);
+  part(G,new THREE.BoxGeometry(.4,.14,.23),legM,0,.86,0);
+  part(G,new THREE.SphereGeometry(.125,12,10),skin,0,1.62,0);
+  part(G,new THREE.BoxGeometry(.26,.1,.25),hair,0,1.71,-.01);
+  const legs=[limb(-.11,.86,.8,.17,.19,legM),limb(.11,.86,.8,.17,.19,legM)],arms=[limb(-.29,1.44,.6,.12,.14,top),limb(.29,1.44,.6,.12,.14,top)];
+  for(const l of legs)part(l,new THREE.BoxGeometry(.17,.07,.27),shoe,0,-.83,.04);
+  for(const a of arms)part(a,new THREE.BoxGeometry(.1,.1,.12),skin,0,-.64,0);
+  G.visible=false;scene.add(G);
+  return FOOT.m={G,legs,arms};
+}
+const footGround=(x,z)=>Math.max(meshH(x,z),surfH(x,z));
+// pushes a point clear of buildings, walls and trees, of traffic, and of your own car; returns the cleared point
+function footClear(x,z){
+  const r=FOOT_V.r;
+  const box=(ox,oz,hx,hz,cs,sn)=>{const dx=x-ox,dz=z-oz,lx=dx*cs-dz*sn,lz=dx*sn+dz*cs,qx=clamp(lx,-hx,hx),qz=clamp(lz,-hz,hz);let ex=lx-qx,ez=lz-qz;const d=Math.hypot(ex,ez);
+    if(d>=r)return;let pen;
+    if(d<1e-4){const px=hx-Math.abs(lx),pz=hz-Math.abs(lz);if(px<pz){ex=Math.sign(lx)||1;ez=0;pen=px+r}else{ex=0;ez=Math.sign(lz)||1;pen=pz+r}}else{ex/=d;ez/=d;pen=r-d}
+    x+=(ex*cs+ez*sn)*pen;z+=(-ex*sn+ez*cs)*pen};
+  obstaclesNear(x,z,r+1,o=>{if(o.c){const dx=x-o.x,dz=z-o.z,d=Math.hypot(dx,dz),pen=r+o.r-d;if(pen>0&&d>1e-4){x+=dx/d*pen;z+=dz/d*pen}}else box(o.x,o.z,o.hx,o.hz,o.cs,o.sn)});
+  for(const t of TRAFFIC){if(Math.abs(t.wx-x)>7||Math.abs(t.wz-z)>7)continue;box(t.wx,t.wz,.95,t.c.len,Math.cos(t.yaw),Math.sin(t.yaw))}
+  box(P.x,P.z,.95,2.3,Math.cos(P.h),Math.sin(P.h));
+  return[x,z];
+}
+// why you can't get out just now, or null if you can
+function footBlocked(){
+  if(ev)return "Finish or quit the event first";
+  if(testDrive)return "Return the test car first";
+  if(kphNow()>FOOT_V.exitMax)return "Stop the car first";
+  if(P.water)return "Not in the water";
+  return null;
+}
+function footExit(){
+  if(state!=="DRIVE"||FOOT.on)return false;
+  const why=footBlocked();if(why){toast("CAN'T GET OUT",why,"bad");return false}
+  // beside the driver's door if there's room (the driver sits on the side nearest the middle of the road), otherwise
+  // the other side, otherwise behind: wherever is clear of walls and out of the sea
+  const rx=Math.cos(P.h),rz=-Math.sin(P.h),fx=Math.sin(P.h),fz=Math.cos(P.h),d=SIDE();let spot=null;
+  for(const[a,b]of[[-1.75*d,0],[1.75*d,0],[0,-3.4],[0,3.4]]){const x=P.x+rx*a+fx*b,z=P.z+rz*a+fz*b,c=footClear(x,z);
+    if(Math.hypot(c[0]-x,c[1]-z)<.25&&footGround(c[0],c[1])>-.4){spot=c;break}}
+  if(!spot){toast("CAN'T GET OUT","No room to open the door here","bad");return false}
+  const m=footModel();
+  P.vx=P.vz=0;P.r=0;P.steer=P.steerS=0;P.thr=0;P.brkHold=false;autoHold=true;
+  FOOT.on=true;FOOT.x=spot[0];FOOT.z=spot[1];FOOT.y=footGround(FOOT.x,FOOT.z);FOOT.h=P.h;FOOT.v=0;FOOT.ph=0;FOOT.cy=P.h;FOOT.car=[P.x,P.z];
+  m.G.visible=true;footPlace(0);
+  pc.inside.visible=false;pc.glass.visible=pc.shell.visible=true;
+  placeCarMesh(0);footCam(0,true);footHud(true);
+  return true;
+}
+function footEnter(){
+  if(!FOOT.on)return false;
+  if(Math.hypot(FOOT.x-P.x,FOOT.z-P.z)>FOOT_V.reach)return false;
+  footEnd();return true;
+}
+// back in the driving seat (also when the car is moved from under you: map travel, back to road, the garage)
+function footEnd(){
+  if(!FOOT.on)return;FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
+  promptAct=null;show("prompt",false);footHud(false);autoHold=true;if(pc)snapCam();
+}
+// what the screen shows on foot: no speedometer or streak, and the pads say what they do now
+function footHud(on){
+  show("speedo",!on);show("streak",!on);show("chFoot",!on);show("chRear",!on);show("chCam",!on);
+  $("bG").textContent=on?"WALK":"GAS";$("bH").innerHTML=on?"RUN":"HAND<br>BRAKE";
+  const b=$("bB");if(on){b.textContent="BACK";b.classList.remove("rev")}
+}
+function footPlace(dt){
+  const m=FOOT.m,sw=Math.sin(FOOT.ph)*Math.min(.95,Math.abs(FOOT.v)*.34);
+  m.G.position.set(FOOT.x,FOOT.y,FOOT.z);m.G.rotation.y=FOOT.h;
+  m.legs[0].rotation.x=sw;m.legs[1].rotation.x=-sw;m.arms[0].rotation.x=-sw*.8;m.arms[1].rotation.x=sw*.8;
+  // a slight bob with each step
+  m.G.position.y+=Math.abs(Math.cos(FOOT.ph))*Math.min(.05,Math.abs(FOOT.v)*.012);
+}
+// behind and above the walker, coming in closer when a wall or tree is in the way
+function footCam(dt,snap){
+  FOOT.cy+=wrapA(FOOT.h-FOOT.cy)*(snap?1:1-Math.exp(-dt*5));
+  const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),back=boomClear(FOOT.x,FOOT.z,fx,fz,4.6),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
+  const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.5+(4.6-back)*.2,camFloor(px,pz,p));
+  const k=snap?1:1-Math.exp(-dt*10);
+  FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*5,FOOT.y+.75,FOOT.z+fz*5),k);   // aimed low, so the walker stands clear of the prompt at the bottom
+  camera.position.copy(FOOT.cp);camera.lookAt(FOOT.cl);
+  camera.fov+=(60-camera.fov)*(snap?1:1-Math.exp(-dt*5));camera.updateProjectionMatrix();
+}
+function footUpdate(dt){
+  // the car went somewhere without you (map travel, back to road): you're in it
+  if(Math.hypot(P.x-FOOT.car[0],P.z-FOOT.car[1])>.5){footEnd();return}
+  updateTraffic(dt);
+  if(state!=="DRIVE")return;
+  const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||pad.H||GP.hb);
+  const want=go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
+  FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
+  FOOT.h=wrapA(FOOT.h+steerIn()*FOOT_V.turn*dt);
+  if(Math.abs(FOOT.v)>.01){
+    let nx=FOOT.x+Math.sin(FOOT.h)*FOOT.v*dt,nz=FOOT.z+Math.cos(FOOT.h)*FOOT.v*dt;
+    [nx,nz]=footClear(nx,nz);
+    // not into the sea, and not up a step taller than a kerb in one stride
+    const g=footGround(nx,nz);
+    if(g>-.4&&g-FOOT.y<.6){FOOT.x=nx;FOOT.z=nz}else FOOT.v=0;
+  }else{const c=footClear(FOOT.x,FOOT.z);FOOT.x=c[0];FOOT.z=c[1]}   // a passing car nudges you aside
+  const g=footGround(FOOT.x,FOOT.z);FOOT.y+=(g-FOOT.y)*Math.min(1,dt*14);
+  FOOT.ph+=Math.abs(FOOT.v)*dt*3.1;if(Math.abs(FOOT.v)<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
+  footPlace(dt);
+  const near=Math.hypot(FOOT.x-P.x,FOOT.z-P.z)<=FOOT_V.reach;
+  promptAct=near?footEnter:null;show("prompt",near);if(near){const c=carById(curId);$("promptTxt").textContent="Get in · "+c.mk+" "+c.md}
+  placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
+}
 function driveUpdate(dt){
+  if(FOOT.on){footUpdate(dt);return}
   tickDamage(P,dt);
   const steps=Math.ceil(dt/.017),h=dt/steps;
   for(let i=0;i<steps;i++){stepPlayer(h);collidePlayer()}
@@ -5904,7 +6029,7 @@ function adaptRes(dt){
 // An immediate Photo Mode capture needs the same sky and shadow placement as a frame from the main loop.
 function syncRenderView(){
   sky.position.copy(camera.position);stars.position.copy(camera.position);
-  const f=state==="DEALER"?SHOW:pc&&state!=="GARAGE"&&state!=="LOAD"?pc.G.position:gW(0,12);
+  const f=state==="DEALER"?SHOW:FOOT.on?FOOT.m.G.position:pc&&state!=="GARAGE"&&state!=="LOAD"?pc.G.position:gW(0,12);
   sun.position.copy(f).addScaledVector(MOON,220);sun.target.position.copy(f);sun.target.updateMatrixWorld();
 }
 function frame(ts){
