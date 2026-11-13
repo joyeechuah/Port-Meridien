@@ -2,7 +2,7 @@
 
 An open-world city game for the browser: walk the streets, take any car, and sail from the harbour. Built with three.js as a single `index.html`, with no install and no build step.
 
-> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running and taking stopped traffic cars already work. The harbour boat and pier are implemented in PR #12; the connected harbour road and Old Quay district are next. See [ROADMAP.md](ROADMAP.md).
+> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running and taking stopped traffic cars already work. PR #12 adds the harbour boat and pier; once that dependency merges, the connected harbour road and Old Quay district are next. See [ROADMAP.md](ROADMAP.md).
 
 Port Meridien is an original game. Its name, city, characters and story are its own.
 
@@ -45,7 +45,7 @@ Run one Playwright instance at a time: the test server uses port 4173.
 - The game is `index.html` and nothing else. `package.json` holds only test tooling.
 - Every fix or feature comes with a test that fails without it.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the current and PR #12 movement implementations, lifecycle rules and test boundaries.
-- [docs/PIER_ROAD_CONNECTION_PLAN.md](docs/PIER_ROAD_CONNECTION_PLAN.md) records the proposed access road and baseline-sensitive route checks (when its docs PR merges).
+- The proposed pier-road plan and baseline-sensitive route checks are in the documents PR #13; its final file path is `docs/PIER_ROAD_CONNECTION_PLAN.md`.
 - Each approved car name still requires trademark clearance; fictional naming does not itself clear car visuals or music licensing.
 
 ## Privacy
