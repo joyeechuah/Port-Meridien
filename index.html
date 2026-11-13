@@ -3044,7 +3044,7 @@ function parkCar(c,slot){
 function cullParked(){const near=Math.hypot(camera.position.x-HOUSE.x,camera.position.z-HOUSE.z)<150;
   save.owned.forEach((id,i)=>{const c=carMeshes[id];if(c&&c!==pc&&i<SPOTS.length&&!LEFT.some(l=>l.id===id))c.G.visible=near})}
 function parkAll(except){
-  LEFT.length=0;   // cars left out in the world: yours go back to their bays, taken ones are hidden below
+  leftClear();   // cars left out in the world: yours go back to their bays, taken ones are gone
   for(const id in carMeshes)if(!save.owned.includes(id)&&id!==except)carMeshes[id].G.visible=false;
   save.owned.forEach((id,i)=>{if(id!==except&&i<SPOTS.length)parkCar(getCar(id),i)});
 }
@@ -5933,6 +5933,10 @@ function leaveCar(){
   // more than three: the taken car left longest ago goes (never one of yours)
   while(LEFT.length>LEFT_MAX){const i=LEFT.findIndex(l=>isStreet(l.id));if(i<0)break;streetFree(LEFT.splice(i,1)[0].id)}
 }
+// nothing is left standing any more: every taken car goes, except one you're driving (the dealer's BUY, DRIVE and
+// SELL park your cars; they used to forget the taken ones without freeing them, and after a few visits there was
+// no made-up id left to give the next car)
+function leftClear(){LEFT.length=0;for(const id of[...STREET.keys()])if(id!==curId)streetFree(id)}
 function streetFree(id){const c=carMeshes[id];if(c){disposeHeroCar(c);delete carMeshes[id]}STREET.delete(id)}
 // puts you in the driving seat of a car standing at (x,z), facing h
 function driveCar(id,x,z,h,damage){
@@ -5946,7 +5950,10 @@ function driveCar(id,x,z,h,damage){
 function takeTraffic(t){
   if(!FOOT.on||!t.e||t.v>1.5)return false;
   leaveCar();
+  // a free made-up id: there is always one (at most three taken cars stand, plus the one you came from), and if
+  // there somehow isn't, nothing is taken rather than a car being made under no id
   let id=null;for(let i=0;i<=LEFT_MAX+1;i++)if(!STREET.has("st"+i)){id="st"+i;break}
+  if(!id){LEFT.pop();return false}
   const pool=STREET_BASE[t.shape]||STREET_BASE.sedan,base=pool[TRAFFIC.indexOf(t)%pool.length];
   STREET.set(id,{base,paint:t.col,car:Object.assign({},CARS.find(c=>c.id===base),{id})});
   const x=t.wx,z=t.wz,h=t.yaw,dmg=t.damage||0;
@@ -5963,7 +5970,7 @@ function takeLeft(l){
 // going home: your own car is the one you have, and taken cars are gone
 function streetReset(){
   if(isStreet(curId))attachCar(save.cur);
-  LEFT.length=0;for(const id of[...STREET.keys()])streetFree(id);
+  leftClear();
 }
 // the car within reach to get into, nearest first: the one you got out of, one left standing, or stopped traffic
 function footTarget(){
