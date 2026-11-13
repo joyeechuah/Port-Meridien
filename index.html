@@ -3889,7 +3889,7 @@ function finishEvent(tx){
   const cupRows=ev.cup?cupScore(ev.cup,E.type==="race"?pos-1:medal):null;
   const best=save.rec[E.id];const isRec=!best||t<best;if(isRec)save.rec[E.id]=t;
   // a record time trial run becomes the ghost (the last sample is the line itself)
-  if(isRec&&ev.rec&&ev.rec.length>=8&&ev.rec.length<12000){ev.rec.push(+P.x.toFixed(1),+P.z.toFixed(1),+P.h.toFixed(2),+E.route.len.toFixed(1));save.ghost[E.id]={c:curId,t,d:ev.rec}}
+  if(isRec&&ev.rec&&ev.rec.length>=8&&ev.rec.length<12000){ev.rec.push(+P.x.toFixed(1),+P.z.toFixed(1),+P.h.toFixed(2),+E.route.len.toFixed(1));save.ghost[E.id]={c:curCar().id,t,d:ev.rec}   /* a taken car's ghost is kept as the model it borrows: its made-up id means nothing after a reload, and the ghost was dropped */}
   rows.unshift(["Your time",fmtT(t)]);rows.push(["Best",fmtT(save.rec[E.id])+(isRec?"  · new record":"")],["Reward",rew?"+"+fmtCr(rew)+" CR":"none"]);
   if(cupRows)rows.push(...cupRows.rows);
   if(rew)earn(rew);if(cupRows&&cupRows.prize)earn(cupRows.prize);persist();
@@ -4898,7 +4898,7 @@ function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
 /* ---------- player car ---------- */
 function attachCar(id,temp){
   if(id!==curId){if(pc)showDamageSmoke(pc,0);P.damage=P.damageT=0;repairWarnLevel=0}
-  curId=id;if(!temp)save.cur=id;
+  curId=id;if(!temp&&!STREET.has(id))save.cur=id;   // a taken car is never the car the save names as yours (ending a test drive begun in one used to store its made-up id)
   pc=getCar(id);pc.G.visible=true;
   if(!headLight){headLight=new THREE.SpotLight(0xfff4dc,0,150,.62,.55,1);headLight.target=new THREE.Object3D();fillLight=new THREE.PointLight(0xdfe6ff,0,14,1.4)}
   pc.G.add(headLight);pc.G.add(headLight.target);headLight.position.set(0,.7,pc.front_z+.35);headLight.target.position.set(0,-.6,30);

@@ -167,6 +167,47 @@ test.describe("taking cars", () => {
     expect(after.meshes).toBeLessThan(before.meshes + 6);
   });
 
+  test("a test drive begun in a taken car doesn't make the taken car yours when it ends", async ({ game }) => {
+    await onFoot(game);
+    const st = await game.eval(STAGE);
+    await game.key("e");
+    const r = await game.eval(() => {
+      const T = __T,
+        other = T.CARS.find((c) => !T.save.owned.includes(c.id)).id;
+      T.startTestDrive(other);
+      T.finishTestDrive(false);
+      T.persist();
+      return { cur: T.curId, saveCur: T.save.cur, saved: localStorage.getItem(T.SAVE_KEY) };
+    });
+    // back in the taken car, and the save still names your own (it used to store "st0", which no car has)
+    expect([r.cur, r.saveCur]).toEqual(["st0", st.cur]);
+    expect(r.saved).not.toContain("st0");
+  });
+
+  test("a time-trial record set in a taken car keeps its ghost after a reload", async ({ game }) => {
+    await onFoot(game);
+    await game.eval(STAGE);
+    await game.key("e");
+    const r = await game.eval(() => {
+      const T = __T,
+        E = T.EVENTS.find((e) => e.type === "tt");
+      delete T.save.rec[E.id];
+      T.startEvent(E);
+      T.ev.phase = "run";
+      T.ev.t = 50;
+      T.ev.rec = [];
+      for (let i = 0; i < 12; i++) T.ev.rec.push(i, i, 0, i);
+      T.finishEvent();
+      const g = T.save.ghost[E.id];
+      return { id: E.id, c: g && g.c, real: !!g && T.CARS.some((c) => c.id === g.c), cur: T.curId };
+    });
+    expect(r.cur).toBe("st0");
+    // kept as the model the taken car borrows, not its made-up id (which the save's check drops on loading)
+    expect(r.real, JSON.stringify(r)).toBe(true);
+    await game.reload();
+    expect(await game.eval((id) => !!__T.save.ghost[id], r.id)).toBe(true);
+  });
+
   test("taking car after car keeps at most three standing, and never loses your own", async ({ game }) => {
     await onFoot(game);
     const st = await game.eval(STAGE);
