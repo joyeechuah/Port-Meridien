@@ -1,8 +1,8 @@
 # Port Meridien — Architecture and Developer Guide
 
-This is a guide to the **current merged implementation on `main`**, not a roadmap. Port Meridien is a static browser driving game, hosted on GitHub Pages. The game itself needs no build step.
+This is a guide to the **current merged implementation on `main`**, not a roadmap. Port Meridien currently runs as a static browser driving game, starting from White Isle Drive’s code. It can be served by GitHub Pages; repository hosting must be enabled separately. Walking, boats and the new city are planned in [ROADMAP.md](../ROADMAP.md). The game itself needs no build step.
 
-Return to [README](../README.md) · See [Changelog](../CHANGELOG.md) · Set up [Cloud Save](../CLOUD_SETUP.md).
+Return to [README](../README.md) · Set up [Cloud Save](../CLOUD_SETUP.md).
 
 ## Technology and entry points
 
@@ -14,7 +14,7 @@ Return to [README](../README.md) · See [Changelog](../CHANGELOG.md) · Set up [
 | Physics-style driving, collisions and AI | Frame-based JavaScript simulation | `index.html` |
 | Audio | Web Audio API, pre-recorded music and synthesised fallback | `index.html`, `audio/` |
 | Guest progress | Validated browser `localStorage` save | `index.html` |
-| Optional cloud backup | Firebase Auth + Firestore | `index.html`, `firestore.rules`, `CLOUD_SETUP.md` |
+| Optional cloud backup | Firebase Auth + Firestore (disabled until configured) | `index.html`, `firestore.rules`, `CLOUD_SETUP.md` |
 | Automation | Playwright / ESLint / GitHub Actions | `tests/`, `playwright.config.js`, `.github/workflows/test.yml` |
 
 The sizeable `index.html` contains the production game, not a framework application with separate ES modules. Search the section comments and functions listed below rather than expecting `src/` or a bundler.
@@ -34,27 +34,27 @@ The page loads the three.js library from cdnjs with a Subresource Integrity hash
 - `openMap()` / `fastTravel()`, `goGarage()` and `goDrive()` coordinate movement between gameplay screens.
 - `garageCam()` and garage pointer handlers implement rotation and pinch zoom. Two-finger touches are tracked by pointer IDs to prevent zoom jumps.
 
-**State transition caution:** Input that changes screens must not continue into controls belonging to the new screen during the same frame (for example, the controller dealership-entry bug addressed in PR #35). Similar care is needed for asynchronous fade callbacks and inactive tabs.
+**State transition caution:** Input that changes screens must not continue into controls belonging to the new screen during the same frame (for example, the controller dealership-entry bug addressed in White Isle Drive PR #35). Similar care is needed for asynchronous fade callbacks and inactive tabs.
 
 ## Save data and cloud backup
 
-The local game save uses `localStorage` key `port-meridien-v1`, with sanitisation of loaded values. `persist()` saves locally and notifies the optional cloud layer of relevant changes. Runtime driving damage is not part of saved progress.
+The local game save uses `localStorage` key `port-meridien-v1`, with sanitisation of loaded values. `persist()` saves locally and notifies the optional cloud layer of relevant changes. Runtime driving damage is not part of saved progress. Cloud metadata uses `port-meridien-cloud`. These keys are separate from White Isle Drive’s; there is no automatic import from that game.
 
-Cloud saving is opt-in through `SAVE MY PROGRESS`. The Firebase libraries load only when that feature is used on an authorised host. Firestore stores a per-user document under `saves/{uid}`; `firestore.rules` restricts access to the signed-in owner and requires an incrementing revision number. When local and remote progress differ, the game asks the player which to keep rather than merging balances. Ghost replay data is intentionally excluded from cloud payloads to limit record size.
+Cloud saving is currently disabled: all values in `FIREBASE_CONFIG` are empty and the entry buttons hide themselves. Port Meridien must use its own Firebase project, never White Isle Drive’s. If configured following `CLOUD_SETUP.md` (including the CSP changes), cloud saving becomes opt-in through `SAVE MY PROGRESS`. The Firebase libraries load only when that feature is used on an authorised host. Firestore stores a per-user document under `saves/{uid}`; `firestore.rules` restricts access to the signed-in owner and requires an incrementing revision number. When local and remote progress differ, the game asks the player which to keep rather than merging balances. Ghost replay data is intentionally excluded from cloud payloads to limit record size.
 
-`BroadcastChannel` (with a storage-event fallback) prevents an older tab from continuing to overwrite a newer tab's progress. An inactive tab suspends relevant gameplay/audio and must not resume pending work.
+`BroadcastChannel` named `port-meridien-tabs` (with a storage-event fallback using `port-meridien-tab`) prevents an older tab from continuing to overwrite a newer tab's progress. An inactive tab suspends relevant gameplay/audio and must not resume pending work.
 
 For Firebase provisioning, rules and supported domains, use [CLOUD_SETUP.md](../CLOUD_SETUP.md), not this overview.
 
 ## Sound and external resources
 
-The game uses Web Audio for engine, tyres, ambient sound and music, with three soundtrack assets in `audio/` and synthesised fallback tracks. Sound effects and music have separate settings. The page fetches three.js and Google Fonts on startup; optional Firebase authentication/downloads occur only on cloud use. Cloudflare Web Analytics runs on the official site when browser privacy signals allow it. See [README Privacy](../README.md#privacy) for the user-facing explanation and `index.html`'s Content Security Policy for permitted network origins.
+The game uses Web Audio for engine, tyres, ambient sound and music, with three soundtrack assets in `audio/` and synthesised fallback tracks. Sound effects and music have separate settings. The page fetches three.js and Google Fonts on startup; Firebase authentication/downloads are disabled until a separate project is configured, and then occur only on cloud use. There is no analytics beacon or Cloudflare analytics token. cdnjs remains the renderer/library CDN; it is not an analytics integration. See [README Privacy](../README.md#privacy) for the user-facing explanation and `index.html`'s Content Security Policy for permitted network origins.
 
 ## Tests and continuous integration
 
 Production `index.html` is loaded fresh for browser tests. `tests/support/instrument.js` inserts controlled inspection hooks into an **in-memory copy**; it does **not** modify the shipping HTML file. Tests can then inspect internal state using `window.__T`. `tests/support/game.js` contains test-driving helpers. The Playwright server is in `tests/support/server.js`.
 
-`playwright.config.js` defines two projects: `chromium` for logic and interaction without 3D rendering, and `webgl` for tests tagged `@webgl`, drawing with WebGL/SwiftShader as needed. The workflow `.github/workflows/test.yml` installs dependencies, runs lint, runs Chromium Playwright tests, and uploads reports and failure artifacts.
+`playwright.config.js` defines two projects: `chromium` for logic and interaction without 3D rendering, and `webgl` for tests tagged `@webgl`, drawing with WebGL/SwiftShader as needed. The workflow `.github/workflows/test.yml` installs dependencies, runs lint, then runs `npx playwright test` (both `chromium` and `webgl` projects), and uploads reports and failure artifacts. Its job label says Chromium, but it does not filter out WebGL tests. Run only one Playwright instance at a time because the server uses port 4173. Do not edit the served `index.html` during a test run.
 
 ```sh
 npm ci
@@ -78,7 +78,7 @@ Automated mobile cases use emulated viewports and touch events, **not physical m
 5. For save or cloud changes, test migrations, corrupt saves, offline behaviour and multi-tab ownership.
 6. Run lint and relevant targeted tests first, then the complete suite and GitHub Actions before merging.
 7. When multiple PRs touch `index.html`, merge one and update the others against the latest `main`; preserve both sides of the change.
-8. Describe user-visible behaviour in the README and record substantial merged changes in the [changelog](../CHANGELOG.md).
+8. Describe user-visible behaviour in the README and keep implementation status in [ROADMAP.md](../ROADMAP.md) accurate. There is no changelog file in this repository.
 
 ## Known constraints
 
@@ -87,3 +87,9 @@ The game relies on WebGL and a modern browser; a low-power device may need the S
 ## AI-assisted development and human direction
 
 The project uses AI coding assistants for implementation. Human project work includes requirements and UX direction, playtesting, reproduction of reported issues, reviewing fixes, regression-test strategy and deciding merge readiness. Preserve that distinction in project documentation and portfolio descriptions.
+
+## Inherited identifiers and world
+
+The current terrain and road layout remain the inherited island until the waterfront replacement is approved and implemented. Display names now use Port Meridien locations, but event, landmark and contract IDs such as `cubells`, `eivissa_town` and `parcel_eivissa_santaeularia` remain stable to preserve saved progress and route lookups. `ibizaHouse` is an inherited geometry helper, not a network integration. Rename internal identifiers only with a separate compatibility plan. The old save fixture documents its White Isle Drive provenance; it tests schema compatibility, not automatic cross-game save sharing.
+
+Claude owns the on-foot work on `feat/on-foot`. Other work starts from `main` on separate branches; avoid its on-foot section, `driveUpdate`, instrumentation and on-foot tests while that work is pending. Jo Yee merges and deploys.

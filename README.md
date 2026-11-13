@@ -23,7 +23,7 @@ Stop the car and press `F` (or tap **GET OUT**, or `B` on a controller) to get o
 
 On foot you can also take any traffic car that has stopped: stand in its lane so it stops, walk to it and press `E` or `F`. The car you came from stays where you left it, and you can walk back and drive it again. A taken car isn't yours: it is not saved, and it's gone when you go home.
 
-## What works today (carried over from White Isle Drive)
+## What works today
 
 - Driving: keyboard, touch pads, tilt and game controllers; 24 cars with paint and customisation; collision damage and repairs.
 - A world with roads, traffic, day and night, a map with GPS, and Photo Mode.
@@ -43,7 +43,7 @@ Run one Playwright instance at a time: the test server uses port 4173.
 
 - The game is `index.html` and nothing else. `package.json` holds only test tooling.
 - Every fix or feature comes with a test that fails without it.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the code inherited from White Isle Drive.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the current implementation and development constraints.
 
 ## Privacy
 

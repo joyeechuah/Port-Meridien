@@ -264,7 +264,7 @@ test.describe("tilt steering", () => {
 });
 
 test.describe("controller in menus", () => {
-  test("controller B over the map: closes the Island Passport first, then the map", async ({ game, page }) => {
+  test("controller B over the map: closes the Explorer Passport first, then the map", async ({ game, page }) => {
     await page.addInitScript(FAKE_PAD);
     await game.open();
     await game.driveOut();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="description" content="Open-world city game: walk, drive and sail around Port Meridien. Built with three.js, runs in the browser, no install.">
+<meta name="description" content="Explore Port Meridien in this early browser driving game. Walking, boats and a new city are planned. No install.">
 <meta name="theme-color" content="#07090c">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="canonical" href="https://joyeechuah.github.io/Port-Meridien/">
@@ -11,7 +11,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Port Meridien">
 <meta property="og:title" content="Port Meridien">
-<meta property="og:description" content="Open-world city game: walk, drive and sail around Port Meridien. Built with three.js, runs in the browser, no install.">
+<meta property="og:description" content="Explore Port Meridien in this early browser driving game. Walking, boats and a new city are planned. No install.">
 <meta property="og:url" content="https://joyeechuah.github.io/Port-Meridien/">
 <meta name="twitter:card" content="summary_large_image">
 <title>Port Meridien</title>
@@ -333,7 +333,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 #phMsg{position:absolute;z-index:3;top:calc(84px + var(--st));left:50%;transform:translateX(-50%);background:var(--panel2);border-left:3px solid #fff;padding:8px 14px;font-size:12px;max-width:min(420px,calc(100% - 32px))}
 #phMsg.bad{border-color:var(--bad)}
 #photo.shot #phTop,#photo.shot #phLow{visibility:hidden}
-/* island passport */
+/* explorer passport */
 #passport{z-index:62}
 .pzc{width:min(520px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column}
 #pzCount{font-size:20px;font-weight:800;letter-spacing:.02em}
@@ -394,7 +394,7 @@ body.touch #phExit kbd{display:none}
 
 <div id="load">
   <div class="k">PORT MERIDIEN</div>
-  <div class="t">IBIZA</div>
+  <div class="t">EARLY BUILD</div>
   <div class="bar"><div class="fill" id="lf"></div></div>
   <div id="lmsg">Loading</div>
   <button id="lstart" class="btn gold hide">PLAY AS GUEST</button>
@@ -404,7 +404,7 @@ body.touch #phExit kbd{display:none}
 </div>
 
 <div id="gui" class="hide">
-  <div id="gtitle"><div class="k">HOME · SANTA EULÀRIA HILLS · <span id="gcount"></span><span id="gcups"></span></div><div class="t">MY GARAGE</div><div id="ghint">Click a car to select it, click it again to drive</div></div>
+  <div id="gtitle"><div class="k">HOME · EASTBANK HILLS · <span id="gcount"></span><span id="gcups"></span></div><div class="t">MY GARAGE</div><div id="ghint">Click a car to select it, click it again to drive</div></div>
   <div id="gcr" class="pill">Credits<b class="num" id="gcrv">0</b></div>
   <button id="gMus" class="pill">MUSIC: ON</button>
   <button id="gCloud" class="pill">SAVE MY PROGRESS</button>
@@ -438,7 +438,7 @@ body.touch #phExit kbd{display:none}
     <div class="money"><span class="coin">CR</span><b id="crv">0</b></div>
     <button type="button" id="damageHud" class="hide" aria-label="Vehicle damage. Tap to see repair options.">DAMAGE 0% · REPAIR</button>
     <div class="lvl"><span>LEVEL <b id="lvv">1</b></span><div class="xp"><i id="xpf"></i></div></div>
-    <div class="loc"><span id="zone">EIVISSA</span><span class="num" id="clock">16:30</span></div>
+    <div class="loc"><span id="zone">OLD QUAY</span><span class="num" id="clock">16:30</span></div>
   </div>
   <div id="tdPill" class="pill hide">TEST DRIVE <b class="num" id="tdT">1:30</b></div>
   <div id="streak" class="off"><div class="lab" id="frLab">STREAK</div><div class="pts"><b id="frPts">0</b><span id="frMul">x1.0</span></div><div class="bar"><i id="frBar"></i></div></div>
@@ -491,7 +491,7 @@ body.touch #phExit kbd{display:none}
   <button class="mbtn pri" id="pRes">RESUME</button>
   <button class="mbtn" id="pMap">MAP &amp; GPS</button>
   <button class="mbtn" id="pPhoto">PHOTO MODE</button>
-  <button class="mbtn" id="pPass">ISLAND PASSPORT</button>
+  <button class="mbtn" id="pPass">EXPLORER PASSPORT</button>
   <button class="mbtn" id="pJobs">CONTRACTS</button>
   <button class="mbtn" id="pCups">CHAMPIONSHIPS</button>
   <button class="mbtn" id="pQuit">QUIT EVENT</button>
@@ -514,13 +514,13 @@ body.touch #phExit kbd{display:none}
 <div id="map" class="hide">
   <canvas id="mapc"></canvas>
   <div id="mapSide">
-    <h3>ISLAND OF IBIZA</h3>
+    <h3>PORT MERIDIEN MAP</h3>
     <div class="lg"><i style="background:#fff"></i>Your house</div>
     <div class="lg"><i style="background:#f2b33d"></i>Car dealership</div>
     <div class="lg"><i style="background:#ffffff;border:3px solid #0d1a22;box-shadow:0 0 0 1px #fff"></i>Events</div>
     <div class="lg"><i style="background:#9aa1a8;border-radius:2px"></i>Speed radars</div>
     <div class="lg"><i style="background:#7fd1c7;border-radius:2px;transform:rotate(45deg) scale(.8)"></i>Landmarks you've found</div>
-    <button class="mbtn" id="mapPass">ISLAND PASSPORT</button>
+    <button class="mbtn" id="mapPass">EXPLORER PASSPORT</button>
     <p>Drag to move. Scroll, pinch or use + and − to zoom. Click a marker to set the GPS or travel there, or click a road to drop a waypoint.</p>
   </div>
   <button class="btn ghost" id="mapClose">CLOSE <kbd>M</kbd></button>
@@ -529,7 +529,7 @@ body.touch #phExit kbd{display:none}
 </div>
 
 <div id="dealer" class="hide">
-  <div id="dTitle"><div class="k">EIVISSA</div><div class="t">AUTO GALLERY</div></div>
+  <div id="dTitle"><div class="k">OLD QUAY</div><div class="t">AUTO GALLERY</div></div>
   <div id="gcr2" class="pill">Credits<b class="num" id="dcr">0</b></div>
   <div id="dList"></div>
   <div id="dBar">
@@ -575,7 +575,7 @@ body.touch #phExit kbd{display:none}
   <button class="mbtn" id="cpkLater">DECIDE LATER</button>
 </div></div>
 <div id="passport" class="ov hide"><div class="card pzc" role="dialog" aria-labelledby="pzTitle">
-  <h3>EXPLORE</h3><h2 id="pzTitle">Island Passport</h2>
+  <h3>EXPLORE</h3><h2 id="pzTitle">Explorer Passport</h2>
   <div id="pzCount" class="num"></div><div class="pzbar"><i id="pzBar"></i></div><div id="pzNote"></div>
   <div id="pzMsg" role="status"></div>
   <div id="pzList"></div>
@@ -2039,7 +2039,7 @@ function updateVegetation(dt){
 
 /* ================================================================ SEA
    Water coloured by depth (turquoise shallows to deep blue), two drifting
-   wave layers for the sun's glitter, foam along the waterline, the Es Vedrà
+   wave layers for the sun's glitter, foam along the waterline, the Sentinel Rock
    rock off the south-west coast and boats in the bays. */
 const seaU={wO1:{value:new THREE.Vector2()},wO2:{value:new THREE.Vector2()}};
 let foam=null,seaT=0;const BOATS=[];
@@ -3600,12 +3600,12 @@ function updateStreak(dt){
 /* ================================================================ EVENTS (time trials and races with AI rivals) */
 P.lat=0;
 const EVENTS=[
-  {id:"cubells",name:"Es Cubells Coast",type:"tt",wp:()=>[ringPt(.25),ringPt(.7),ringPt(1.15),ringPt(1.6),ringPt(2.0)]},
-  {id:"talaia",name:"Sa Talaia Climb",type:"race",wp:()=>[[-292,98],[-200,-200],[-120,-360],[-60,-560],[-20,-845]]},
-  {id:"oldtown",name:"Dalt Vila Dash",type:"tt",wp:()=>[[566,-118],[757,-118],[757,186],[566,186],[566,60]]},
-  {id:"highway",name:"Island Highway",type:"race",wp:()=>[[-690,8],[-300,110],[260,-10],[560,40],[930,10]]},
-  {id:"south",name:"Sant Josep Descent",type:"tt",wp:()=>[[62,-8],[110,260],[150,520],[24,795]]},
-  {id:"antoni",name:"Sant Antoni Loop",type:"race",wp:()=>[ringPt(2.3),ringPt(2.8),ringPt(3.3),ringPt(3.8),ringPt(4.2)]},
+  {id:"cubells",name:"South Bluff Coast",type:"tt",wp:()=>[ringPt(.25),ringPt(.7),ringPt(1.15),ringPt(1.6),ringPt(2.0)]},
+  {id:"talaia",name:"Crown Ridge Climb",type:"race",wp:()=>[[-292,98],[-200,-200],[-120,-360],[-60,-560],[-20,-845]]},
+  {id:"oldtown",name:"Old Quay Dash",type:"tt",wp:()=>[[566,-118],[757,-118],[757,186],[566,186],[566,60]]},
+  {id:"highway",name:"Coastal Highway",type:"race",wp:()=>[[-690,8],[-300,110],[260,-10],[560,40],[930,10]]},
+  {id:"south",name:"Cedar Heights Descent",type:"tt",wp:()=>[[62,-8],[110,260],[150,520],[24,795]]},
+  {id:"antoni",name:"Westhaven Loop",type:"race",wp:()=>[ringPt(2.3),ringPt(2.8),ringPt(3.3),ringPt(3.8),ringPt(4.2)]},
 ];
 // race difficulty: rivals' pace, their top speed and acceleration alike (HARD is how rivals drove before difficulty
 // existed), and the reward multiplier
@@ -3992,8 +3992,8 @@ function toast(t,sub,kind){
   box.prepend(d);while(box.children.length>4)box.lastChild.remove();
   setTimeout(()=>d.classList.add("out"),2800);setTimeout(()=>d.remove(),3200);
 }
-const ZONES=[{n:"EIVISSA",x:680,z:40},{n:"SANT ANTONI",x:-650,z:80,lz:150},{n:"SA TALAIA",x:-260,z:-160},{n:"PORTINATX",x:0,z:-800},
-  {n:"SANTA EULÀRIA",x:450,z:-500},{n:"ES CUBELLS",x:60,z:680},{n:"SANT JOSEP",x:-480,z:470,lz:545},{n:"SANT JOAN",x:-250,z:-650},{n:"SANT LLORENÇ",x:150,z:-250},{n:"CALA LLONGA",x:850,z:-420}];
+const ZONES=[{n:"OLD QUAY",x:680,z:40},{n:"WESTHAVEN",x:-650,z:80,lz:150},{n:"CROWN RIDGE",x:-260,z:-160},{n:"NORTH POINT",x:0,z:-800},
+  {n:"EASTBANK",x:450,z:-500},{n:"SOUTH BLUFF",x:60,z:680},{n:"CEDAR HEIGHTS",x:-480,z:470,lz:545},{n:"NORTH COMMON",x:-250,z:-650},{n:"CENTRAL GROVE",x:150,z:-250},{n:"EAST COVE",x:850,z:-420}];
 const zoneAt=(x,z)=>{let b=ZONES[0],bd=1e18;for(const Z of ZONES){const d=(Z.x-x)**2+(Z.z-z)**2;if(d<bd){bd=d;b=Z}}return b.n};
 
 /* ================================================================ HUD CANVASES */
@@ -4360,7 +4360,7 @@ function makeMusic(ctx,out){
 const SONGS={
   lounge:{url:"audio/showroom.mp3",offset:5.9122,L:120.0001,X:1.5,gain:.41},   // Mediterranean Showroom
   coast:{url:"audio/cruise.mp3",offset:20.1286,L:99.9555,X:1.5,gain:.28},      // Coastal Cruise Loop
-  race:{url:"audio/highway.mp3",offset:22.09,L:107.9999,X:1.5,gain:.3}         // Island Highway Run
+  race:{url:"audio/highway.mp3",offset:22.09,L:107.9999,X:1.5,gain:.3}         // Coastal Highway Run
 };
 let MUSIC=null,songOut=null;
 function musicInit(){if(MUSIC||!AC)return;try{
@@ -4575,7 +4575,7 @@ $("phDl").addEventListener("click",e=>{const s=PH.shot;if(!s||!phSaver)return;e.
 $("phShare").onclick=()=>{const s=PH.shot;if(!s)return;
   navigator.share({files:[new File([s.blob],s.name,{type:"image/png"})],title:"Port Meridien"}).catch(err=>{if(!err||err.name!=="AbortError")phMsg("Couldn't share: "+((err&&err.message)||"not allowed here")+". Use DOWNLOAD PNG instead.","bad")})};
 
-/* ================================================================ ISLAND PASSPORT
+/* ================================================================ EXPLORER PASSPORT
    Landmarks to find by driving to them. Each one is a point on a real road, picked when the island is built
    by a rule over the actual roads and terrain (the highest road, the road nearest Es Vedrà, the tightest bend,
    the road nearest each place the map names, ...), kept apart from each other and from the prompts at the
@@ -4600,21 +4600,21 @@ function buildLandmarks(){
   const nearJn=q=>NODES.some(n=>n.adj.length>2&&Math.hypot(n.x-q.x,n.z-q.z)<35);
   const bend=q=>q.s<10||q.s>q.e.len-10?0:Math.abs(wrapA(head(q.e,q.s+10)-head(q.e,q.s-10)));
   const rock=ISLETS.reduce((a,b)=>!a||b.L>a.L?b:a,null);
-  add("talaia_summit","Sa Talaia Summit","The highest point any road on the island reaches",best(q=>q.y));
-  if(rock)add("vedra_lookout","Es Vedrà Lookout","Where a road looks out to the great rock standing in the sea",best(q=>-Math.hypot(q.x-rock.cx,q.z-rock.cz)));
-  add("sea_level_road","Sea-Level Road","The lowest stretch of road on the island, just above the waves",best(q=>-q.y));
-  add("the_hairpin","The Hairpin","The tightest bend on the island's roads",best(bend,q=>!nearJn(q)));
+  add("talaia_summit","Crown Ridge Summit","The highest point any road in the region reaches",best(q=>q.y));
+  if(rock)add("vedra_lookout","Sentinel Rock Lookout","Where a road looks out to the great rock standing in the sea",best(q=>-Math.hypot(q.x-rock.cx,q.z-rock.cz)));
+  add("sea_level_road","Sea-Level Road","The lowest stretch of road in the region, just above the waves",best(q=>-q.y));
+  add("the_hairpin","The Hairpin","The tightest bend in the road network",best(bend,q=>!nearJn(q)));
   add("north_cape","North Cape","As far north as the roads go",best(q=>-q.z));
   add("south_cape","South Cape","As far south as the roads go",best(q=>q.z));
   add("east_cape","East Cape","As far east as the roads go",best(q=>q.x));
   add("west_cape","West Cape","As far west as the roads go",best(q=>-q.x));
   // the places the map names: the nearest road within 260 m of each
   const side=(x,z)=>{const ns=z<-250?"north":z>250?"south":"",ew=x<-250?"west":x>250?"east":"";return ns&&ew?ns+"-"+ew:ns||ew||"middle"};
-  for(const[id,zn,name] of [["eivissa_town","EIVISSA","Eivissa Town"],["santa_eularia","SANTA EULÀRIA","Santa Eulària"],["sant_antoni","SANT ANTONI","Sant Antoni"],
-      ["sant_josep","SANT JOSEP","Sant Josep"],["sant_joan","SANT JOAN","Sant Joan"],["sant_llorenc","SANT LLORENÇ","Sant Llorenç"],
-      ["cala_llonga","CALA LLONGA","Cala Llonga"],["portinatx","PORTINATX","Portinatx"],["es_cubells","ES CUBELLS","Es Cubells"],["sa_talaia_pass","SA TALAIA","Sa Talaia Pass"]]){
+  for(const[id,zn,name] of [["eivissa_town","OLD QUAY","Old Quay"],["santa_eularia","EASTBANK","Eastbank"],["sant_antoni","WESTHAVEN","Westhaven"],
+      ["sant_josep","CEDAR HEIGHTS","Cedar Heights"],["sant_joan","NORTH COMMON","North Common"],["sant_llorenc","CENTRAL GROVE","Central Grove"],
+      ["cala_llonga","EAST COVE","East Cove"],["portinatx","NORTH POINT","North Point"],["es_cubells","SOUTH BLUFF","South Bluff"],["sa_talaia_pass","CROWN RIDGE","Crown Ridge Pass"]]){
     const Z=ZONES.find(z=>z.n===zn);if(!Z)continue;
-    add(id,name,"A place on the map, in the "+side(Z.x,Z.z)+" of the island",best(q=>-Math.hypot(q.x-Z.x,q.z-Z.z),q=>Math.hypot(q.x-Z.x,q.z-Z.z)<260));
+    add(id,name,"A place on the map, in the "+side(Z.x,Z.z)+" of the region",best(q=>-Math.hypot(q.x-Z.x,q.z-Z.z),q=>Math.hypot(q.x-Z.x,q.z-Z.z)<260));
   }
   // first visits only count from the next drive on, so a landmark next to wherever the car starts isn't found by standing still
   PZ.driven=0;PZ.lx=null;
@@ -4626,7 +4626,7 @@ function discoverLandmark(L){
   const n=foundCount(),done=n>=LANDMARKS.length&&!save.passBonus;if(done)save.passBonus=true;
   earn(LANDMARK_REWARD);
   toast("LANDMARK DISCOVERED",L.name+" · +"+fmtCr(LANDMARK_REWARD)+" CR · "+n+"/"+LANDMARKS.length,"gold");
-  if(done){earn(PASSPORT_BONUS);toast("ISLAND PASSPORT COMPLETE","Every landmark found · +"+fmtCr(PASSPORT_BONUS)+" CR","gold")}
+  if(done){earn(PASSPORT_BONUS);toast("EXPLORER PASSPORT COMPLETE","Every landmark found · +"+fmtCr(PASSPORT_BONUS)+" CR","gold")}
   if(!$("passport").classList.contains("hide"))renderPassport();
   return true;
 }
@@ -4666,7 +4666,7 @@ $("pPass").onclick=passportOpen;$("mapPass").onclick=passportOpen;$("pzClose").o
    Optional, repeatable driving jobs between the island's towns: parcel deliveries, timed courier runs and
    scenic tours. Pickups, drop-offs and tour stops are points on real roads near each town the map names, kept
    clear of the landmarks (contracts don't lead you to undiscovered ones), of the prompts and of each other.
-   (Cala Llonga has no contract point: its only road is shared with two landmarks.)
+   (East Cove has no contract point: its only road is shared with two landmarks.)
    A contract is available -> active -> completed | failed | abandoned. Only one runs at a time; it pays once,
    on completion, inside a guard that ends the contract first, so nothing (arriving again, a second callback)
    can pay twice. While one runs it owns the GPS, races and test drives wait, map travel is off, and going home
@@ -4675,8 +4675,8 @@ $("pPass").onclick=passportOpen;$("mapPass").onclick=passportOpen;$("pzClose").o
    the game starts it says so, pays nothing, and clears it. */
 const JOB_R=16,JOB_KPH=30;
 const JOB_TYPES={parcel:"PARCEL DELIVERY",courier:"TIMED COURIER",tour:"SCENIC TOUR"};
-const JOB_TOWNS=[["eivissa","EIVISSA","Eivissa"],["santa_eularia","SANTA EULÀRIA","Santa Eulària"],["sant_antoni","SANT ANTONI","Sant Antoni"],["sant_josep","SANT JOSEP","Sant Josep"],
-  ["sant_joan","SANT JOAN","Sant Joan"],["sant_llorenc","SANT LLORENÇ","Sant Llorenç"],["portinatx","PORTINATX","Portinatx"],["es_cubells","ES CUBELLS","Es Cubells"]];
+const JOB_TOWNS=[["eivissa","OLD QUAY","Old Quay"],["santa_eularia","EASTBANK","Eastbank"],["sant_antoni","WESTHAVEN","Westhaven"],["sant_josep","CEDAR HEIGHTS","Cedar Heights"],
+  ["sant_joan","NORTH COMMON","North Common"],["sant_llorenc","CENTRAL GROVE","Central Grove"],["portinatx","NORTH POINT","North Point"],["es_cubells","SOUTH BLUFF","South Bluff"]];
 // the curated set, by stable id; stops are town points. Courier limits are the route's ideal time (the same
 // model the races' medal times use) times `slack`, plus 15 s
 const JOB_DEFS=[
@@ -5266,7 +5266,7 @@ function exitSeq(dt){
     setState("DRIVE");hudOn(true);updateMoney();
     $("keys").style.opacity=1;setTimeout(()=>$("keys").style.opacity=0,10000);
     for(const t of TRAFFIC)spawnTraffic(t,60,600,false);
-    toast("FREE RIDE",isTouch?"Ibiza is yours. Tap MAP to plan a route.":"Ibiza is yours. Press M for the map.");
+    toast("FREE RIDE",isTouch?"Explore Port Meridien. Tap MAP to plan a route.":"Explore Port Meridien. Press M for the map.");
     while(jobNotices.length){const[t,s]=jobNotices.shift();toast(t,s,"bad")}
   }
 }
@@ -6124,7 +6124,7 @@ function frame(ts){
 /* ================================================================ BOOT (built in steps so the loader can update) */
 const STEPS=[
   ["Laying the roads",()=>{buildNetwork();buildRoadGrid();buildGroundGrid()}],
-  ["Shaping the island",buildTerrain],
+  ["Shaping the terrain",buildTerrain],
   ["Paving",buildRoadMeshes],
   ["Planting pines and palms",buildScenery],
   ["Growing the garrigue",buildVegetation],
