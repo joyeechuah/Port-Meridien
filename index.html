@@ -4468,7 +4468,9 @@ const PHOTO_LOOKS=[
 PHOTO_LOOKS.forEach(L=>{if(L.tint!==undefined)L.col=new THREE.Color(L.tint)});
 const PH={on:false,prev:null,look:0,yaw:0,pitch:.25,dist:7,fov:50,saved:null,ptr:new Map(),pinch:null,last:null,busy:false,shot:null};
 const PH_D=[3,16],PH_P=[.03,1.3],PH_F=[20,80];
-const phTarget=()=>{const p=pc.G.position;return new V3(p.x,p.y+(pc.shape==="suv"?1.05:.85),p.z)};
+// what Photo Mode looks at: the boat or the walker when you're out of the car (it used to turn to the parked car)
+const phTarget=()=>{if(BOAT.on)return new V3(BOAT.x,BOAT.y+.9,BOAT.z);if(FOOT.on)return new V3(FOOT.x,FOOT.y+1,FOOT.z);
+  const p=pc.G.position;return new V3(p.x,p.y+(pc.shape==="suv"?1.05:.85),p.z)};
 function phSync(){$("phZoom").value=String(Math.round(PH_F[1]-PH.fov));$("phDist").value=String(Math.round(PH.dist*10))}
 function phMsg(t,kind){const m=$("phMsg");m.textContent=t;m.className=kind||"";clearTimeout(phMsg.tm);phMsg.tm=setTimeout(()=>m.classList.add("hide"),3600)}
 function photoLookSet(i){
@@ -4517,7 +4519,8 @@ function photoFrame(dt){
   if(yaw||tilt||dz){PH.yaw+=yaw*1.5*dt;PH.pitch=clamp(PH.pitch+tilt*.9*dt,PH_P[0],PH_P[1]);PH.dist=clamp(PH.dist*Math.exp(dz*1.3*dt),PH_D[0],PH_D[1]);phSync()}
   const t=phTarget(),cp=Math.cos(PH.pitch);
   const x=t.x+Math.sin(PH.yaw)*cp*PH.dist,z=t.z+Math.cos(PH.yaw)*cp*PH.dist;
-  const y=Math.max(t.y+Math.sin(PH.pitch)*PH.dist,Math.max(meshH(x,z),surfH(x,z))+.35);
+  // never under the ground, or under the sea's surface
+  const y=Math.max(t.y+Math.sin(PH.pitch)*PH.dist,Math.max(meshH(x,z),surfH(x,z))+.35,.5);
   camera.position.set(x,y,z);camera.lookAt(t);camera.fov=PH.fov;camera.updateProjectionMatrix();
   // lights that normally follow the drive: on for a night look, as they would be
   if(headLight){headLight.intensity=night*4.6;fillLight.intensity=night*.9}pc.tailM.color.setHex(night>.3?0xd01800:0x9a0e00);
@@ -6046,7 +6049,7 @@ function footCam(dt,snap){
 function footUpdate(dt){
   // the car went somewhere without you (map travel, back to road): you're in it
   if(Math.hypot(P.x-FOOT.car[0],P.z-FOOT.car[1])>.5){footEnd();return}
-  updateTraffic(dt);
+  updateTraffic(dt);jobTick(dt);   // a timed delivery's clock runs while you're out of the car too (it used to stop)
   if(state!=="DRIVE")return;
   const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||pad.H||GP.hb);
   const want=go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
@@ -6107,7 +6110,9 @@ function buildHarbour(){
 function boatPlace(dt){
   const m=BOAT.m,sp=Math.abs(BOAT.v);
   BOAT.y=.12+Math.sin(seaT*.9)*.07+Math.min(.18,sp*.012);
-  m.position.set(BOAT.x,BOAT.y,BOAT.z);m.rotation.set(-Math.min(.1,sp*.007),BOAT.h,-BOAT.steer*Math.min(.16,sp*.012),"YXZ");
+  m.position.set(BOAT.x,BOAT.y,BOAT.z);const pitch=Math.min(.1,sp*.007),roll=BOAT.steer*Math.min(.16,sp*.012);m.rotation.set(-pitch,BOAT.h,-roll,"YXZ");
+  // the wake lies flat on the water whatever the hull does: tilted with the bow up, its far end was 2 m under the sea
+  BOAT.wake.rotation.set(pitch,0,roll,"ZXY");
   BOAT.wake.material.opacity=Math.min(.3,sp*.022);BOAT.wake.visible=sp>.6&&BOAT.v>0;
 }
 // whether the boat can float with its middle at (x,z) facing h: deep enough from bow to stern, clear of the pier and
@@ -6157,7 +6162,7 @@ function boatCam(dt,snap){
 }
 function boatUpdate(dt){
   if(Math.hypot(P.x-BOAT.car[0],P.z-BOAT.car[1])>.5){boatEnd();return}
-  updateTraffic(dt);
+  updateTraffic(dt);jobTick(dt);
   if(state!=="DRIVE")return;
   const go=gasIn(),bk=brakeIn(),want=go>0?BOAT_V.top*go:bk>0?-BOAT_V.rev*bk:0;
   // power builds the speed up; with the throttle shut the water slows it

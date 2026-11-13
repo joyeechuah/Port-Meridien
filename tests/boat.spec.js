@@ -94,6 +94,44 @@ test.describe("harbour and boat", () => {
     expect(r.side[1]).toBeGreaterThan(P.z1 - 1.2);
   });
 
+  test("you walk onto the pier from the beach, between the bollards, and back to the beach", async ({ game }) => {
+    await onPier(game);
+    const r = await game.eval(() => {
+      const T = __T,
+        F = T.FOOT,
+        Pr = T.PIER,
+        out = [];
+      // from 10 m up the beach, straight at the landward end: down the middle, then off-centre, between other bollards
+      for (const z of [0.75, -2.2]) {
+        F.x = Pr.x0 - 10;
+        F.z = z;
+        F.y = T.footGround(F.x, F.z);
+        F.h = Math.PI / 2;
+        F.v = 0;
+        const beach = F.y;
+        T.keys.w = true;
+        for (let i = 0; i < 600; i++) T.driveUpdate(1 / 60);
+        const on = { x: F.x, y: F.y, deck: T.onPier(F.x, F.z) };
+        // turn round and walk back off
+        F.h = -Math.PI / 2;
+        for (let i = 0; i < 900; i++) T.driveUpdate(1 / 60);
+        T.keys.w = false;
+        out.push({ beach, on, backX: F.x, backDeck: T.onPier(F.x, F.z), backY: F.y, foot: F.on });
+      }
+      return { out, x0: Pr.x0, y: Pr.y };
+    });
+    for (const o of r.out) {
+      expect(o.foot).toBe(true);
+      // the beach is lower than the deck: a step up, not a wall
+      expect(o.beach).toBeLessThan(r.y);
+      expect(o.on.deck).toBe(true);
+      expect(o.on.x).toBeGreaterThan(r.x0 + 8);
+      expect(o.on.y).toBeCloseTo(r.y, 1);
+      expect(o.backDeck).toBe(false);
+      expect(o.backX).toBeLessThan(r.x0);
+    }
+  });
+
   test("a car can't be driven onto the pier", async ({ game }) => {
     await game.open();
     await game.driveOut();
@@ -151,6 +189,17 @@ test.describe("harbour and boat", () => {
       return { attached: w.parent === T.BOAT.m, inScene: (() => { let o = w; while (o.parent) o = o.parent; return o === T.scene; })(), seen: w.visible, opacity: w.material.opacity, behind: w.geometry.boundingBox.max.z < 0 };
     });
     expect(wake).toEqual({ attached: true, inScene: true, seen: true, opacity: 0.3, behind: true });
+    // and it lies on the water all the way back, though the bow is up (it tilted with the hull: its far end was 2 m under)
+    const tail = await game.eval(() => {
+      const w = __T.BOAT.wake;
+      w.updateWorldMatrix(true, false);
+      const pos = w.geometry.attributes.position;
+      return [0, 1, 2].map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(w.matrixWorld).y);
+    });
+    for (const y of tail) {
+      expect(y).toBeGreaterThan(0.05);
+      expect(y).toBeLessThan(0.6);
+    }
     // it turns under way (right is clockwise from above, as in the car)
     await game.steps(90, { w: true, d: true });
     const d = await now(game);
@@ -262,6 +311,47 @@ test.describe("harbour and boat", () => {
     expect(c.prompt).toBe("Board the boat");
     await game.key("e");
     expect((await now(game)).boat).toBe(true);
+  });
+
+  test("Photo Mode looks at the boat, or at you on foot, not at the parked car; a delivery's clock keeps running", async ({ game }) => {
+    await onPier(game);
+    const foot = await game.eval(() => {
+      const T = __T,
+        t = T.phTarget();
+      return [Math.hypot(t.x - T.FOOT.x, t.z - T.FOOT.z), Math.hypot(t.x - T.P.x, t.z - T.P.z)];
+    });
+    expect(foot[0]).toBeLessThan(0.01);
+    expect(foot[1]).toBeGreaterThan(20);
+    await game.key("e");
+    await game.steps(300, { w: true });
+    const r = await game.eval(() => {
+      const T = __T,
+        B = T.BOAT,
+        out = {};
+      const t = T.phTarget();
+      out.target = Math.hypot(t.x - B.x, t.z - B.z);
+      T.photoEnter();
+      T.photoFrame(1 / 60);
+      out.state = T.state;
+      out.cam = [Math.hypot(T.camera.position.x - B.x, T.camera.position.z - B.z), T.camera.position.y];
+      T.photoExit();
+      out.after = [T.state, B.on];
+      // a timed delivery under way: 2 s at sea take 2 s off its clock
+      const J = T.JOBS.find((j) => j.type === "courier");
+      T.jobStart(J);
+      T.job.timing = true;
+      T.job.left = 100;
+      for (let i = 0; i < 120; i++) T.driveUpdate(1 / 60);
+      out.left = T.job.left;
+      return out;
+    });
+    expect(r.target).toBeLessThan(0.01);
+    expect(r.state).toBe("PHOTO");
+    // the camera is around the boat, above the water
+    expect(r.cam[0]).toBeLessThan(40);
+    expect(r.cam[1]).toBeGreaterThanOrEqual(0.5);
+    expect(r.after).toEqual(["DRIVE", true]);
+    expect(r.left).toBeCloseTo(98, 1);
   });
 
   test("going home, or the car being moved, takes you off the boat and puts it back at its mooring", async ({ game }) => {
