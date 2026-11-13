@@ -142,6 +142,15 @@ test.describe("harbour and boat", () => {
     expect(c.bv).toBeLessThanOrEqual(17.01);
     expect(c.bx - b.bx).toBeGreaterThan(70);
     await expect(page.locator("#zone")).toHaveText(/^AT SEA · \d+ KN$/);
+    // the wake is part of the boat and shows behind it at speed (it was once built and never attached: a comment
+    // had swallowed the line that adds it, and every other check still passed)
+    const wake = await game.eval(() => {
+      const T = __T,
+        w = T.BOAT.wake;
+      w.geometry.computeBoundingBox();
+      return { attached: w.parent === T.BOAT.m, inScene: (() => { let o = w; while (o.parent) o = o.parent; return o === T.scene; })(), seen: w.visible, opacity: w.material.opacity, behind: w.geometry.boundingBox.max.z < 0 };
+    });
+    expect(wake).toEqual({ attached: true, inScene: true, seen: true, opacity: 0.3, behind: true });
     // it turns under way (right is clockwise from above, as in the car)
     await game.steps(90, { w: true, d: true });
     const d = await now(game);
@@ -149,6 +158,7 @@ test.describe("harbour and boat", () => {
     // throttle shut: the water slows it; then reverse backs it up, slowly
     await game.steps(900, {});
     expect(Math.abs((await now(game)).bv)).toBeLessThan(0.2);
+    expect(await game.eval(() => __T.BOAT.wake.visible)).toBe(false);
     await game.steps(240, { s: true });
     const e = await now(game);
     expect(e.bv).toBeLessThan(-3);
