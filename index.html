@@ -1085,6 +1085,11 @@ function defineRoads(){
   addRoad("town",[[560,190],[760,190]]);
   for(const x of [560,620,690,760])addRoad("town",[[x,-120],[x,190]]);
   addRoad("drive",[[HOUSE.x-1,HOUSE.z],[372,-436],[312,-440]]);
+  // The harbour lane: from where the town's avenue meets the coast road, down to the shore, ending 16 m short of the
+  // pier (PIER.x0 is 1176). You park at the end and walk on between the bollards. It is a lane like the one to your
+  // house, added last and starting exactly on that junction, so no other road, race, landmark or contract moves:
+  // carrying the avenue itself on to the shore shifted the junction, a race route and four landmarks
+  addRoad("drive",[[945.904,1.596],[975,2],[1020,0],[1080,0],[1135,0],[1160,0]]);
 }
 const segCount=R=>R.closed?R.pts.length:R.pts.length-1;
 function projOnRoad(R,x,z){
@@ -1103,6 +1108,7 @@ function segX(p,q,r,s){
   const t=((r.x-p.x)*(s.z-r.z)-(r.z-p.z)*(s.x-r.x))/d,u=((r.x-p.x)*(q.z-p.z)-(r.z-p.z)*(q.x-p.x))/d;
   return t>=0&&t<=1&&u>=0&&u<=1?{x:p.x+t*(q.x-p.x),z:p.z+t*(q.z-p.z)}:null;
 }
+const harbourLane=e=>e.type==="drive"&&e.pts[0].x>900&&e.pts[e.pts.length-1].x>900;   // the lane to the pier (the only other lane is the one to your house)
 function buildNetwork(){
   defineRoads();
   const J=[];
@@ -1202,8 +1208,13 @@ function buildNetwork(){
   NODES.forEach((n,i)=>n.id=i);EDGES.forEach((e,i)=>e.id=i);
   // 8. shared, level node heights; blend each edge into them over up to 50 m
   for(const n of NODES){
-    if(n.dead&&n.adj.some(a=>a.e.type==="drive")){n.y=PADS[0].h;continue}
-    let s=0;for(const a of n.adj)s+=a.end==="a"?a.e.ys[0]:a.e.ys[a.e.ys.length-1];n.y=s/n.adj.length;
+    // the lane to your house ends level with the house (the harbour lane, the other lane, ends on the shore: it used
+    // to be lifted to the house's height too, 22 m up)
+    if(n.dead&&n.adj.some(a=>a.e.type==="drive")&&Math.hypot(n.x-HOUSE.x,n.z-HOUSE.z)<60){n.y=PADS[0].h;continue}
+    // where the harbour lane joins, the junction keeps the height the other roads give it: the lane comes up to meet
+    // them (counted in, it lowered the junction, and the coast road and avenue beside it, by 0.8 m)
+    const arms=n.adj.filter(a=>!harbourLane(a.e)),use=arms.length?arms:n.adj;
+    let s=0;for(const a of use)s+=a.end==="a"?a.e.ys[0]:a.e.ys[a.e.ys.length-1];n.y=s/use.length;
   }
   // junction radius used to trim markings and place the junction surface
   for(const n of NODES){let h=0;for(const a of n.adj)h=Math.max(h,a.e.half);n.r=n.adj.length>1?h*1.2+.6:0}

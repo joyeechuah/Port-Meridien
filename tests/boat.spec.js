@@ -132,6 +132,93 @@ test.describe("harbour and boat", () => {
     }
   });
 
+  test("a lane runs from the town's avenue down to the shore, and ends a short walk from the pier", async ({ game }) => {
+    await game.open();
+    await game.driveOut();
+    await game.park();
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        Pr = T.PIER,
+        e = T.EDGES.find((q) => q.type === "drive" && q.pts[0].x > 900),
+        out = { found: !!e };
+      if (!e) return out;
+      const a = T.edgePos(e, 0),
+        b = T.edgePos(e, e.len);
+      out.from = [a.x, a.z];
+      out.to = [b.x, b.z];
+      out.len = e.len;
+      // it joins roads at its top end, and stops at its bottom end
+      out.joins = [e.a.adj.length, e.b.adj.length].sort();
+      // downhill all the way, and no steeper than the game's steepest roads
+      let steep = 0,
+        up = 0;
+      for (let s = 2; s <= e.len; s += 2) {
+        const g = (T.edgeY(e, s) - T.edgeY(e, s - 2)) / 2;
+        steep = Math.max(steep, Math.abs(g));
+        up = Math.max(up, g);
+      }
+      out.steep = steep;
+      out.up = up;
+      out.top = T.edgeY(e, 0);
+      out.bottom = T.edgeY(e, e.len);
+      // the ground under it follows it, and the beach beyond its end is level with it: no ledge to drive off
+      out.ground = Math.abs(T.meshH(b.x - 20, b.z) - T.edgeY(e, e.len - 20));
+      out.beyond = Math.abs(T.meshH(b.x + 8, b.z) - out.bottom);
+      out.gap = Pr.x0 - b.x;
+      // driving down it from the top with the gas held: the car stays on the lane to the bottom
+      T.save.assist = true;
+      const q = T.edgePos(e, 12);
+      P.x = q.x;
+      P.z = q.z;
+      P.h = Math.atan2(q.dx, q.dz);
+      P.vx = P.vz = 0;
+      P.r = 0;
+      let off = 0,
+        far = 0;
+      for (let i = 0; i < 1500 && far < e.len - 10; i++) {
+        const nr = T.nearestRoad(P.x, P.z, 30);
+        // steer along the lane
+        const s = nr && nr.e === e ? nr.s : 0,
+          la = T.edgePos(e, Math.min(e.len, s + 14)),
+          err = ((Math.atan2(la.x - P.x, la.z - P.z) - P.h + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        T.keys.a = err > 0.03;
+        T.keys.d = err < -0.03;
+        T.keys.w = Math.hypot(P.vx, P.vz) < 12;
+        T.driveUpdate(1 / 60);
+        if (nr && nr.e === e) {
+          off = Math.max(off, nr.d);
+          far = Math.max(far, nr.s);
+        }
+      }
+      T.keys.a = T.keys.d = T.keys.w = false;
+      out.drove = far;
+      out.off = off;
+      out.water = P.water;
+      // no traffic uses it
+      out.traffic = T.TEDGES ? T.TEDGES.includes(e) : null;
+      return out;
+    });
+    expect(r.found).toBe(true);
+    // a dead end at the shore; at the top, the junction of the coast road (two ways) and the avenue
+    expect(r.joins).toEqual([1, 4]);
+    expect(r.len).toBeGreaterThan(200);
+    expect(r.to[0]).toBeCloseTo(1160, 0);
+    expect(r.top).toBeGreaterThan(12);
+    expect(r.bottom).toBeLessThan(2.5);
+    expect(r.bottom).toBeGreaterThan(1);
+    // 13% is the steepest any road in the game is allowed to be
+    expect(r.steep).toBeLessThan(0.131);
+    expect(r.up).toBeLessThan(0.01);
+    expect(r.ground).toBeLessThan(0.6);
+    expect(r.beyond).toBeLessThan(0.6);
+    // 16 m of beach between the lane's end and the pier's bollards
+    expect(r.gap).toBeCloseTo(16, 0);
+    expect(r.drove).toBeGreaterThan(r.len - 12);
+    expect(r.off).toBeLessThan(3);
+    expect(r.water).toBe(false);
+  });
+
   test("a car can't be driven onto the pier", async ({ game }) => {
     await game.open();
     await game.driveOut();
