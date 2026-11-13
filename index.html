@@ -6100,7 +6100,7 @@ function buildHarbour(){
   bp(new THREE.BoxGeometry(1.3,.75,.7),hull,0,.9,.5);bp(new THREE.BoxGeometry(1.4,.5,.06),glass,0,1.5,.85).rotation.x=-.35;
   bp(new THREE.BoxGeometry(1.5,.45,.6),navy,0,.75,-.9);bp(new THREE.BoxGeometry(.5,.9,.6),metal,0,.55,-3.25);
   const wk=new THREE.BufferGeometry();wk.setAttribute("position",new THREE.Float32BufferAttribute([0,0,-2.6, 3.4,0,-24, -3.4,0,-24],3));wk.computeVertexNormals();
-  BOAT.wake=new THREE.Mesh(wk,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));BOAT.wake.position.y=.1;   // just above the water, or the sea's surface hides itB.add(BOAT.wake);
+  BOAT.wake=new THREE.Mesh(wk,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));BOAT.wake.renderOrder=10;BOAT.wake.position.y=.1;   // just above the water, or the sea's surface hides itB.add(BOAT.wake);
   scene.add(B);BOAT.m=B;boatPlace(0);
 }
 function boatPlace(dt){
@@ -6150,7 +6150,7 @@ function boatEnd(){
 }
 function boatCam(dt,snap){
   BOAT.cy+=wrapA(BOAT.h-BOAT.cy)*(snap?1:1-Math.exp(-dt*3.5));
-  const fx=Math.sin(BOAT.cy),fz=Math.cos(BOAT.cy),sp=Math.abs(BOAT.v),back=11+sp*.25,k=snap?1:1-Math.exp(-dt*8);
+  const fx=Math.sin(BOAT.cy),fz=Math.cos(BOAT.cy),sp=Math.abs(BOAT.v),back=9.5+sp*.14,k=snap?1:1-Math.exp(-dt*8);
   BOAT.cp.lerp(new V3(BOAT.x-fx*back,4.6+sp*.06,BOAT.z-fz*back),k);BOAT.cl.lerp(new V3(BOAT.x+fx*9,1.2,BOAT.z+fz*9),k);
   camera.position.copy(BOAT.cp);camera.lookAt(BOAT.cl);camera.fov+=(60+Math.min(10,sp*.5)-camera.fov)*(snap?1:1-Math.exp(-dt*5));camera.updateProjectionMatrix();
 }
