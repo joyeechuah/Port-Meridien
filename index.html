@@ -5936,6 +5936,7 @@ function footExit(){
   m.G.visible=true;footPlace(0);
   pc.inside.visible=false;pc.glass.visible=pc.shell.visible=true;
   placeCarMesh(0);footCam(0,true);footHud(true);
+  footPrompt();   // at once, not on the next frame: E pressed straight after getting out did nothing until then
   return true;
 }
 function footEnter(){
@@ -5953,6 +5954,11 @@ function footHud(on){
   show("speedo",!on);show("streak",!on);show("chFoot",!on);show("chRear",!on);show("chCam",!on);
   $("bG").textContent=on?"WALK":"GAS";$("bH").innerHTML=on?"RUN":"HAND<br>BRAKE";
   const b=$("bB");if(on){b.textContent="BACK";b.classList.remove("rev")}
+}
+// the "Get in" prompt, while the car is within reach
+function footPrompt(){
+  const near=Math.hypot(FOOT.x-P.x,FOOT.z-P.z)<=FOOT_V.reach;
+  promptAct=near?footEnter:null;show("prompt",near);if(near){const c=carById(curId);$("promptTxt").textContent="Get in · "+c.mk+" "+c.md}
 }
 function footPlace(dt){
   const m=FOOT.m,sw=Math.sin(FOOT.ph)*Math.min(.95,Math.abs(FOOT.v)*.34);
@@ -5990,8 +5996,7 @@ function footUpdate(dt){
   const g=footGround(FOOT.x,FOOT.z);FOOT.y+=(g-FOOT.y)*Math.min(1,dt*14);
   FOOT.ph+=Math.abs(FOOT.v)*dt*3.1;if(Math.abs(FOOT.v)<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
   footPlace(dt);
-  const near=Math.hypot(FOOT.x-P.x,FOOT.z-P.z)<=FOOT_V.reach;
-  promptAct=near?footEnter:null;show("prompt",near);if(near){const c=carById(curId);$("promptTxt").textContent="Get in · "+c.mk+" "+c.md}
+  footPrompt();
   placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
 }
 function driveUpdate(dt){
