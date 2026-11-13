@@ -2164,7 +2164,7 @@ function buildBoats(){
 const VEDRA_A=2.5;
 function cruisePos(a,off){const k=smooth(.5,.22,Math.abs(wrapA(a-VEDRA_A))),r=coastR(Math.cos(a)*1000,Math.sin(a)*1000)+off+k*(680-off);return[Math.cos(a)*r,Math.sin(a)*r]}
 function updateSea(dt){
-  seaT+=dt;
+  seaT+=dt;if(BOAT.m&&!BOAT.on)boatPlace(0);
   seaU.wO1.value.set(seaT*.011,seaT*.006);seaU.wO2.value.set(-seaT*.008,seaT*.013);
   if(foam){foam.material.opacity=.62+.22*Math.sin(seaT*1.1);foam.material.map.offset.x=seaT*.01;foam.material.map.offset.y=Math.sin(seaT*.55)*.08}
   const cx=camera.position.x,cz=camera.position.z;
@@ -3071,7 +3071,7 @@ function pollPad(){
   if(tabIdle)return;
   if(clOverlayOpen()){if(hit(1))clEscape();return}
   const inputState=state;
-  if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on)footExit()}
+  if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on&&!BOAT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on&&!BOAT.on)footExit()}
   // in the pause menu, B or Start closes a screen opened from it (passport, contracts) before the menu itself
   else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}}
   else if(state==="LOAD"){if(hit(0)&&!$("lstart").classList.contains("hide"))$("lstart").click()}
@@ -3559,7 +3559,7 @@ function updateTraffic(dt){
     if(!t.e)continue;
     const q=edgePos(t.e,t.s),ux=q.dx*t.dir,uz=q.dz*t.dir;
     t.wx=q.x-uz*t.offCur;t.wz=q.z+ux*t.offCur;t.yaw=Math.atan2(ux,uz);
-    const me=FOOT.on?FOOT:P,dpx=t.wx-me.x,dpz=t.wz-me.z,d=Math.hypot(dpx,dpz);
+    const me=BOAT.on?BOAT:FOOT.on?FOOT:P,dpx=t.wx-me.x,dpz=t.wz-me.z,d=Math.hypot(dpx,dpz);
     t.c.G.visible=d<560;
     // nose up or down with the road, so a car on a hill sits on all four wheels
     if(t.c.G.visible){const yF=edgeY(t.e,t.s+1.3*t.dir),yB=edgeY(t.e,t.s-1.3*t.dir);t.c.G.position.set(t.wx,(yF+yB)/2+YO,t.wz);t.c.G.rotation.set(-Math.atan((yF-yB)/2.6),t.yaw,0,"YXZ");for(const w of t.c.wheels)w.rotation.x+=t.v*dt/.36;showDamageSmoke(t.c,t.damage||0,dt)}
@@ -4079,7 +4079,7 @@ function carArrow(c,x,z,h,scale,big){
 }
 let miniZoom=2.4;
 function drawMini(){
-  const P=FOOT.on?FOOT:PCAR;   // the map follows the walker when you're out of the car
+  const P=BOAT.on?BOAT:FOOT.on?FOOT:PCAR;   // the map follows the walker or the boat when you're out of the car
   const S=MMS,c=mmx,R=S/2,py=R+S*.16;c.setTransform(mmD,0,0,mmD,0,0);c.clearRect(0,0,S,S);
   c.save();c.beginPath();c.arc(R,R,R-1,0,TAU);c.clip();
   c.fillStyle="#163450";c.fillRect(0,0,S,S);
@@ -4891,7 +4891,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
+function setState(s){if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on)}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
 
@@ -5547,10 +5547,10 @@ addEventListener("keydown",e=>{
   if(k==="enter"){if(kbFocusedButton())return;e.preventDefault()}
   if(e.repeat)return;
   if(state==="DRIVE"){
-    if(k==="escape"||k==="p")pauseOn();else if(k==="m")openMap();else if(k==="c"){if(!FOOT.on)cycleCam()}else if(k==="v")photoEnter();
+    if(k==="escape"||k==="p")pauseOn();else if(k==="m")openMap();else if(k==="c"){if(!FOOT.on&&!BOAT.on)cycleCam()}else if(k==="v")photoEnter();
     else if(k==="e"||k==="enter"){if(promptAct)promptAct()}
-    else if(k==="f"){if(FOOT.on){if(promptAct)promptAct()}else footExit()}
-    else if(k==="r"&&!ev&&!FOOT.on)resetToRoad(true);
+    else if(k==="f"){if(FOOT.on||BOAT.on){if(promptAct)promptAct()}else footExit()}
+    else if(k==="r"&&!ev&&!FOOT.on&&!BOAT.on)resetToRoad(true);
   }else if(!$("passport").classList.contains("hide")){if(k==="escape")passportClose()}
   else if(!$("jobs").classList.contains("hide")){if(k==="escape")jobsClose()}
   else if(!$("cups").classList.contains("hide")){if(k==="escape")cupsClose()}
@@ -5908,7 +5908,7 @@ function footModel(){
   G.visible=false;scene.add(G);
   return FOOT.m={G,legs,arms};
 }
-const footGround=(x,z)=>Math.max(meshH(x,z),surfH(x,z));
+const footGround=(x,z)=>onPier(x,z)?PIER.y:Math.max(meshH(x,z),surfH(x,z));   // the pier's deck stands over the water
 // pushes a point clear of buildings, walls and trees, of traffic, and of your own car; returns the cleared point
 function footClear(x,z){
   const r=FOOT_V.r;
@@ -5972,6 +5972,7 @@ function footTarget(){
   see(P.x,P.z,{t:"Get in · "+carById(curId).mk+" "+carById(curId).md,a:footEnter});
   for(const l of LEFT)see(l.x,l.z,{t:"Get in · "+carById(l.id).mk+" "+carById(l.id).md,a:()=>takeLeft(l)});
   for(const t of TRAFFIC)if(t.e&&t.v<=1.5)see(t.wx,t.wz,{t:"Take this car",a:()=>takeTraffic(t)});
+  if(BOAT.m&&onPier(FOOT.x,FOOT.z))see(BOAT.x,BOAT.z,{t:"Board the boat",a:boatBoard});
   return best;
 }
 // why you can't get out just now, or null if you can
@@ -5983,7 +5984,7 @@ function footBlocked(){
   return null;
 }
 function footExit(){
-  if(state!=="DRIVE"||FOOT.on)return false;
+  if(state!=="DRIVE"||FOOT.on||BOAT.on)return false;
   const why=footBlocked();if(why){toast("CAN'T GET OUT",why,"bad");return false}
   // beside the driver's door if there's room (the driver sits on the side nearest the middle of the road), otherwise
   // the other side, otherwise behind: wherever is clear of walls and out of the sea
@@ -6057,7 +6058,119 @@ function footUpdate(dt){
   footPrompt();
   placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
 }
+/* ================================================================ HARBOUR + BOAT */
+// A pier on the east coast, out from the town, and a motorboat moored beside it. Walk onto the pier and board; the
+// driving controls sail (gas, brake for reverse, steering). Back beside the pier, step off. The game stays in the
+// DRIVE state, as on foot: while BOAT.on, driveUpdate runs boatUpdate.
+const PIER={x0:1176,x1:1252,z0:-4,z1:4,y:1.55};
+const onPier=(x,z)=>x>=PIER.x0&&x<=PIER.x1&&z>=PIER.z0&&z<=PIER.z1;
+const BOAT={on:false,x:1236,z:-5.6,y:0,h:Math.PI/2,v:0,steer:0,m:null,wake:null,cy:0,cp:new THREE.Vector3(),cl:new THREE.Vector3(),car:[0,0],home:[1236,-5.6,Math.PI/2],hudT:0};
+// top speed 17 m/s (33 knots); it needs 1.3 m of water under it; 2.7 km from the island's middle the open sea turns it back
+const BOAT_V={top:17,rev:4,acc:5.5,turn:.85,r:1.25,half:2.6,depth:-1.3,land:4.4,edge:2700};
+function buildHarbour(){
+  const wood=new THREE.MeshStandardMaterial({color:0x8a6a48,roughness:.9}),dark=new THREE.MeshStandardMaterial({color:0x4a3a2a,roughness:.95}),
+    metal=new THREE.MeshStandardMaterial({color:0x2b3138,roughness:.6,metalness:.3});
+  const L=PIER.x1-PIER.x0,Wd=PIER.z1-PIER.z0,cx=(PIER.x0+PIER.x1)/2,G=new THREE.Group();
+  const add=(g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;G.add(o);return o};
+  add(new THREE.BoxGeometry(L,.22,Wd),wood,cx,PIER.y-.11,0);
+  // a low kerb along both sides and across the far end, and posts down into the sea bed
+  for(const z of[PIER.z0+.1,PIER.z1-.1])add(new THREE.BoxGeometry(L,.2,.2),dark,cx,PIER.y+.1,z);
+  add(new THREE.BoxGeometry(.2,.2,Wd),dark,PIER.x1-.1,PIER.y+.1,0);
+  for(let x=PIER.x0+4;x<PIER.x1;x+=9)for(const z of[PIER.z0+.4,PIER.z1-.4])add(new THREE.CylinderGeometry(.22,.22,9,8),dark,x,PIER.y-4.6,z);
+  // bollards across the landward end: people walk between them, cars don't fit
+  for(const z of[-3,-1.5,0,1.5,3]){add(new THREE.CylinderGeometry(.14,.16,.9,10),metal,PIER.x0+1,PIER.y+.45,z);addCircle(PIER.x0+1,z,.14)}
+  // a mast with a marker at the far end, to find the pier from the road
+  add(new THREE.CylinderGeometry(.09,.12,7,8),metal,PIER.x1-1,PIER.y+3.5,0);add(new THREE.BoxGeometry(.9,.9,.9),new THREE.MeshBasicMaterial({color:0xe2483d}),PIER.x1-1,PIER.y+7.3,0);
+  scene.add(G);
+  // the kerbs are solid: nothing drives onto the deck from the side, and you step off only at the landward end
+  addBox(cx,PIER.z0+.1,L/2,.12,0);addBox(cx,PIER.z1-.1,L/2,.12,0);addBox(PIER.x1-.1,0,.12,Wd/2,0);
+  // the boat: a 6.4 m open motorboat, bow towards +z
+  const B=new THREE.Group(),hull=new THREE.MeshStandardMaterial({color:0xf2f2ee,roughness:.5}),navy=new THREE.MeshStandardMaterial({color:0x1d3a5c,roughness:.6}),
+    glass=new THREE.MeshStandardMaterial({color:0x9fc4d8,roughness:.2,transparent:true,opacity:.55});
+  const bp=(g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;B.add(o);return o};
+  bp(hullGeo(6.4,2.3,1.0),hull,0,-.45,0);bp(hullGeo(6.1,2.05,.06),wood,0,.5,0);
+  bp(new THREE.BoxGeometry(2.34,.16,5.2),navy,0,.42,-.5);
+  bp(new THREE.BoxGeometry(1.3,.75,.7),hull,0,.9,.5);bp(new THREE.BoxGeometry(1.4,.5,.06),glass,0,1.5,.85).rotation.x=-.35;
+  bp(new THREE.BoxGeometry(1.5,.45,.6),navy,0,.75,-.9);bp(new THREE.BoxGeometry(.5,.9,.6),metal,0,.55,-3.25);
+  const wk=new THREE.BufferGeometry();wk.setAttribute("position",new THREE.Float32BufferAttribute([0,0,-2.6, 3.4,0,-24, -3.4,0,-24],3));wk.computeVertexNormals();
+  BOAT.wake=new THREE.Mesh(wk,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));BOAT.wake.position.y=-.08;B.add(BOAT.wake);
+  scene.add(B);BOAT.m=B;boatPlace(0);
+}
+function boatPlace(dt){
+  const m=BOAT.m,sp=Math.abs(BOAT.v);
+  BOAT.y=.12+Math.sin(seaT*.9)*.07+Math.min(.18,sp*.012);
+  m.position.set(BOAT.x,BOAT.y,BOAT.z);m.rotation.set(-Math.min(.1,sp*.007),BOAT.h,-BOAT.steer*Math.min(.16,sp*.012),"YXZ");
+  BOAT.wake.material.opacity=Math.min(.3,sp*.022);BOAT.wake.visible=sp>.6&&BOAT.v>0;
+}
+// whether the boat can float with its middle at (x,z) facing h: deep enough from bow to stern, clear of the pier and
+// of other boats, and not out past the edge of the map
+function boatFree(x,z,h){
+  if(Math.hypot(x,z)>BOAT_V.edge)return false;
+  const fx=Math.sin(h),fz=Math.cos(h),r=BOAT_V.r;
+  for(const k of[-BOAT_V.half+r,0,BOAT_V.half-r]){const px=x+fx*k,pz=z+fz*k;
+    if(meshH(px,pz)>BOAT_V.depth)return false;
+    if(px>PIER.x0-r&&px<PIER.x1+r&&pz>PIER.z0-r&&pz<PIER.z1+r)return false}
+  for(const b of BOATS)if(Math.hypot(b.x-x,b.z-z)<9)return false;
+  return true;
+}
+// the spot on the pier's deck you'd step onto from where the boat is, or null if it's too far or still moving
+function boatLandSpot(){
+  if(Math.abs(BOAT.v)>1.5)return null;
+  const x=clamp(BOAT.x,PIER.x0+2.2,PIER.x1-1),z=BOAT.z<0?PIER.z0+.75:PIER.z1-.75;
+  return Math.hypot(BOAT.x-x,BOAT.z-z)<=BOAT_V.land?[x,z]:null;
+}
+function boatHud(){footHud(true);$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
+function boatBoard(){
+  if(!FOOT.on||BOAT.on||!BOAT.m)return false;
+  FOOT.on=false;FOOT.m.G.visible=false;BOAT.on=true;BOAT.v=0;BOAT.steer=0;BOAT.car=[P.x,P.z];BOAT.cy=BOAT.h;
+  promptAct=null;show("prompt",false);boatHud();boatCam(0,true);
+  toast("ABOARD",isTouch?"POWER to sail, REVERSE to back up. Come back beside the pier to step off.":"W sails, S reverses, A and D steer. Come back beside the pier to step off.");
+  return true;
+}
+// stepping off: the boat stays where you leave it, and you stand on the deck
+function boatLand(){
+  const sp=BOAT.on?boatLandSpot():null;if(!sp)return false;
+  BOAT.on=false;BOAT.v=0;BOAT.steer=0;boatPlace(0);
+  const m=footModel();FOOT.on=true;FOOT.x=sp[0];FOOT.z=sp[1];FOOT.y=PIER.y;FOOT.h=BOAT.z<0?0:Math.PI;FOOT.v=0;FOOT.ph=0;FOOT.cy=FOOT.h;FOOT.car=[P.x,P.z];
+  m.G.visible=true;footPlace(0);footHud(true);footCam(0,true);footPrompt();
+  return true;
+}
+// back in the driving seat without stepping off (the car was moved from under you, or you went home): the boat goes
+// back to its mooring
+function boatEnd(){
+  if(!BOAT.on)return;BOAT.on=false;BOAT.v=0;BOAT.steer=0;[BOAT.x,BOAT.z,BOAT.h]=BOAT.home;boatPlace(0);
+  promptAct=null;show("prompt",false);footHud(false);autoHold=true;if(pc)snapCam();
+}
+function boatCam(dt,snap){
+  BOAT.cy+=wrapA(BOAT.h-BOAT.cy)*(snap?1:1-Math.exp(-dt*3.5));
+  const fx=Math.sin(BOAT.cy),fz=Math.cos(BOAT.cy),sp=Math.abs(BOAT.v),back=11+sp*.25,k=snap?1:1-Math.exp(-dt*8);
+  BOAT.cp.lerp(new V3(BOAT.x-fx*back,4.6+sp*.06,BOAT.z-fz*back),k);BOAT.cl.lerp(new V3(BOAT.x+fx*9,1.2,BOAT.z+fz*9),k);
+  camera.position.copy(BOAT.cp);camera.lookAt(BOAT.cl);camera.fov+=(60+Math.min(10,sp*.5)-camera.fov)*(snap?1:1-Math.exp(-dt*5));camera.updateProjectionMatrix();
+}
+function boatUpdate(dt){
+  if(Math.hypot(P.x-BOAT.car[0],P.z-BOAT.car[1])>.5){boatEnd();return}
+  updateTraffic(dt);
+  if(state!=="DRIVE")return;
+  const go=gasIn(),bk=brakeIn(),want=go>0?BOAT_V.top*go:bk>0?-BOAT_V.rev*bk:0;
+  // power builds the speed up; with the throttle shut the water slows it
+  BOAT.v+=clamp(want-BOAT.v,-(want===0?2.2:6)*dt,BOAT_V.acc*dt);
+  BOAT.steer+=clamp(steerIn()-BOAT.steer,-3*dt,3*dt);
+  // it only turns while moving, and the wrong way round in reverse, like a boat
+  const nh=wrapA(BOAT.h+BOAT.steer*BOAT_V.turn*clamp(BOAT.v/5,-1,1)*dt);
+  const nx=BOAT.x+Math.sin(nh)*BOAT.v*dt,nz=BOAT.z+Math.cos(nh)*BOAT.v*dt;
+  if(boatFree(nx,nz,nh)){BOAT.x=nx;BOAT.z=nz;BOAT.h=nh}
+  else if(boatFree(BOAT.x,BOAT.z,nh)){BOAT.h=nh;if(Math.abs(BOAT.v)>3)toastOnce("boat",Math.hypot(nx,nz)>BOAT_V.edge?["OPEN SEA","Nothing out there: turn back towards the island"]:["TOO SHALLOW","The boat needs deeper water"]);BOAT.v*=-.2}
+  else BOAT.v*=-.2;
+  boatPlace(dt);
+  const sp=boatLandSpot();promptAct=sp?boatLand:null;show("prompt",!!sp);if(sp)$("promptTxt").textContent="Step onto the pier";
+  BOAT.hudT-=dt;if(BOAT.hudT<=0){BOAT.hudT=.25;$("zone").textContent="AT SEA · "+Math.round(Math.abs(BOAT.v)*1.944)+" KN"}
+  boatCam(dt);drawMini();
+}
+// a hint shown at most once every 6 s per kind
+const TOAST_AT={};
+function toastOnce(k,[t,m]){const now=performance.now();if(now-(TOAST_AT[k]||0)<6000)return;TOAST_AT[k]=now;toast(t,m,"bad")}
 function driveUpdate(dt){
+  if(BOAT.on){boatUpdate(dt);return}
   if(FOOT.on){footUpdate(dt);return}
   tickDamage(P,dt);
   const steps=Math.ceil(dt/.017),h=dt/steps;
@@ -6092,7 +6205,7 @@ function adaptRes(dt){
 // An immediate Photo Mode capture needs the same sky and shadow placement as a frame from the main loop.
 function syncRenderView(){
   sky.position.copy(camera.position);stars.position.copy(camera.position);
-  const f=state==="DEALER"?SHOW:FOOT.on?FOOT.m.G.position:pc&&state!=="GARAGE"&&state!=="LOAD"?pc.G.position:gW(0,12);
+  const f=state==="DEALER"?SHOW:BOAT.on?BOAT.m.position:FOOT.on?FOOT.m.G.position:pc&&state!=="GARAGE"&&state!=="LOAD"?pc.G.position:gW(0,12);
   sun.position.copy(f).addScaledVector(MOON,220);sun.target.position.copy(f);sun.target.updateMatrixWorld();
 }
 function frame(ts){
@@ -6131,6 +6244,7 @@ const STEPS=[
   ["Building walls and signs",buildRoadside],
   ["Opening your house",buildHouse],
   ["Stocking the dealership",buildDealer],
+  ["Building the harbour",buildHarbour],
   ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildJobs()}],
   ["Filling the roads",()=>{initTraffic();buildMapImage()}],
   ["Parking your cars",()=>{parkAll(null)}],
