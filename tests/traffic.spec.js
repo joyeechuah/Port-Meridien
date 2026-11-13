@@ -20,6 +20,12 @@ test.describe("traffic", () => {
           if (!t.e) continue;
           const s = t.v < 0.5 ? (stop.get(t) || 0) + 1 / 60 : 0;
           stop.set(t, s);
+          // where the car that has waited longest is, and what it's waiting at: if this test ever fails, the message says
+          // (a wait of over five minutes was seen once in 78 runs and never again, with nothing to go on)
+          if (s > out.longestStop && s > 30) {
+            const jn = t.dir > 0 ? t.e.b : t.e.a;
+            out.stuck = `car ${T.TRAFFIC.indexOf(t)} at (${Math.round(t.wx)}, ${Math.round(t.wz)}) on a ${t.e.type} road, ${Math.round(t.dir > 0 ? t.e.len - t.s : t.s)} m from the junction at (${Math.round(jn.x)}, ${Math.round(jn.z)}) with arms ${jn.adj.map((q) => q.e.type).join("/")}; junction held by ${jn.res ? "car " + T.TRAFFIC.indexOf(jn.res) + (jn.res.e ? " at (" + Math.round(jn.res.wx) + ", " + Math.round(jn.res.wz) + ") doing " + jn.res.v.toFixed(1) + " m/s" : " (off the road)") : "nobody"}; stopT ${Math.round(t.stopT)}, passT ${t.passT.toFixed(1)}; you at (${Math.round(T.P.x)}, ${Math.round(T.P.z)})`;
+          }
           out.longestStop = Math.max(out.longestStop, s);
         }
         if (i % 6) continue;
@@ -50,7 +56,7 @@ test.describe("traffic", () => {
     test.info().annotations.push({ type: "6 minutes of traffic", description: JSON.stringify(r) });
     expect(r.overlaps, "times two traffic cars stayed inside each other for half a second or more").toBe(0);
     // turn-taking at junctions must not leave cars stuck, and the queue behind a parked car clears
-    expect(r.longestStop, "seconds the longest-stopped traffic car waited").toBeLessThan(60);
+    expect(r.longestStop, "seconds the longest-stopped traffic car waited" + (r.stuck ? ": " + r.stuck : "")).toBeLessThan(60);
   });
 
   test("in town, the streets around you don't fill up with cars; a car waits at a junction for you", async ({ game }) => {
