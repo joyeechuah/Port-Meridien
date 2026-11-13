@@ -660,30 +660,30 @@ const fmtT=t=>{const c=Math.round(Math.max(0,t)*100),m=Math.floor(c/6000),s=Math
    Classes run from A1 (slowest) to A7 (hypercars).
    shape picks the body silhouette, wing the rear spoiler. */
 const CARS=[
- {id:"golf",mk:"Volkswagen",md:"Golf GTI",yr:2009,cls:"A1",price:25000,top:238,acc:.42,grip:.78,body:0xf1f1ef,shape:"hatch",wing:"lip"},
- {id:"mini",mk:"Mini",md:"Cooper S",yr:2014,cls:"A1",price:28000,top:228,acc:.44,grip:.84,body:0x0d5a34,shape:"hatch",wing:"lip"},
- {id:"mx5",mk:"Mazda",md:"MX-5",yr:2016,cls:"A1",price:30000,top:214,acc:.40,grip:.88,body:0xb3121a,shape:"roadster",wing:"none"},
- {id:"mustang",mk:"Ford",md:"Mustang GT",yr:2015,cls:"A2",price:48000,top:250,acc:.56,grip:.72,body:0x1e3f8c,shape:"muscle",wing:"lip"},
- {id:"challenger",mk:"Dodge",md:"Challenger SRT8",yr:2010,cls:"A2",price:52000,top:274,acc:.60,grip:.68,body:0xe8761a,shape:"muscle",wing:"lip"},
- {id:"tt",mk:"Audi",md:"TT RS Roadster",yr:2010,cls:"A2",price:56000,top:250,acc:.58,grip:.84,body:0x2c6fd1,shape:"roadster",wing:"none"},
- {id:"m3",mk:"BMW",md:"M3 Competition",yr:2021,cls:"A2",price:70000,top:290,acc:.66,grip:.84,body:0x5a6b7a,shape:"gt",wing:"lip"},
- {id:"rrsport",mk:"Range Rover",md:"Sport SVR",yr:2018,cls:"A3",price:85000,top:283,acc:.60,grip:.70,body:0x2a2d31,shape:"suv",wing:"none"},
- {id:"gtr",mk:"Nissan",md:"GT-R",yr:2017,cls:"A3",price:95000,top:315,acc:.78,grip:.90,body:0x8d939a,shape:"gt",wing:"mid"},
- {id:"amggt",mk:"Mercedes-AMG",md:"GT R",yr:2019,cls:"A3",price:120000,top:318,acc:.76,grip:.90,body:0x4f6b2a,shape:"gt",wing:"mid"},
- {id:"cayenne",mk:"Porsche",md:"Cayenne Turbo GT",yr:2022,cls:"A3",price:130000,top:300,acc:.74,grip:.78,body:0xd8d8dc,shape:"suv",wing:"none"},
- {id:"viper",mk:"Dodge",md:"Viper SRT10",yr:2008,cls:"A4",price:140000,top:325,acc:.74,grip:.78,body:0xb3121a,shape:"gt",wing:"lip"},
- {id:"vantage",mk:"Aston Martin",md:"Vantage F1 Edition",yr:2021,cls:"A4",price:150000,top:314,acc:.74,grip:.88,body:0x00693a,shape:"gt",wing:"mid"},
- {id:"dbs",mk:"Aston Martin",md:"DBS",yr:2009,cls:"A4",price:165000,top:307,acc:.72,grip:.86,body:0xa9aeb4,shape:"gt",wing:"none"},
- {id:"r8",mk:"Audi",md:"R8 V10",yr:2020,cls:"A4",price:175000,top:324,acc:.82,grip:.92,body:0xf1f1ef,shape:"super",wing:"lip"},
- {id:"urus",mk:"Lamborghini",md:"Urus",yr:2019,cls:"A5",price:210000,top:305,acc:.80,grip:.80,body:0xf0c419,shape:"suv",wing:"lip"},
- {id:"gt3",mk:"Porsche",md:"911 GT3 RS",yr:2022,cls:"A5",price:220000,top:296,acc:.82,grip:1.00,body:0xd8d8dc,shape:"gt",wing:"big"},
- {id:"f488",mk:"Ferrari",md:"488 Spider",yr:2016,cls:"A5",price:245000,top:325,acc:.86,grip:.92,body:0xc0141a,shape:"roadster",wing:"none"},
- {id:"huracan",mk:"Lamborghini",md:"Huracán Performante",yr:2017,cls:"A6",price:280000,top:325,acc:.88,grip:.94,body:0xe8821a,shape:"super",wing:"big"},
- {id:"mclaren",mk:"McLaren",md:"765LT",yr:2021,cls:"A6",price:350000,top:330,acc:.92,grip:.95,body:0xff6a00,shape:"super",wing:"big"},
- {id:"apollo",mk:"Gumpert",md:"Apollo S",yr:2008,cls:"A6",price:390000,top:360,acc:.90,grip:.96,body:0xf0b81a,shape:"super",wing:"big"},
- {id:"ccx",mk:"Koenigsegg",md:"CCX",yr:2006,cls:"A7",price:450000,top:395,acc:.94,grip:.90,body:0x232427,shape:"super",wing:"mid"},
- {id:"sf90",mk:"Ferrari",md:"SF90 Stradale",yr:2020,cls:"A7",price:480000,top:340,acc:.96,grip:.92,body:0xcc1100,shape:"super",wing:"lip"},
- {id:"chiron",mk:"Bugatti",md:"Chiron Super Sport",yr:2021,cls:"A7",price:750000,top:440,acc:1.00,grip:.82,body:0x14267a,shape:"super",wing:"lip"},
+ {id:"golf",mk:"Veltren",md:"Kest 25",yr:2009,cls:"A1",price:25000,top:238,acc:.42,grip:.78,body:0xf1f1ef,shape:"hatch",wing:"lip"},
+ {id:"mini",mk:"Brindle",md:"Pip S",yr:2014,cls:"A1",price:28000,top:228,acc:.44,grip:.84,body:0x0d5a34,shape:"hatch",wing:"lip"},
+ {id:"mx5",mk:"Aokira",md:"Sora 2",yr:2016,cls:"A1",price:30000,top:214,acc:.40,grip:.88,body:0xb3121a,shape:"roadster",wing:"none"},
+ {id:"mustang",mk:"Rookwell",md:"Outrider",yr:2015,cls:"A2",price:48000,top:250,acc:.56,grip:.72,body:0x1e3f8c,shape:"muscle",wing:"lip"},
+ {id:"challenger",mk:"Darrow",md:"Brawler 8",yr:2010,cls:"A2",price:52000,top:274,acc:.60,grip:.68,body:0xe8761a,shape:"muscle",wing:"lip"},
+ {id:"tt",mk:"Veltren",md:"Arc 6",yr:2010,cls:"A2",price:56000,top:250,acc:.58,grip:.84,body:0x2c6fd1,shape:"roadster",wing:"none"},
+ {id:"m3",mk:"Veltren",md:"Vektor 4",yr:2021,cls:"A2",price:70000,top:290,acc:.66,grip:.84,body:0x5a6b7a,shape:"gt",wing:"lip"},
+ {id:"rrsport",mk:"Brindle",md:"Moorland",yr:2018,cls:"A3",price:85000,top:283,acc:.60,grip:.70,body:0x2a2d31,shape:"suv",wing:"none"},
+ {id:"gtr",mk:"Aokira",md:"Kazan 6",yr:2017,cls:"A3",price:95000,top:315,acc:.78,grip:.90,body:0x8d939a,shape:"gt",wing:"mid"},
+ {id:"amggt",mk:"Veltren",md:"Strahl R",yr:2019,cls:"A3",price:120000,top:318,acc:.76,grip:.90,body:0x4f6b2a,shape:"gt",wing:"mid"},
+ {id:"cayenne",mk:"Kessler Vale",md:"Cairn X",yr:2022,cls:"A3",price:130000,top:300,acc:.74,grip:.78,body:0xd8d8dc,shape:"suv",wing:"none"},
+ {id:"viper",mk:"Darrow",md:"Fang 10",yr:2008,cls:"A4",price:140000,top:325,acc:.74,grip:.78,body:0xb3121a,shape:"gt",wing:"lip"},
+ {id:"vantage",mk:"Wychford",md:"Vesper R",yr:2021,cls:"A4",price:150000,top:314,acc:.74,grip:.88,body:0x00693a,shape:"gt",wing:"mid"},
+ {id:"dbs",mk:"Wychford",md:"Regent",yr:2009,cls:"A4",price:165000,top:307,acc:.72,grip:.86,body:0xa9aeb4,shape:"gt",wing:"none"},
+ {id:"r8",mk:"Veltren",md:"Arc 10",yr:2020,cls:"A4",price:175000,top:324,acc:.82,grip:.92,body:0xf1f1ef,shape:"super",wing:"lip"},
+ {id:"urus",mk:"Orsini Vale",md:"Torra",yr:2019,cls:"A5",price:210000,top:305,acc:.80,grip:.80,body:0xf0c419,shape:"suv",wing:"lip"},
+ {id:"gt3",mk:"Kessler Vale",md:"Ridge RS",yr:2022,cls:"A5",price:220000,top:296,acc:.82,grip:1.00,body:0xd8d8dc,shape:"gt",wing:"big"},
+ {id:"f488",mk:"Bellora",md:"Ventra S",yr:2016,cls:"A5",price:245000,top:325,acc:.86,grip:.92,body:0xc0141a,shape:"roadster",wing:"none"},
+ {id:"huracan",mk:"Orsini Vale",md:"Saetta",yr:2017,cls:"A6",price:280000,top:325,acc:.88,grip:.94,body:0xe8821a,shape:"super",wing:"big"},
+ {id:"mclaren",mk:"Wychford",md:"Needle LT",yr:2021,cls:"A6",price:350000,top:330,acc:.92,grip:.95,body:0xff6a00,shape:"super",wing:"big"},
+ {id:"apollo",mk:"Kessler Vale",md:"Anvil S",yr:2008,cls:"A6",price:390000,top:360,acc:.90,grip:.96,body:0xf0b81a,shape:"super",wing:"big"},
+ {id:"ccx",mk:"Norrvik",md:"Skeld",yr:2006,cls:"A7",price:450000,top:395,acc:.94,grip:.90,body:0x232427,shape:"super",wing:"mid"},
+ {id:"sf90",mk:"Bellora",md:"Fulmine H",yr:2020,cls:"A7",price:480000,top:340,acc:.96,grip:.92,body:0xcc1100,shape:"super",wing:"lip"},
+ {id:"chiron",mk:"Montreval",md:"Sovereign",yr:2021,cls:"A7",price:750000,top:440,acc:1.00,grip:.82,body:0x14267a,shape:"super",wing:"lip"},
 ];
 const carById=id=>CARS.find(c=>c.id===id)||CARS[0];
 /* car customisation: every option is an index into its list; a car's save keeps only what differs from stock */
@@ -2506,7 +2506,7 @@ function carShape(pr,shape,openCockpit){
     if(a>0)for(const i of [1,2,3]){const y=c[i*2+1];if(y<a){c[i*2+1]=a;if(i===1)c[2]=Math.min(c[2],pr.tr-.24)}}
     // up the side the points only ever climb (the lifted arch used to fold the side over itself)
     for(let i=2;i<=7;i++)c[i*2+1]=Math.max(c[i*2+1],c[i*2-1]+.012);
-    // The MX-5's door tops stay high while the centre drops into the open cockpit.
+    // The Sora 2's door tops stay high while the centre drops into the open cockpit.
     const recess=cockpit(z);
     c[16]+=hw*.25*recess;c[17]-=.23*recess;c[19]-=.34*recess;
     return c};
@@ -2515,7 +2515,7 @@ function carShape(pr,shape,openCockpit){
   // the glasshouse starts just inside the body's shoulder and leans in towards the roof
   const csec=z=>{const T=cp.top(z),Bo=cp.bot(z),H=Math.max(0,T-Bo),f=Math.min(1,H/.12);
     // but never wider than the body's shoulder under it: towards the tail (and nose) the body narrows, and a glasshouse
-    // kept at its full width overhung the sides like a wide black hat on the Golf and the Range Rover
+    // kept at its full width overhung the sides like a wide black hat on the Kest 25 and the Moorland
     const hw=halfW(z),w=Math.min(Math.max(cw,hw-S.tuck*1.5-.02),hw-S.tuck*1.7*Math.min(1,hw/.45)-.015),wt=w-Math.min(.3,H*.55)*f;
     return[w+.01,Bo-.03, w-(w-wt)*.25,Bo+H*.4, wt+.06*f,T-.04*f, wt-.04*f,T, wt*.4,T+.02*f, 0,T+.024*f]};
   const hy=Math.max(.56,pr.ws[1]-.34);
@@ -3144,7 +3144,7 @@ function kphNow(){return Math.abs(speedF())*3.6}
 // expHi 1.3, and both now reach their high-speed value by 140 km/h, steerV), so a tap at 100 km/h moves the car less
 // Playtest, 8 Nov: holding W in a bend at speed, the car ran up to about a metre wide of its lane (towards the centre
 // line on a bend away from it, which read as pulling left). The assist now pulls back to the lane three times as hard
-// (laneK, was 1): in the GT-R at about 125 km/h, 90% of the time within 0.34 m of the lane centre (was 0.75 m)
+// (laneK, was 1): in the Kazan 6 at about 125 km/h, 90% of the time within 0.34 m of the lane centre (was 0.75 m)
 // Out of the tightest hairpin that stronger pull (and the throttle) still took the car across the centre line, 2 m
 // off its lane, because the tyres were already at their limit: now, while the assist is turning as hard as grip
 // allows and the road wants more (satAt), the car lifts off and brakes gently (satLift) instead. Worst case 0.8 m

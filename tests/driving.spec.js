@@ -174,13 +174,13 @@ test.describe("driving", () => {
     });
     test.info().annotations.push({ type: "speed shed for bends with W held", description: JSON.stringify(r) });
     // before (Nov 2026 video): it eased off late and braked at up to 9 m/s²; over these roads it dropped 50 km/h in
-    // under 4 s 20 times in the GT-R and 11 in the Golf (now 12 and 5)
+    // under 4 s 20 times in the Kazan 6 and 11 in the Kest 25 (now 12 and 5)
     for (const id in r) expect(r[id].peak, id + ": most speed lost in a second, m/s").toBeLessThan(8);
     expect(r.gtr.drops).toBeLessThan(16);
     expect(r.golf.drops).toBeLessThan(9);
   });
 
-  test("holding only W through bends at speed, the assist keeps the GT-R in its lane, on either side of the road", async ({
+  test("holding only W through bends at speed, the assist keeps the Kazan 6 in its lane, on either side of the road", async ({
     game,
   }) => {
     test.setTimeout(300_000);
@@ -259,7 +259,7 @@ test.describe("driving", () => {
     });
     const worst = r.runs.reduce((a, b) => (b.worst > a.worst ? b : a));
     test.info().annotations.push({
-      type: "metres wide of the lane in bends (GT-R, W only)",
+      type: "metres wide of the lane in bends (Kazan 6, W only)",
       description: JSON.stringify({
         n: r.n,
         p50: r.p50,

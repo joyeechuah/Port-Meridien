@@ -180,7 +180,7 @@ test.describe("class championships", () => {
     expect(t.A3).toBeCloseTo(t.usual, 6);
     expect(t.A1).toBeGreaterThan(t.A3);
     expect(t.A7).toBeLessThan(t.A3);
-    // the autopilot, in a Golf (A1) on the A1 cup's time trial, and in a Chiron (A7) on the A7 cup's
+    // the autopilot, in a Kest 25 (A1) on the A1 cup's time trial, and in a Sovereign (A7) on the A7 cup's
     const r = await game.eval(() => {
       const T = __T,
         P = T.P,

@@ -77,7 +77,7 @@ test("returning to the garage restores stationary wheels and suspension", async 
   })).toBe(true);
 });
 
-test("the MX-5 brakes from a crawl and still reverses only after a fresh press", async ({ game }) => {
+test("the Sora 2 brakes from a crawl and still reverses only after a fresh press", async ({ game }) => {
   await game.open({save: {v: 3, cur: "mx5", assist: false}});
   await game.driveOut();
   await game.park();
