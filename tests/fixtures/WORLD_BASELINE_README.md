@@ -19,3 +19,11 @@ Review the generated `tests/fixtures/world-baseline.json`. Confirm counts, unusu
 - Values use three-decimal-place precision to reduce floating-point noise; road/race/contract polylines are recorded in full.
 - When deliberate map changes are approved, inspect every diff before replacing the baseline. Keep the original file in Git history.
 - This is a static geometry and game-data regression gate, **not** a substitute for playable event completion, pedestrian paths, traffic behavior, and mobile performance tests.
+
+## Changes to the baseline
+
+| Date | Change | What differs from the file before it |
+| --- | --- | --- |
+| 13 Nov 2026 | The harbour lane: a `drive` road from the avenue's junction with the coast road, (945.904, 1.596), to the shore at (1160, 0) | One road added (index 14) and one edge added (id 35, 214.15 m). Every other road, edge, height, event, landmark, contract stop and contract is identical, value for value. Checked with a field-by-field comparison before the file was replaced |
+
+The first version of this file, from the unchanged island, is at commit `4210869`.
