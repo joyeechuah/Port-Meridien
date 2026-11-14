@@ -1,5 +1,7 @@
 # Port Meridien
 
+**[▶ Play Now](https://joyeechuah.github.io/Port-Meridien/)** · in the browser, on a computer or a phone, no install
+
 An open-world city game for the browser: walk the streets, take any car, and sail from the harbour. Built with three.js as a single `index.html`, with no install and no build step.
 
 > **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running, taking stopped traffic cars, the harbour boat and the Old Quay district are in. Pedestrians, police and weapons are not. See [ROADMAP.md](ROADMAP.md).
@@ -7,6 +9,8 @@ An open-world city game for the browser: walk the streets, take any car, and sai
 Port Meridien is an original game. Its name, city, characters and story are its own.
 
 ## Play
+
+**Online:** [https://joyeechuah.github.io/Port-Meridien/](https://joyeechuah.github.io/Port-Meridien/). It updates a minute or two after each change to `main`. Your progress is saved in that browser.
 
 **Locally:** clone the repository and run:
 
@@ -27,11 +31,11 @@ On foot you can also take any traffic car that has stopped: stand in its lane so
 
 A pier stands on the east coast, straight out from the town past the end of its main avenue: look for the mast with a red marker. A lane runs down to the shore from where the avenue meets the coast road: park at its end and walk on (cars don't fit between the bollards).
 
+Walk along the pier to the motorboat and press `E` or `F` to board. The driving controls sail it: gas for power, brake for reverse, steering to turn (a boat only turns while it's moving). It stays in deep water and turns back at the open sea. To get off, come back beside the pier, slow to a stop, and press `E` or `F`. The boat stays where you leave it.
+
 ## Old Quay
 
 The port town on the east side has six blocks between its streets: terraces with shops, a market yard round a clock tower (ways in from both side streets and from the avenue), workshops in old warehouses with lanes between them, houses round a garden, a civic square with the Harbour Hall and a fountain, and the Auto Gallery's block. You can walk or drive into the market, the square and the lanes.
-
-Walk along the pier to the motorboat and press `E` or `F` to board. The driving controls sail it: gas for power, brake for reverse, steering to turn (a boat only turns while it's moving). It stays in deep water and turns back at the open sea. To get off, come back beside the pier, slow to a stop, and press `E` or `F`. The boat stays where you leave it.
 
 ## What works today
 
