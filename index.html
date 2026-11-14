@@ -243,15 +243,15 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 @media (max-width:560px){
   #tl{top:calc(56px + var(--st))}
   body.touch #speedo{top:calc(56px + var(--st))}
-  body.touch #minWrap{top:calc(164px + var(--st))}
-  #streak,#hud #tdPill{top:calc(318px + var(--st))}
+  body.touch #minWrap{top:calc(164px + var(--st) + var(--tlx,0px))}
+  #streak,#hud #tdPill{top:calc(318px + var(--st) + var(--tlx,0px))}
   /* the race panel (position, time, checkpoint) goes in a small column under the speedometer, so it no longer
      sits over the road just ahead of the car */
   #evhud{top:calc(192px + var(--st));left:auto;right:calc(14px + var(--sr));transform:none;flex-direction:column;gap:3px;width:136px}
   #evhud>div{min-width:0;padding:4px 9px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
   #evhud span{font-size:8px;letter-spacing:.16em}
   #evhud b{font-size:17px}
-  #toasts,body.touch #toasts{top:calc(394px + var(--st));right:auto;left:50%;transform:translateX(-50%);align-items:center;width:min(300px,calc(100% - 32px))}
+  #toasts,body.touch #toasts{top:calc(394px + var(--st) + var(--tlx,0px));right:auto;left:50%;transform:translateX(-50%);align-items:center;width:min(300px,calc(100% - 32px))}
   #count{top:58%;font-size:96px}
   #wrong{top:48%}
   #prompt,body.touch #prompt{bottom:calc(250px + var(--sb));white-space:normal;text-align:center;width:max-content;max-width:calc(100% - 32px)}
@@ -4116,6 +4116,15 @@ function fitCanvas(cv,css){const d=Math.min(devicePixelRatio,2);cv.width=css*d;c
 let spD=1,mmD=1;
 // very short touch screens (a phone held sideways, 360 px tall on many Androids) get a smaller dial and minimap,
 // so neither runs into the pedals and steering buttons below them
+// On a portrait phone the minimap sits under the money, level and place. When that block grows (the damage pill
+// appears) the minimap, and everything below it, moves down by as much: it used to cover the place and the clock
+function hudStack(){
+  const r=document.documentElement;r.style.setProperty("--tlx","0px");
+  if(!isTouch||!matchMedia("(max-width:560px)").matches)return;
+  const tl=$("tl").getBoundingClientRect(),mw=$("minWrap").getBoundingClientRect();if(!tl.height||!mw.height)return;
+  r.style.setProperty("--tlx",Math.max(0,Math.ceil(tl.bottom+6-mw.top))+"px");
+}
+if(window.ResizeObserver)new ResizeObserver(hudStack).observe($("tl"));addEventListener("resize",hudStack);
 function layoutHUD(){const small=isTouch||W<700,short=isTouch&&H<=400;SPS=small?(short?104:128):220;MMS=small?(short?100:118):184;spD=fitCanvas(spc,SPS);mmD=fitCanvas(mm,MMS)}
 const RATIOS=[0,.2,.36,.52,.68,.84,1.05];
 function gearInfo(kph,top,rev){
@@ -6198,7 +6207,8 @@ function footUpdate(dt){
   const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||pad.H||GP.hb);
   const want=go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
   FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
-  FOOT.h=wrapA(FOOT.h+steerIn()*FOOT_V.turn*dt);
+  // right turns right, as in the car: the heading decreases (it was the wrong way round, on foot and on the boat)
+  FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
   if(Math.abs(FOOT.v)>.01){
     let nx=FOOT.x+Math.sin(FOOT.h)*FOOT.v*dt,nz=FOOT.z+Math.cos(FOOT.h)*FOOT.v*dt;
     [nx,nz]=footClear(nx,nz);
@@ -6389,7 +6399,10 @@ function buildHarbour(){
   bp(new THREE.BoxGeometry(1.3,.75,.7),hull,0,.9,.5);bp(new THREE.BoxGeometry(1.4,.5,.06),glass,0,1.5,.85).rotation.x=-.35;
   bp(new THREE.BoxGeometry(1.5,.45,.6),navy,0,.75,-.9);bp(new THREE.BoxGeometry(.5,.9,.6),metal,0,.55,-3.25);
   const wk=new THREE.BufferGeometry();wk.setAttribute("position",new THREE.Float32BufferAttribute([0,0,-2.6, 3.4,0,-24, -3.4,0,-24],3));wk.computeVertexNormals();
-  BOAT.wake=new THREE.Mesh(wk,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));// just above the water and drawn after it, or the sea's surface hides it
+  wk.setAttribute("uv",new THREE.Float32BufferAttribute([.5,1, 1,0, 0,0],2));
+  // strongest at the stern, gone by the far end (a flat wedge read as a beam of light on a phone)
+  const fade=document.createElement("canvas");fade.width=4;fade.height=64;{const x=fade.getContext("2d"),g=x.createLinearGradient(0,0,0,64);g.addColorStop(0,"#fff");g.addColorStop(.55,"#555");g.addColorStop(1,"#000");x.fillStyle=g;x.fillRect(0,0,4,64)}
+  BOAT.wake=new THREE.Mesh(wk,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide,alphaMap:new THREE.CanvasTexture(fade)}));// just above the water and drawn after it, or the sea's surface hides it
   BOAT.wake.renderOrder=10;BOAT.wake.position.y=.1;B.add(BOAT.wake);
   scene.add(B);BOAT.m=B;boatPlace(0);
 }
@@ -6399,7 +6412,7 @@ function boatPlace(dt){
   m.position.set(BOAT.x,BOAT.y,BOAT.z);const pitch=Math.min(.1,sp*.007),roll=BOAT.steer*Math.min(.16,sp*.012);m.rotation.set(-pitch,BOAT.h,-roll,"YXZ");
   // the wake lies flat on the water whatever the hull does: tilted with the bow up, its far end was 2 m under the sea
   BOAT.wake.rotation.set(pitch,0,roll,"ZXY");
-  BOAT.wake.material.opacity=Math.min(.3,sp*.022);BOAT.wake.visible=sp>.6&&BOAT.v>0;
+  BOAT.wake.material.opacity=Math.min(.22,sp*.016);BOAT.wake.visible=sp>.6&&BOAT.v>0;
 }
 // whether the boat can float with its middle at (x,z) facing h: deep enough from bow to stern, clear of the pier and
 // of other boats, and not out past the edge of the map
@@ -6455,7 +6468,7 @@ function boatUpdate(dt){
   BOAT.v+=clamp(want-BOAT.v,-(want===0?2.2:6)*dt,BOAT_V.acc*dt);
   BOAT.steer+=clamp(steerIn()-BOAT.steer,-3*dt,3*dt);
   // it only turns while moving, and the wrong way round in reverse, like a boat
-  const nh=wrapA(BOAT.h+BOAT.steer*BOAT_V.turn*clamp(BOAT.v/5,-1,1)*dt);
+  const nh=wrapA(BOAT.h-BOAT.steer*BOAT_V.turn*clamp(BOAT.v/5,-1,1)*dt);
   const nx=BOAT.x+Math.sin(nh)*BOAT.v*dt,nz=BOAT.z+Math.cos(nh)*BOAT.v*dt;
   if(boatFree(nx,nz,nh)){BOAT.x=nx;BOAT.z=nz;BOAT.h=nh}
   else if(boatFree(BOAT.x,BOAT.z,nh)){BOAT.h=nh;if(Math.abs(BOAT.v)>3)toastOnce("boat",Math.hypot(nx,nz)>BOAT_V.edge?["OPEN SEA","Nothing out there: turn back towards the island"]:["TOO SHALLOW","The boat needs deeper water"]);BOAT.v*=-.2}
