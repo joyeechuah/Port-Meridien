@@ -105,7 +105,7 @@ test.describe("phone, portrait", () => {
     const gap = () =>
       game.eval(() => {
         const loc = document.querySelector("#tl .loc").getBoundingClientRect(),
-          mm = document.getElementById("minWrap").getBoundingClientRect(),
+          mm = document.getElementById("mini").getBoundingClientRect(),   // the round map itself, not its wrapper (ChatGPT's review)
           st = document.getElementById("streak").getBoundingClientRect();
         return { gap: Math.round(mm.top - loc.bottom), below: Math.round(st.top - mm.bottom) };
       });

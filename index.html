@@ -5111,7 +5111,11 @@ function fadeThen(ms,fn){
   setTimeout(()=>{if(tabIdle)return;fn();$("fade").style.opacity=0;if(state==="FADE")setState("DRIVE")},ms);
 }
 function resetToRoad(fade){
-  const go=()=>{const nr=nearestRoadGlobal(P.x,P.z,true);if(!nr)return;const f=fwdOf(P.h);placeOnRoad(nr,f.x*nr.dx+f.z*nr.dz>=0?1:-1);snapCam()};
+  const go=()=>{const nr=nearestRoadGlobal(P.x,P.z,true);if(!nr)return;const f=fwdOf(P.h);placeOnRoad(nr,f.x*nr.dx+f.z*nr.dz>=0?1:-1);
+    // a traffic car where you are set down goes elsewhere: you used to land on top of one now and then, and the
+    // collision shot you off at up to 8,000 km/h (a test caught it about one time in three)
+    for(const t of TRAFFIC)if(t.e&&Math.abs(t.wx-P.x)<14&&Math.abs(t.wz-P.z)<14){t.e=null;t.c.G.visible=false;t.wx=t.wz=1e6;t.lost=!spawnTraffic(t,220,560,true)}
+    snapCam()};
   if(!fade){go();return}
   fadeThen(420,go);
 }
