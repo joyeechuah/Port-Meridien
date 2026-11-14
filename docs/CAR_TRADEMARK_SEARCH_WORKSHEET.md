@@ -43,3 +43,13 @@ Search **class 9** (downloadable video game software and related software) and *
 Record UTC date/time; registry and jurisdiction; exact query and classes; mark/filing/registration numbers; owners and status; overlap in goods/services, similarity concerns and page URL or screenshot reference. Search broader unregistered uses, game listings, existing fictional vehicles and manufacturer product lines. Mark each item **clear candidate / investigate / blocked / counsel needed**, but never infer legal clearance from a zero-results search. Repeat immediately before launch and have an IP professional review material conflicts.
 
 Visual assets, real-car resemblance, body silhouettes, badges, plate text, music, fonts and game title require **separate** reviews. No trademark searches have been executed for individual names in this worksheet.
+
+## Per-jurisdiction evidence log (prepared, no searches performed)
+
+Use [CAR_TRADEMARK_EVIDENCE_LOG.csv](CAR_TRADEMARK_EVIDENCE_LOG.csv) to track **144 screening tasks**: 24 fictional make/model combinations × Malaysia, WIPO, Singapore, EU, US and UK. The log contains exact make/model/combined search strings and provisional classes 9 and 41. Every status currently reads `not_checked`. This log is a recordkeeping template, **not clearance and not evidence that a registry was searched**.
+
+Recommended review order: screen the shared **make names** first (e.g., Veltren, Brindle, Wychford, Kessler Vale, Orsini Vale, Bellora) because one conflict could affect multiple vehicles; then each standalone model and combined mark. Search spaced/unspaced versions (e.g., `Kessler Vale` / `KesslerVale`), likely spellings and phonetic variants. Short, commonly used model words (for example `Regent`, `Outrider`, `Sovereign`, `Moorland`) deserve especially careful similarity checks, but **these are search-priority hints, not findings of an actual conflict**.
+
+For each jurisdiction, enter the date, classes actually examined, filing ID, owner, legal status and evidence URL. Keep `result=not_checked` until a reviewer conducts a real search; then use `needs_review`, `potential_conflict` or `screened_no_obvious_match` only with supporting records. `screened_no_obvious_match` is not a legal clearance determination. WIPO's aggregated database does **not** replace checking applicable national and regional registries.
+
+Commercial-release gate: obtain a documented professional review of names in intended sale markets, separate checks for the game title and character/vehicle appearance, and re-run searches shortly before publication. No legal conclusion is expressed by the template.
