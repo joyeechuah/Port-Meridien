@@ -153,6 +153,96 @@ test.describe("pedestrians", () => {
     expect(r.seconds).toBeLessThan(14);
   });
 
+  // A car standing on the stripes blocks the crossing, whoever's it is; a car on the move counts by where it is
+  // going, not just how near it is
+  test("a car standing on a crossing, or coming fast or in reverse, keeps it closed; one driving away doesn't", async ({ game }) => {
+    await inTown(game);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        e = T.PED_EDGES.find((c) => c.cross),
+        mx = (e.a.x + e.b.x) / 2,
+        mz = (e.a.z + e.b.z) / 2,
+        // along the street the crossing spans (across the stripes is along e; the street runs at right angles)
+        ux = -(e.b.z - e.a.z) / e.len,
+        uz = (e.b.x - e.a.x) / e.len,
+        t = T.TRAFFIC[0],
+        out = {},
+        park = (x, z) => {
+          P.x = x;
+          P.z = z;
+          P.vx = P.vz = 0;
+        },
+        away = () => park(mx + 300, mz + 300);
+      away();
+      out.empty = T.pedClear(e);
+      // a traffic car stopped on the stripes, waiting
+      t.e = T.EDGES.find((ed) => ed.type === "town");
+      t.wx = mx;
+      t.wz = mz;
+      t.v = 0;
+      t.yaw = Math.atan2(ux, uz);
+      out.trafficStopped = T.pedClear(e);
+      t.e = null;
+      t.wx = t.wz = 1e6;
+      // your car parked across it
+      park(mx + ux * 1.5, mz + uz * 1.5);
+      out.yoursParked = T.pedClear(e);
+      // you're on foot and the car you left is on it
+      away();
+      T.LEFT.push({ id: "golf", x: mx - ux, z: mz - uz, h: 0, damage: 0 });
+      out.leftOnIt = T.pedClear(e);
+      T.LEFT.length = 0;
+      // 70 m off, at 20 m/s towards it: outside the old 24 m circle, and there in 3.5 s
+      park(mx - ux * 70, mz - uz * 70);
+      P.vx = ux * 20;
+      P.vz = uz * 20;
+      out.fast = T.pedClear(e);
+      // 40 m off, reversing towards it at 8 m/s (the car faces away; it is the motion that counts)
+      park(mx - ux * 40, mz - uz * 40);
+      P.h = Math.atan2(-ux, -uz);
+      P.vx = ux * 8;
+      P.vz = uz * 8;
+      out.reversing = T.pedClear(e);
+      // 30 m off and driving away at 20 m/s
+      park(mx + ux * 30, mz + uz * 30);
+      P.vx = ux * 20;
+      P.vz = uz * 20;
+      out.leaving = T.pedClear(e);
+      // parked beside the crossing at the kerb, not on the stripes
+      park(mx + ux * 8, mz + uz * 8);
+      out.besideIt = T.pedClear(e);
+      away();
+      return out;
+    });
+    expect(r).toEqual({ empty: true, trafficStopped: false, yoursParked: false, leftOnIt: false, fast: false, reversing: false, leaving: true, besideIt: true });
+  });
+
+  test("someone kept waiting by a car parked on the crossing gives up and walks on", async ({ game }) => {
+    await inTown(game);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        p = T.PEDS[0],
+        e = T.PED_EDGES.find((c) => c.cross);
+      p.e = e;
+      p.from = e.a;
+      p.s = 0;
+      p.st = "wait";
+      p.t = 0;
+      P.x = (e.a.x + e.b.x) / 2;
+      P.z = (e.a.z + e.b.z) / 2;
+      P.vx = P.vz = 0;
+      const seen = new Set();
+      for (let i = 0; i < 60 * 12; i++) {
+        T.pedUpdate(1 / 60);
+        seen.add(p.st);
+      }
+      return { crossed: seen.has("cross"), st: p.st, onCrossing: p.e.cross };
+    });
+    expect(r).toEqual({ crossed: false, st: "walk", onCrossing: false });
+  });
+
   test("traffic stops for someone on a crossing", async ({ game }) => {
     await inTown(game);
     const r = await game.eval(() => {

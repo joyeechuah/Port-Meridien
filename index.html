@@ -6282,11 +6282,24 @@ function pedSpot(p){
   const e=p.e,a=p.from,b=a===e.a?e.b:e.a,k=clamp(p.s/e.len,0,1);
   return[a.x+(b.x-a.x)*k+e.inx*p.o,a.z+(b.z-a.z)*k+e.inz*p.o,Math.atan2(b.x-a.x,b.z-a.z)];
 }
-// no car moving on or towards a crossing: it is safe to step out
+// whether it is safe to step out onto a crossing: no car standing on it (moving or not: traffic waiting there, your
+// car, one you left), none close by and moving, and none heading for it from further off. "Heading for it" follows
+// the car's actual motion, so a car reversing towards the crossing counts and one driving away doesn't. Traffic
+// stops for someone crossing, so it only needs its stopping distance; your car doesn't, so it gets about 5 s
 function pedClear(e){
-  const mx=(e.a.x+e.b.x)/2,mz=(e.a.z+e.b.z)/2;
-  for(const t of TRAFFIC)if(t.e&&t.v>.8&&Math.hypot(t.wx-mx,t.wz-mz)<24)return false;
-  if(!FOOT.on&&!BOAT.on&&Math.hypot(P.vx,P.vz)>1.5&&Math.hypot(P.x-mx,P.z-mz)<26)return false;
+  const ax=e.a.x,az=e.a.z,bx=e.b.x-ax,bz=e.b.z-az,L2=bx*bx+bz*bz,mx=ax+bx/2,mz=az+bz/2,half=e.len/2+2.6;
+  const risk=(x,z,vx,vz,yields)=>{
+    const k=clamp(((x-ax)*bx+(z-az)*bz)/L2,0,1);
+    if(Math.hypot(ax+bx*k-x,az+bz*k-z)<3.6)return true;   // on the stripes: half a car's length plus half the zebra
+    const v=Math.hypot(vx,vz);if(v<.5)return false;
+    const dx=mx-x,dz=mz-z;if(Math.hypot(dx,dz)<24)return true;
+    const ux=vx/v,uz=vz/v,along=dx*ux+dz*uz,side=Math.abs(dx*-uz+dz*ux);
+    return along>0&&side<half&&along<(yields?v*v/14+12:Math.min(120,v*5+10));
+  };
+  for(const t of TRAFFIC)if(t.e&&risk(t.wx,t.wz,Math.sin(t.yaw)*t.v,Math.cos(t.yaw)*t.v,true))return false;
+  // your car, wherever you are: driving it, or standing where you left it
+  if(risk(P.x,P.z,FOOT.on||BOAT.on?0:P.vx,FOOT.on||BOAT.on?0:P.vz,false))return false;
+  for(const l of LEFT)if(risk(l.x,l.z,0,0,false))return false;
   return true;
 }
 // the next stretch from the corner a person has reached: mostly on round the block, sometimes across the street
@@ -6313,7 +6326,7 @@ function pedUpdate(dt){
     let danger=driving&&psp>2.5&&Math.hypot(P.x-p.x,P.z-p.z)<4+psp*.9&&((p.x-P.x)*P.vx+(p.z-P.z)*P.vz)/psp>0&&Math.abs((p.x-P.x)*-P.vz+(p.z-P.z)*P.vx)/psp<2.2;
     if(p.st==="walk"||p.st==="cross"){
       want=PED_V.walk*p.pace;
-      // someone standing in the way just ahead (you on foot, or another walker): wait for them
+      // you, on foot, standing in the way just ahead: wait for you (other walkers pass through each other for now)
       const fx=Math.sin(p.h),fz=Math.cos(p.h);
       const ahead=(X,Z)=>{const dx=X-p.x,dz=Z-p.z,a=dx*fx+dz*fz;return a>0&&a<1.1&&Math.abs(dx*-fz+dz*fx)<.55};
       if(FOOT.on&&ahead(FOOT.x,FOOT.z))want=0;
