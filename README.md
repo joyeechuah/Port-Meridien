@@ -27,12 +27,12 @@ Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an in
 | --- | --- | --- | --- |
 | Gas / brake, reverse | `W` / `S` (or arrows) | GAS / BRAKE pads | Triggers |
 | Steer | `A` / `D` (or arrows) | Steering pads, or tilt | Left stick |
-| Handbrake | `Space` | HANDBRAKE pad | Shoulder button |
+| Handbrake | `Space` | HANDBRAKE pad | `A` |
 | Get out | `F` | GET OUT | `B` |
-| Get in, board, step off, enter | `E` or `F` | Tap the prompt | `X` |
+| Get in, board, step off, enter | `E`, `Enter` or `F` | Tap the prompt | `X` |
 | Map and GPS | `M` | MAP | View / Back |
 | Camera | `C` | CAM | `Y` |
-| Look behind | Hold `B` | REAR | |
+| Look behind | Hold `B` | REAR | Hold left shoulder |
 | Photo Mode | `V` | PHOTO | |
 | Back to the road | `R` | Pause menu | |
 | Pause | `Esc` or `P` | PAUSE | Menu / Start |
@@ -43,7 +43,7 @@ On foot and on the boat the same controls walk and sail: see below.
 
 Stop the car and get out. Gas walks forward, brake steps back, steering turns, and `Shift` or the handbrake runs. Walk back to the car and get in. Traffic stops for you if you stand in the road. The car you got out of falls silent while you're away from it.
 
-On foot you can also take any traffic car that has stopped: stand in its lane so it stops, walk to it and get in. The car you came from stays where you left it, and you can walk back and drive it again (up to three cars stay standing). A taken car isn't yours: it is not saved, and it's gone when you go home.
+On foot you can also take any traffic car that has stopped: stand in its lane so it stops, walk to it and get in. The car you came from stays where you left it, and you can walk back and drive it again. Up to three taken cars stay where you left them. A taken car isn't yours: it is not saved, and it's gone when you go home.
 
 ## The harbour and the boat
 
@@ -84,7 +84,7 @@ You can walk or drive into the market, the square, the garden and the lanes.
 | 4 | Weapons, health, arrest, and one setting for how violence is shown | Planned |
 | Later | The full city as its own world, with the island kept as a second place to drive | Planned |
 
-Not yet tested on a real phone. Tell us how it runs on yours with **SEND FEEDBACK** in the pause menu.
+Not yet tested on a real phone.
 
 ## Development
 
