@@ -116,6 +116,10 @@ body.touch #lhint{display:none}
 .xp i{display:block;height:100%;width:0;background:#fff}
 .loc{display:flex;gap:10px;align-items:baseline;background:var(--panel);padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.2em}
 .loc .num{font-size:15px;letter-spacing:.04em;color:var(--mute)}
+#wanted{display:flex;gap:4px;align-items:center;background:var(--panel);padding:4px 10px;border-radius:4px;font-size:17px;line-height:1;width:max-content}
+#wanted i{font-style:normal;color:rgba(255,255,255,.22)}#wanted i.on{color:#f2b33d;text-shadow:0 0 6px rgba(242,179,61,.6)}
+#wanted.lost i.on{animation:wantedBlink .8s steps(2,start) infinite}
+@keyframes wantedBlink{to{opacity:.25}}
 #streak{position:absolute;top:calc(16px + var(--st));left:50%;transform:translateX(-50%);text-align:center;min-width:220px;transition:opacity .25s}
 #streak.off{opacity:0}
 #streak .lab{font-size:11px;font-weight:700;letter-spacing:.35em;color:var(--acc);text-shadow:0 1px 2px #000,0 2px 8px #000}
@@ -439,6 +443,7 @@ body.touch #phExit kbd{display:none}
     <button type="button" id="damageHud" class="hide" aria-label="Vehicle damage. Tap to see repair options.">DAMAGE 0% · REPAIR</button>
     <div class="lvl"><span>LEVEL <b id="lvv">1</b></span><div class="xp"><i id="xpf"></i></div></div>
     <div class="loc"><span id="zone">OLD QUAY</span><span class="num" id="clock">16:30</span></div>
+    <div id="wanted" class="hide" aria-live="polite"></div>
   </div>
   <div id="tdPill" class="pill hide">TEST DRIVE <b class="num" id="tdT">1:30</b></div>
   <div id="streak" class="off"><div class="lab" id="frLab">STREAK</div><div class="pts"><b id="frPts">0</b><span id="frMul">x1.0</span></div><div class="bar"><i id="frBar"></i></div></div>
@@ -3475,7 +3480,7 @@ function showDamageSmoke(model,damage,dt=0){
   smoke.scale.setScalar(.6+age*.45+damage*.004);
 }
 function collidePlayer(){
-  const fx=Math.sin(P.h),fz=Math.cos(P.h);let impact=0;
+  const fx=Math.sin(P.h),fz=Math.cos(P.h);let impact=0;const pvx=P.vx,pvz=P.vz;
   let touch=false,cn=null;
   // push out of the obstacle; the speed into it bounces back a little, and the speed
   // along it is only trimmed by friction, so the car slides along a wall or guardrail
@@ -3502,7 +3507,7 @@ function collidePlayer(){
       else boxHit(cx,cz,r,o.x,o.z,o.hx,o.hz,o.cs,o.sn);
     });
     for(const t of TRAFFIC){if(Math.abs(t.wx-cx)>7||Math.abs(t.wz-cz)>7)continue;
-      if(boxHit(cx,cz,r,t.wx,t.wz,.95,t.c.len,Math.cos(t.yaw),Math.sin(t.yaw),t))t.hitT=1.5}
+      if(boxHit(cx,cz,r,t.wx,t.wz,.95,t.c.len,Math.cos(t.yaw),Math.sin(t.yaw),t)){t.hitT=1.5;copBump(t,Math.hypot(pvx-Math.sin(t.yaw)*t.v,pvz-Math.cos(t.yaw)*t.v))}}
     for(const l of LEFT)if(Math.abs(l.x-cx)<7&&Math.abs(l.z-cz)<7)boxHit(cx,cz,r,l.x,l.z,.95,2.3,Math.cos(l.h),Math.sin(l.h));
     if(ev)for(const a of ev.ai){if(Math.abs(a.x-cx)>7||Math.abs(a.z-cz)>7)continue;
       if(boxHit(cx,cz,r,a.x,a.z,1.0,2.3,Math.cos(a.yaw),Math.sin(a.yaw),a))a.lat+=Math.sign(a.lat-P.lat||1)*.05}
@@ -3599,7 +3604,7 @@ function junction(t,node,over){
 function updateTraffic(dt){
   bubbleT-=dt;const bubble=bubbleT<=0;if(bubble)bubbleT=.5;
   if(bubble){townN=0;const cf=new V3();camera.getWorldDirection(cf);
-    for(const t of TRAFFIC){if(!nearTown(t))continue;
+    for(const t of TRAFFIC){if(t.chase||!nearTown(t))continue;
       const dx=t.wx-P.x,dz=t.wz-P.z,d=Math.hypot(dx,dz);
       // one too many, and out of the camera's view (it never vanishes in front of you): it reappears somewhere else.
       // One in view stays until it leaves the view, so the cap is a target rather than a hard limit
@@ -3608,6 +3613,7 @@ function updateTraffic(dt){
   const pf=fwdOf(P.h),kph=kphNow();
   for(const t of TRAFFIC){
     if(!t.e){if(bubble&&t.lost)t.lost=!spawnTraffic(t,220,560,true);continue}
+    if(t.chase){copDrive(t,dt);continue}
     tickDamage(t,dt);
     let target=t.base*damagePower(t);
     if(t.stopT>0){t.stopT-=dt;target=0}
@@ -3679,8 +3685,10 @@ function updateTraffic(dt){
     if(d<14){const along=dpx*pf.x+dpz*pf.z,side=Math.abs(dpx*-pf.z+dpz*pf.x);
       if(t.pa!==null&&((t.pa>0&&along<=0)||(t.pa<0&&along>=0))&&side>2.05&&side<4.2&&kph>70&&t.hitT<=0&&P.hitT<=0)streakAction("NEAR MISS",Math.round(150+kph*1.6),true);
       t.pa=along}else t.pa=null;
+    if(t.cop&&t.offDuty&&bubble&&d>140){const cf=new V3();camera.getWorldDirection(cf);if((dpx*cf.x+dpz*cf.z)/d<.2){copStandDown(t);continue}}
     if(bubble&&d>720)spawnTraffic(t,220,560,true);
   }
+  copUpdate(dt);
   pedUpdate(dt);
 }
 
@@ -4021,6 +4029,7 @@ function showResult(){
 }
 let resNext=null;
 function openIntro(E,cup){
+  if(WANTED.lvl){wantedBlock();return}
   const rows=[["Distance",(E.route.len/1000).toFixed(1)+" km"]],G=cup&&E.type==="tt"?cupTimes(E,cup.cls):E;
   if(E.type==="tt")rows.push(["Gold / silver / bronze",fmtT(G.gold)+" / "+fmtT(G.silver)+" / "+fmtT(G.bronze)]);else rows.push(["Opponents",cup?"3 rivals in "+cup.cls+" cars":"3 rivals in cars near your class"]);
   if(cup)rows.push(["Cup points",E.type==="race"?"10 / 6 / 4 / 3 for 1st to 4th":"10 / 6 / 4 / 3 for gold to no medal"]);
@@ -4203,7 +4212,9 @@ function drawMini(){
   c.globalAlpha=.78;c.imageSmoothingEnabled=true;c.drawImage(mapImg,-MAPX,-MAPX,MAPX*2,MAPX*2);c.globalAlpha=1;
   strokeRoads(c,sc,3);
   const route=ev?ev.R:gps.route;if(route)drawRoute(c,route,sc,"#f2b33d",5);
-  for(const t of TRAFFIC)if(t.c.G.visible)dotAt(c,t.wx,t.wz,2,"rgba(255,255,255,.6)",sc);
+  for(const t of TRAFFIC)if(t.c.G.visible&&!t.cop)dotAt(c,t.wx,t.wz,2,"rgba(255,255,255,.6)",sc);
+  // the police, on top: blue on patrol, flashing red and blue when they're after you
+  for(const t of TRAFFIC)if(t.cop&&t.e&&(t.c.G.visible||t.chase))dotAt(c,t.wx,t.wz,3.4,t.chase?(copClock%.5<.25?"#e2483d":"#3d7bf2"):"#3d7bf2",sc,true);
   if(ev)for(const a of ev.ai)dotAt(c,a.x,a.z,3.6,"#e2483d",sc,true);
   const hm=gW(0,-8);
   // icons stay upright: undo the map rotation around each one
@@ -4271,7 +4282,7 @@ function openMapPopup(sx,sy){
   const b=document.createElement("b");b.textContent=best.name;const sp=document.createElement("span");sp.textContent=best.desc;pop.append(b,sp);
   if(job){const n=document.createElement("span");n.className="note";n.textContent="The GPS is following your contract.";pop.append(n)}
   else{const g=document.createElement("button");g.className="mbtn pri";g.textContent="SET GPS";g.onclick=()=>{setGPS(best.x,best.z,best.name);pop.classList.add("hide")};pop.append(g)}
-  if(best.act&&!ev&&!testDrive&&!job){const t=document.createElement("button");t.className="mbtn";t.textContent="TRAVEL THERE";t.onclick=()=>{pop.classList.add("hide");fastTravel(best)};pop.append(t)}
+  if(best.act&&!ev&&!testDrive&&!job&&!WANTED.lvl){const t=document.createElement("button");t.className="mbtn";t.textContent="TRAVEL THERE";t.onclick=()=>{pop.classList.add("hide");fastTravel(best)};pop.append(t)}
   pop.style.left=Math.max(8,Math.min(innerWidth-236,sx+12))+"px";pop.style.top=Math.max(8,Math.min(innerHeight-170,sy+12))+"px";pop.classList.remove("hide");
 }
 function mapPopNote(sx,sy,text){const pop=$("mapPop");pop.innerHTML="";const n=document.createElement("span");n.className="note";n.textContent=text;pop.append(n);
@@ -4853,7 +4864,7 @@ function jobMarker(on){
 }
 function jobAim(){const t=jobTarget();setGPS(t.x,t.z,t.name,true);jobMarker(true);jobHUD()}
 // can a contract start now? the reason if not
-function jobBlocked(){if(job)return "Finish or abandon your current contract first";if(ev)return "Not during a race";if(testDrive)return "Not during a test drive";return ""}
+function jobBlocked(){if(WANTED.lvl)return "Lose the police first";if(job)return "Finish or abandon your current contract first";if(ev)return "Not during a race";if(testDrive)return "Not during a test drive";return ""}
 function jobStart(J){
   if(!J||jobBlocked()||(state!=="DRIVE"&&state!=="PAUSE"))return false;
   // a free-ride streak in progress is paid out now (streaks don't score during a contract, as in a race)
@@ -5391,7 +5402,7 @@ function exitSeq(dt){
     P.ty=surfH(p.x,p.z);P.y=P.ty;camYaw=h;
     setState("DRIVE");hudOn(true);updateMoney();
     $("keys").style.opacity=1;setTimeout(()=>$("keys").style.opacity=0,10000);
-    for(const t of TRAFFIC)spawnTraffic(t,60,600,false);
+    for(const t of TRAFFIC)if(!t.cop||t.patrol)spawnTraffic(t,60,600,false);   // police cars beyond the two patrols wait until they are called
     toast("FREE RIDE",isTouch?"Explore Port Meridien. Tap MAP to plan a route.":"Explore Port Meridien. Press M for the map.");
     while(jobNotices.length){const[t,s]=jobNotices.shift();toast(t,s,"bad")}
   }
@@ -5490,6 +5501,8 @@ function updatePrompt(){
       for(const E of EVENTS)c.push({x:E.x,z:E.z,r:14,t:(E.type==="tt"?"Time trial: ":"Race: ")+E.name+(job?" · after your contract":""),a:()=>{if(job)toast("FINISH YOUR CONTRACT FIRST","Or abandon it in the pause menu to race","bad");else openIntro(E)}});
     }
     for(const o of c){const d=Math.hypot(P.x-o.x,P.z-o.z);if(d<o.r&&d<bd){bd=d;best=o}}
+    // the police are after you: nowhere to hide indoors, and no racing
+    if(best&&WANTED.lvl&&!testDrive)best={t:"Lose the police first",a:wantedBlock};
   }
   promptAct=best?best.a:null;show("prompt",!!best);if(best)$("promptTxt").textContent=best.t;
 }
@@ -5567,7 +5580,7 @@ function syncPause(){$("pAssist").textContent="DRIVING ASSIST: "+(save.assist?"O
 $("pRes").onclick=pauseOff;
 $("pMap").onclick=()=>{show("pause",false);setState("DRIVE");openMap()};
 $("pQuit").onclick=()=>{if(testDrive){endTestDrive();return}if(ev&&ev.fin){pauseOff();showResult();return}endEvent();pauseOff();toast("EVENT CANCELLED","Back to free ride")};
-$("pHome").onclick=()=>{show("pause",false);goGarage(false)};
+$("pHome").onclick=()=>{if(WANTED.lvl){wantedBlock();return}show("pause",false);goGarage(false)};
 $("pTime").onclick=()=>{save.todMode=(save.todMode+1)%TODS.length;CAR_ENV.dirty=true;if(TODS[save.todMode][1]!==null)save.tod=TODS[save.todMode][1];syncPause();persist()};
 $("pAuto").onclick=()=>{save.auto=!save.auto;syncPause();persist()};
 const GFX=["AUTO","SHARP","SMOOTH"];
@@ -6091,7 +6104,7 @@ function driveCar(id,x,z,h,damage){
 }
 // a traffic car that has stopped beside you: it becomes a car you drive, and its place in traffic is filled elsewhere
 function takeTraffic(t){
-  if(!FOOT.on||!t.e||t.v>1.5)return false;
+  if(!FOOT.on||!t.e||t.v>1.5||t.cop)return false;
   leaveCar();
   // a free made-up id: there is always one (at most three taken cars stand, plus the one you came from), and if
   // there somehow isn't, nothing is taken rather than a car being made under no id
@@ -6103,6 +6116,7 @@ function takeTraffic(t){
   showDamageSmoke(t.c,0);t.damage=t.damageT=0;t.e=null;t.c.G.visible=false;t.wx=t.wz=1e6;t.v=0;t.lost=true;
   driveCar(id,x,z,h,dmg);
   toast("NOT YOUR CAR",carById(id).mk+" "+carById(id).md+" · it stays out here when you go home");
+  crime("take",x,z);
   return true;
 }
 // a car you left standing: you drive it again, and the one you came from stays where it is
@@ -6121,7 +6135,7 @@ function footTarget(){
   const see=(x,z,o)=>{const d=Math.hypot(FOOT.x-x,FOOT.z-z);if(d<=bd){bd=d;best=o}};
   see(P.x,P.z,{t:"Get in · "+carById(curId).mk+" "+carById(curId).md,a:footEnter});
   for(const l of LEFT)see(l.x,l.z,{t:"Get in · "+carById(l.id).mk+" "+carById(l.id).md,a:()=>takeLeft(l)});
-  for(const t of TRAFFIC)if(t.e&&t.v<=1.5)see(t.wx,t.wz,{t:"Take this car",a:()=>takeTraffic(t)});
+  for(const t of TRAFFIC)if(t.e&&t.v<=1.5&&!t.cop)see(t.wx,t.wz,{t:"Take this car",a:()=>takeTraffic(t)});
   if(BOAT.m&&onPier(FOOT.x,FOOT.z))see(BOAT.x,BOAT.z,{t:"Board the boat",a:boatBoard});
   return best;
 }
@@ -6215,6 +6229,193 @@ function footUpdate(dt){
   audioUpd(0,0,0,0,0,0,0,0);
   FOOT.hudT-=dt;if(FOOT.hudT<=0){FOOT.hudT=.4;$("zone").textContent=zoneAt(FOOT.x,FOOT.z);hudClock()}
   placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
+}
+/* ================================================================ POLICE
+   Two patrol cars drive with the traffic. Commit a crime where one of them can see it and you are wanted: one star,
+   or two for ramming a police car, and one more for each further crime. The crimes: crashing into a car, running
+   into someone on foot, taking a car, speeding past a patrol, and hitting a police car. While you are wanted, police
+   cars chase you along the roads (more of them the more stars you have) and the house, the dealership, races,
+   contracts and map travel are closed to you. Stay out of their reach long enough and they lose you; let one pull up
+   beside you while you're stopped and you're caught: a fine, and the stars are gone. Arrest, health and weapons
+   come later (roadmap step 4). Nothing here is saved: a reload clears it. */
+const COP_V={patrol:2,pool:isTouch?4:5,see:90,reach:110,caught:8,caughtT:2.5,top:31,acc:6.5,brake:13,speedKph:110,speedNear:45,
+  stars:[0,1,2,3,4,4],fine:500};
+const WANTED={lvl:0,evadeT:0,seen:true,last:{x:0,z:0},caughtT:0,crimeAt:-99,why:""};
+let copClock=0,copNavT=0,COPNAV=null,sirenAU=null;
+const copsChasing=()=>TRAFFIC.filter(t=>t.chase&&t.e);
+function initCops(){
+  for(let i=0;i<COP_V.pool;i++){
+    const c=buildTrafficCar(0xf1f2f4,"sedan"),G=c.G,y=TPROF.sedan.b.reduce((m,q)=>Math.max(m,q[1]),0);
+    // a blue band along each side, a black bonnet line, and a light bar on the roof (red on the left, blue on the right)
+    const band=new THREE.MeshLambertMaterial({color:0x1d4fa8}),red=new THREE.MeshBasicMaterial({color:0x4a1010}),blue=new THREE.MeshBasicMaterial({color:0x10204a});
+    for(const sx of[-1,1]){const b=new THREE.Mesh(GEO.box,band);b.scale.set(.05,.2,3.6);b.position.set(sx*.93,.68,0);G.add(b)}
+    const bar=new THREE.Mesh(GEO.box,new THREE.MeshLambertMaterial({color:0x22262b}));bar.scale.set(1.15,.1,.3);bar.position.set(0,y+.05,-.25);G.add(bar);
+    for(const[sx,m]of[[-.3,red],[.3,blue]]){const l=new THREE.Mesh(GEO.box,m);l.scale.set(.5,.13,.24);l.position.set(sx,y+.15,-.25);G.add(l)}
+    G.visible=false;scene.add(G);
+    TRAFFIC.push({c,col:0xf1f2f4,shape:"sedan",e:null,lost:i<COP_V.patrol,dir:1,s:0,lane:0,off:0,offCur:0,base:0,v:0,stopT:0,hitT:0,waitT:0,passT:0,pa:null,
+      wx:1e6,wz:1e6,yaw:0,cop:true,patrol:i<COP_V.patrol,chase:false,offDuty:false,lights:[red,blue]});
+  }
+}
+// a car out of service: off the road and out of sight until it is called on
+function copStandDown(t){t.chase=false;t.offDuty=false;t.e=null;t.lost=!!t.patrol;t.c.G.visible=false;t.wx=t.wz=1e6;t.v=0}
+const copSees=(x,z)=>TRAFFIC.some(t=>t.cop&&t.e&&Math.hypot(t.wx-x,t.wz-z)<COP_V.see);
+const wantedBlock=()=>toast("LOSE THE POLICE FIRST","They're still after you: get out of their reach for a while","bad");
+const CRIME={crash:["Crashed into a car in front of the police",1],ped:["Ran into someone in front of the police",1],take:["Took a car in front of the police",1],
+  speed:["Speeding past the police",1],cop:["Hit a police car",2]};
+// a crime at (x,z): it counts only where a police car can see it, never during a race or a test drive, and at most
+// one star every 4 s (a crash is several contacts in a row). In tests the police look away unless a test asks
+function crime(kind,x,z){
+  if(window.__noCrime||ev||testDrive)return false;
+  if(!copSees(x,z))return false;
+  if(copClock-WANTED.crimeAt<4)return false;
+  const[why,base]=CRIME[kind],lvl=WANTED.lvl?Math.min(5,WANTED.lvl+1):base;
+  WANTED.crimeAt=copClock;if(lvl===WANTED.lvl)return false;
+  const first=!WANTED.lvl;WANTED.lvl=lvl;WANTED.why=why;WANTED.evadeT=0;WANTED.seen=true;const me=copMe();WANTED.last={x:me.x,z:me.z};
+  toast(first?"WANTED":"MORE POLICE",why+(first?" · get out of their reach to lose them":" · "+"★".repeat(lvl)),"bad");
+  copDispatch();wantedHud();return true;
+}
+// you hit a car: a crash if it was hard enough (a nudge isn't), a worse one if it was the police
+function copBump(t,rel){
+  if(rel<4||copClock-(t.bumpAt||-9)<2)return;t.bumpAt=copClock;
+  crime(t.cop?"cop":"crash",t.wx,t.wz);
+}
+const copMe=()=>BOAT.on?BOAT:FOOT.on?FOOT:P;
+// as many police cars after you as your stars call for: the nearest patrol first, then cars from out of sight
+function copDispatch(){
+  const me=copMe(),want=COP_V.stars[WANTED.lvl];let have=copsChasing().length;
+  const free=TRAFFIC.filter(t=>t.cop&&!t.chase).sort((a,b)=>(a.e?Math.hypot(a.wx-me.x,a.wz-me.z):1e9)-(b.e?Math.hypot(b.wx-me.x,b.wz-me.z):1e9));
+  for(const t of free){if(have>=want)break;
+    if(!t.e||Math.hypot(t.wx-me.x,t.wz-me.z)>400){if(!copPlace(t,170,340))continue}
+    t.chase=true;t.offDuty=false;t.passT=0;have++}
+  COPNAV=null;copNavT=0;
+}
+// a police car put on a road 170 to 340 m away, out of the camera's view, on no other car
+function copPlace(t,dmin,dmax){
+  const me=copMe(),cf=new V3();camera.getWorldDirection(cf);
+  for(let k=0;k<80;k++){
+    const e=pickEdge(),s=Math.random()*e.len,p=edgePos(e,s),dx=p.x-me.x,dz=p.z-me.z,d=Math.hypot(dx,dz);
+    if(d<dmin||d>dmax||(dx*cf.x+dz*cf.z)/d>.2)continue;
+    if(TRAFFIC.some(o=>o!==t&&o.e&&Math.abs(o.wx-p.x)<14&&Math.abs(o.wz-p.z)<14))continue;
+    t.e=e;t.s=s;t.dir=Math.random()<.5?1:-1;t.lost=false;t.lane=0;setLane(t);t.v=8;t.offCur=t.off;
+    const ux=p.dx*t.dir,uz=p.dz*t.dir;t.wx=p.x-uz*t.off;t.wz=p.z+ux*t.off;t.yaw=Math.atan2(ux,uz);return true;
+  }
+  return false;
+}
+// how far it is along the roads from every junction to where the police are heading (you, or where you were last seen)
+function copNav(){
+  const W=WANTED,me=copMe(),tx=W.seen?me.x:W.last.x,tz=W.seen?me.z:W.last.z,nr=nearestRoad(tx,tz,70)||nearestRoadGlobal(tx,tz,false);
+  const dist=new Map();if(!nr)return null;
+  const Q=[[nr.s,nr.e.a],[nr.e.len-nr.s,nr.e.b]];for(const[d,n]of Q)if(!dist.has(n)||d<dist.get(n))dist.set(n,d);
+  // a plain search: the island has a few hundred junctions, worked out at most twice a second
+  const open=[...dist.entries()];
+  while(open.length){let bi=0;for(let i=1;i<open.length;i++)if(open[i][1]<open[bi][1])bi=i;const[n,d]=open.splice(bi,1)[0];if(d>dist.get(n))continue;
+    for(const a of n.adj){const o=a.end==="a"?a.e.b:a.e.a,nd=d+a.e.len;if(!dist.has(o)||nd<dist.get(o)){dist.set(o,nd);open.push([o,nd])}}}
+  return{dist,e:nr.e,s:nr.s,x:tx,z:tz,off:nr.d};
+}
+// the road a chasing car takes from a junction: the one that gets it nearest, soonest
+function copPick(t,node){
+  let best=null,bc=1e18;
+  for(const a of node.adj){if(a.e===t.e&&node.adj.length>1)continue;
+    const c=a.e===COPNAV.e?(a.end==="a"?COPNAV.s:a.e.len-COPNAV.s):a.e.len+(COPNAV.dist.get(a.end==="a"?a.e.b:a.e.a)??1e9);
+    if(c<bc){bc=c;best=a}}
+  return best;
+}
+// a chasing police car: along the roads at up to about 110 km/h, round the slower traffic, straight at you once it is
+// on your road, and it stops beside you
+function copDrive(t,dt){
+  if(!COPNAV){t.v=Math.max(0,t.v-COP_V.brake*dt);return copPose(t,dt)}
+  tickDamage(t,dt);t.hitT-=dt;
+  const N=COPNAV,end=t.dir>0?t.e.b:t.e.a,back=t.dir>0?t.e.a:t.e.b,dEnd=t.dir>0?t.e.len-t.s:t.s;
+  const top=Math.min(COP_V.top,RT[t.e.type].spd*2.1)*damagePower(t);let target=top,offT=t.off;
+  if(t.e===N.e){
+    // on the same road as you: head your way and pull up a few metres short
+    const want=N.s>t.s?1:-1,gap=Math.abs(N.s-t.s);
+    if(want!==t.dir){if(t.v<7){t.dir=want;t.offCur=-t.offCur;t.off=-t.off}else target=0}
+    else{target=Math.min(top,Math.sqrt(2*7*Math.max(0,gap-6)));
+      if(gap<30){const q=edgePos(t.e,t.s),ux=q.dx*t.dir,uz=q.dz*t.dir,me=copMe();offT=clamp((me.x-q.x)*-uz+(me.z-q.z)*ux,-t.e.half+1,t.e.half-1)}}
+  }else{
+    // the way it is facing against turning round: a U-turn if the other way is clearly shorter
+    const ahead=dEnd+(N.dist.get(end)??1e9),behind=(t.e.len-dEnd)+(N.dist.get(back)??1e9);
+    if(behind+40<ahead){if(t.v<7){t.dir=-t.dir;t.s=clamp(t.s,0,t.e.len);t.offCur=-t.offCur;t.off=-t.off}else target=0}
+    else{const a=copPick(t,end);
+      if(a){const p0=edgePos(t.e,t.dir>0?t.e.len:0),q=edgePos(a.e,a.end==="a"?0:a.e.len),inx=p0.dx*t.dir,inz=p0.dz*t.dir,od=a.end==="a"?1:-1,
+          turn=Math.acos(clamp(inx*q.dx*od+inz*q.dz*od,-1,1));
+        // slows for a corner: about 13 m/s through a right angle
+        if(turn>.35)target=Math.min(target,Math.sqrt(13*13+2*8*Math.max(0,dEnd-4)))}}
+  }
+  // slower traffic in its lane ahead: round it on the other side of the road, or slow behind it if both are full
+  {const p=edgePos(t.e,t.s),tx=p.dx*t.dir,tz=p.dz*t.dir;let blocked=false,other=false;
+    for(const o of TRAFFIC){if(o===t||!o.e)continue;const ox=o.wx-t.wx,oz=o.wz-t.wz;if(Math.abs(ox)>24||Math.abs(oz)>24)continue;
+      const gap=ox*tx+oz*tz,side=ox*-tz+oz*tx;if(gap<=0||gap>22)continue;
+      if(Math.abs(side-(offT-t.offCur))<1.8)blocked=true;if(Math.abs(side-(-offT-t.offCur))<1.8)other=true}
+    if(blocked){if(!other)offT=-offT;else target=Math.min(target,4)}}
+  t.offCur+=clamp(offT-t.offCur,-3.5*dt,3.5*dt);
+  t.v+=clamp(target-t.v,-COP_V.brake*dt,COP_V.acc*dt);
+  t.s+=t.v*dt*t.dir;
+  if(t.s>t.e.len||t.s<0){const node=t.s>t.e.len?t.e.b:t.e.a,over=t.s>t.e.len?t.s-t.e.len:-t.s,a=copPick(t,node);
+    if(!a){t.dir=-t.dir;t.s=clamp(t.s,0,t.e.len);t.offCur=-t.offCur}
+    else{t.e=a.e;if(a.end==="a"){t.dir=1;t.s=Math.min(over,t.e.len)}else{t.dir=-1;t.s=Math.max(0,t.e.len-over)}
+      const ln=RT[t.e.type].lanes;t.lane=0;t.off=ln[0]*SIDE()}}
+  copPose(t,dt);
+}
+// where a chasing car stands and how it is drawn (as updateTraffic does for the others)
+function copPose(t,dt){
+  const q=edgePos(t.e,t.s),ux=q.dx*t.dir,uz=q.dz*t.dir,me=copMe();
+  t.wx=q.x-uz*t.offCur;t.wz=q.z+ux*t.offCur;t.yaw=Math.atan2(ux,uz);
+  const d=Math.hypot(t.wx-me.x,t.wz-me.z);t.c.G.visible=d<560;
+  if(t.c.G.visible){const yF=edgeY(t.e,t.s+1.3*t.dir),yB=edgeY(t.e,t.s-1.3*t.dir);t.c.G.position.set(t.wx,(yF+yB)/2+YO,t.wz);t.c.G.rotation.set(-Math.atan((yF-yB)/2.6),t.yaw,0,"YXZ");showDamageSmoke(t.c,t.damage||0,dt)}
+}
+function copUpdate(dt){
+  copClock+=dt;const W=WANTED,me=copMe(),driving=!FOOT.on&&!BOAT.on;
+  // speeding past a patrol, when you aren't wanted already
+  if(!W.lvl&&driving&&kphNow()>COP_V.speedKph&&TRAFFIC.some(t=>t.cop&&t.e&&Math.hypot(t.wx-P.x,t.wz-P.z)<COP_V.speedNear))crime("speed",P.x,P.z);
+  // the light bars: flashing red and blue on a chase, dark otherwise
+  const ph=copClock%.5<.25;
+  for(const t of TRAFFIC)if(t.cop){t.lights[0].color.setHex(t.chase&&ph?0xff2a2a:0x4a1010);t.lights[1].color.setHex(t.chase&&!ph?0x2a6bff:0x10204a)}
+  copSiren(dt);
+  if(!W.lvl)return;
+  // twice a second: the way to you, and more cars if your stars call for them (a placement can fail: no road out of sight)
+  copNavT-=dt;if(copNavT<=0||!COPNAV){copNavT=.5;if(copsChasing().length<COP_V.stars[W.lvl])copDispatch();COPNAV=copNav()}
+  const ch=copsChasing();
+  let near=1e9;for(const t of ch)near=Math.min(near,Math.hypot(t.wx-me.x,t.wz-me.z));
+  // in reach of one of them: they know where you are. Out of reach, they head for where you were last seen
+  W.seen=near<COP_V.reach;
+  if(W.seen){W.evadeT=0;W.last={x:me.x,z:me.z}}
+  else{W.evadeT+=dt;if(W.evadeT>=copLoseT()){copClear();toast("LOST THEM","The police have stopped looking for you","gold");return}}
+  // caught: one beside you while you're stopped (or on foot); the boat is out of their reach
+  const still=BOAT.on?false:FOOT.on?true:Math.hypot(P.vx,P.vz)<2;
+  if(still&&near<COP_V.caught)W.caughtT+=dt;else W.caughtT=Math.max(0,W.caughtT-dt);
+  if(W.caughtT>=COP_V.caughtT){copCaught();return}
+  // one that has fallen far behind is brought back nearer, out of sight
+  for(const t of ch)if(Math.hypot(t.wx-me.x,t.wz-me.z)>700&&!t.c.G.visible)copPlace(t,200,360);
+  wantedHud();
+}
+// how long out of reach it takes to lose them: longer with more stars
+const copLoseT=()=>6+3*WANTED.lvl;
+function copClear(){
+  const W=WANTED;W.lvl=0;W.evadeT=0;W.caughtT=0;W.seen=true;COPNAV=null;
+  // patrol cars go back to patrolling where they are; the others drive off and are stood down once out of sight
+  for(const t of TRAFFIC)if(t.cop&&t.chase){t.chase=false;if(t.e){t.lane=0;setLane(t);t.v=Math.min(t.v,t.base);t.offDuty=!t.patrol}}
+  wantedHud();
+}
+function copCaught(){
+  const fine=Math.min(save.cr,COP_V.fine*WANTED.lvl);
+  save.cr-=fine;persist();updateMoney();copClear();
+  toast("CAUGHT",fine?"Fined "+fmtCr(fine)+" CR. Drive carefully near the police":"No fine: you have no credits","bad");
+}
+function wantedHud(){
+  const el=$("wanted"),W=WANTED;show("wanted",!!W.lvl);if(!W.lvl)return;
+  const key=W.lvl+(W.seen?"":"l");if(el.dataset.k===key)return;el.dataset.k=key;
+  el.innerHTML="";for(let i=1;i<=5;i++){const s=document.createElement("i");s.textContent="★";if(i<=W.lvl)s.className="on";el.append(s)}
+  el.classList.toggle("lost",!W.seen);el.setAttribute("aria-label","Wanted: "+W.lvl+" of 5 stars"+(W.seen?"":", out of their reach"));
+}
+// a two-tone siren from the nearest chasing car, louder as it comes closer
+function copSiren(dt){
+  if(!AU)return;
+  if(!sirenAU){const o=AC.createOscillator(),g=AC.createGain();o.type="triangle";o.frequency.value=700;g.gain.value=0;o.connect(g);g.connect(AU.master);o.start();sirenAU={o,g}}
+  const me=copMe();let d=1e9;for(const t of TRAFFIC)if(t.chase&&t.e)d=Math.min(d,Math.hypot(t.wx-me.x,t.wz-me.z));
+  const now=AC.currentTime,v=save.sound?clamp(1-d/320,0,1)*.045:0;
+  sirenAU.g.gain.setTargetAtTime(v,now,.15);sirenAU.o.frequency.setTargetAtTime(copClock%1.2<.6?660:880,now,.04);
 }
 /* ================================================================ PEDESTRIANS
    People walking in Old Quay: round the blocks on the pavements, across the streets on the zebra crossings when no car is
@@ -6344,6 +6545,9 @@ function pedUpdate(dt){
     p.s+=p.v*dt;
     if(p.s>=e.len)pedNext(p,p.from===e.a?e.b:e.a);
     const[sx,sz,sh]=pedSpot(p);
+    // your car running into someone: they stagger and stand a while, and it is a crime if the police see it
+    if(driving&&psp>3&&copClock-(p.hitAt||-9)>3){const dx=sx-P.x,dz=sz-P.z,cs=Math.cos(P.h),sn=Math.sin(P.h);
+      if(Math.abs(dx*cs-dz*sn)<1.25&&Math.abs(dx*sn+dz*cs)<2.6){p.hitAt=copClock;p.st="idle";p.t=4;p.v=0;crime("ped",sx,sz)}}
     // never inside a wall, a post or a car: whatever is there pushes them out, as it does you
     const c=footClear(sx,sz);p.x=c[0];p.z=c[1];
     p.h+=wrapA(sh-p.h)*Math.min(1,dt*8);p.y=footGround(p.x,p.z);
@@ -6548,7 +6752,7 @@ const STEPS=[
   ["Building the harbour",buildHarbour],
   ["Waking the town",buildPeds],
   ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildJobs()}],
-  ["Filling the roads",()=>{initTraffic();buildMapImage()}],
+  ["Filling the roads",()=>{initTraffic();initCops();buildMapImage()}],
   ["Parking your cars",()=>{parkAll(null);carLights()}],
   // The first time a surface is drawn, its picture is sent to the graphics card and its program is built. Left
   // alone, that all lands on the frame the garage door opens. Done here, it is part of the loading bar instead
