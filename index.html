@@ -3657,8 +3657,11 @@ function updateTraffic(dt){
       if(inWay){if(slow){t.waitT+=dt;if(t.waitT>2){t.waitT=0;t.passT=4.5}}}
       else t.waitT=Math.max(0,t.waitT-dt)}
     // someone on foot in its way: it stops short and waits (it doesn't pull out round a person)
-    if(FOOT.on){const wx=FOOT.x-t.wx,wz=FOOT.z-t.wz,wa=wx*tx+wz*tz;
-      if(wa>0&&wa<Math.max(14,7+t.v*t.v/14)&&Math.abs(wx*-tz+wz*tx)<1.9){target=Math.min(target,wa<7?0:Math.sqrt(14*(wa-7)));if(wa<9)close=true}}
+    // (you, or someone crossing the street in town)
+    {const stopFor=(X,Z)=>{const wx=X-t.wx,wz=Z-t.wz,wa=wx*tx+wz*tz;
+        if(wa>0&&wa<Math.max(14,7+t.v*t.v/14)&&Math.abs(wx*-tz+wz*tx)<1.9){target=Math.min(target,wa<7?0:Math.sqrt(14*(wa-7)));if(wa<9)close=true}};
+      if(FOOT.on)stopFor(FOOT.x,FOOT.z);
+      if(pedOn)for(const p of PEDS)if(p.st==="cross")stopFor(p.x,p.z)}
     const ln=RT[t.e.type].lanes,offT=t.passT>0?(ln.length>1&&t.lane===0?ln[1]:-ln[0])*SIDE():t.off;
     t.offCur+=clamp(offT-t.offCur,-2.2*dt,2.2*dt);
     t.v+=clamp(target-t.v,-(close?20:9)*dt,3*dt);
@@ -3678,6 +3681,7 @@ function updateTraffic(dt){
       t.pa=along}else t.pa=null;
     if(bubble&&d>720)spawnTraffic(t,220,560,true);
   }
+  pedUpdate(dt);
 }
 
 /* ================================================================ STREAK
@@ -6212,6 +6216,144 @@ function footUpdate(dt){
   FOOT.hudT-=dt;if(FOOT.hudT<=0){FOOT.hudT=.4;$("zone").textContent=zoneAt(FOOT.x,FOOT.z);hudClock()}
   placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
 }
+/* ================================================================ PEDESTRIANS
+   People walking in Old Quay: round the blocks on the pavements, across the streets on the zebra crossings when no car is
+   coming, standing a while now and then. They are scenery with manners, nothing more yet: a car can't hurt them
+   (they hurry out of its way and are never left inside it), and traffic stops for one who is crossing. They are
+   only worked out while you are near the town. */
+const PED_V={walk:1.35,hurry:3.3,r:.3,line:6.3,cap:isTouch?6:10,near:420,see:260};
+const PEDS=[],PED_NODES=[],PED_EDGES=[];let pedOn=false;
+// the avenue's centre line where it passes the blocks (it curves; the other streets are straight)
+const avenueZ=x=>{const A=[[560,40],[640,38],[720,36],[800,32]];for(let i=1;i<A.length;i++)if(x<=A[i][0]||i===A.length-1){const[a,b]=[A[i-1],A[i]];return a[1]+(b[1]-a[1])*clamp((x-a[0])/(b[0]-a[0]),0,1)}};
+// one shape per kind of limb and body for each mix of clothes, shared by everyone dressed that way
+const PED_LOOKS=[],PED_MAT=new THREE.MeshLambertMaterial({vertexColors:true});
+function pedLook(k){
+  if(PED_LOOKS[k])return PED_LOOKS[k];
+  const top=[0xb8452f,0x3d6b78,0xd8b23a,0x5a7a4a,0x7a5a8a,0xe9e2d2,0x2f4a6b][k%7],legs=[0x3b4658,0x6b5a45,0x2a2f33,0x8a8f96][k%4],
+    skin=[0xc49a7a,0x8d5a3c,0xe0b89a,0x6b4a34][(k*3+1)%4],hair=[0x2a1d16,0x151210,0x6b4a2a,0x8a8a86][(k*5+2)%4],shoe=0x2a2320;
+  const ball=new THREE.SphereGeometry(1,10,8),cap=new THREE.SphereGeometry(1,10,8,0,TAU,0,Math.PI*.55),cyl=(a,b,l)=>new THREE.CylinderGeometry(a,b,l,8);
+  const body=merge([{g:ball,m:mat(0,.93,0,0,.185,.13,.125),c:legs},{g:new THREE.CylinderGeometry(.2,.15,.5,10),m:mat(0,1.2,0,0,1,1,.62),c:top},
+    {g:ball,m:mat(0,1.44,0,0,.2,.07,.12),c:top},{g:cyl(.048,.055,.1),m:mat(0,1.52,0),c:skin},{g:ball,m:mat(0,1.655,.005,0,.098,.118,.108),c:skin},
+    {g:cap,m:mat(0,1.668,-.012,0,.106,.118,.116),c:hair}]);
+  // a leg and an arm, each hanging from its joint at the origin
+  const leg=merge([{g:cyl(.095,.072,.44),m:mat(0,-.22,0),c:legs},{g:cyl(.07,.052,.42),m:mat(0,-.64,0),c:legs},{g:ball,m:mat(0,-.865,.05,0,.058,.048,.135),c:shoe}]);
+  const arm=merge([{g:cyl(.058,.048,.29),m:mat(0,-.145,0),c:top},{g:cyl(.046,.038,.25),m:mat(0,-.415,0),c:top},{g:ball,m:mat(0,-.575,.005,0,.036,.048,.03),c:skin}]);
+  return PED_LOOKS[k]={body,leg,arm};
+}
+function pedModel(k,h){
+  const L=pedLook(k),G=new THREE.Group(),legs=[],arms=[];
+  const b=new THREE.Mesh(L.body,PED_MAT);b.castShadow=true;G.add(b);
+  for(const s of[-1,1]){const l=new THREE.Mesh(L.leg,PED_MAT);l.position.set(s*.1,.92,0);G.add(l);legs.push(l);
+    const a=new THREE.Mesh(L.arm,PED_MAT);a.position.set(s*.225,1.425,0);a.rotation.z=s*.07;G.add(a);arms.push(a)}
+  G.scale.setScalar(h);G.visible=false;scene.add(G);return{G,legs,arms};
+}
+function buildPeds(){
+  const xs=[560,620,690,760],o=PED_V.line,B=[];
+  const node=(x,z)=>{const n={x,z,adj:[]};PED_NODES.push(n);return n};
+  // in: the unit direction from the pavement into the block (away from the road), for stepping aside. Crossings have none
+  const link=(a,b,cross,inx=0,inz=0)=>{const e={a,b,cross,len:Math.hypot(b.x-a.x,b.z-a.z),inx,inz};a.adj.push(e);b.adj.push(e);PED_EDGES.push(e)};
+  // how far from a junction's middle its zebra crossings are painted (see buildRoadMeshes: 0.8 m clear of the
+  // junction, 3 m wide)
+  const zebra=(x,z)=>{let b=null,bd=1e9;for(const n of NODES){const d=Math.hypot(n.x-x,n.z-z);if(d<bd){bd=d;b=n}}return(b.r||6)+2.3};
+  const chain=(ns,inx,inz)=>{for(let k=1;k<ns.length;k++)link(ns[k-1],ns[k],false,inx,inz)};
+  for(let i=0;i<3;i++){B[i]=[];for(let j=0;j<2;j++){
+    const xa=xs[i],xb=xs[i+1],x0=xa+o,x1=xb-o,zT=x=>j?avenueZ(x):-120,zB=x=>j?190:avenueZ(x);
+    // the four corners, and on each side the two places where a zebra crossing meets this pavement
+    const nw=node(x0,zT(x0)+o),ne=node(x1,zT(x1)+o),se=node(x1,zB(x1)-o),sw=node(x0,zB(x0)-o);
+    const top=x=>node(x,zT(x)+o),bot=x=>node(x,zB(x)-o);
+    const N1=top(xa+zebra(xa,zT(xa))),N2=top(xb-zebra(xb,zT(xb))),S1=bot(xa+zebra(xa,zB(xa))),S2=bot(xb-zebra(xb,zB(xb))),
+      W1=node(x0,zT(xa)+zebra(xa,zT(xa))),W2=node(x0,zB(xa)-zebra(xa,zB(xa))),E1=node(x1,zT(xb)+zebra(xb,zT(xb))),E2=node(x1,zB(xb)-zebra(xb,zB(xb)));
+    chain([nw,N1,N2,ne],0,1);chain([ne,E1,E2,se],-1,0);chain([se,S2,S1,sw],0,-1);chain([sw,W2,W1,nw],1,0);
+    B[i][j]={N1,N2,S1,S2,W1,W2,E1,E2}}}
+  // on the zebra crossings: over the side streets between neighbouring blocks, and over the avenue
+  for(let i=0;i<2;i++)for(let j=0;j<2;j++){link(B[i][j].E1,B[i+1][j].W1,true);link(B[i][j].E2,B[i+1][j].W2,true)}
+  for(let i=0;i<3;i++){link(B[i][0].S1,B[i][1].N1,true);link(B[i][0].S2,B[i][1].N2,true)}
+  const walks=PED_EDGES.filter(e=>!e.cross);
+  for(let i=0;i<PED_V.cap;i++){
+    const e=walks[Math.floor(rnd(i,31)*walks.length)],fwd=rnd(i,32)<.5;
+    PEDS.push({e,from:fwd?e.a:e.b,s:rnd(i,33)*e.len,v:0,st:"walk",t:0,off:(rnd(i,34)-.5)*1.1,o:0,ph:rnd(i,35)*TAU,h:0,x:0,z:0,y:0,
+      seed:1+Math.floor(rnd(i,36)*1e6),pace:.85+rnd(i,37)*.35,m:pedModel(i,.94+rnd(i,38)*.12)});
+  }
+}
+// each person's own run of chances: the same every time the game is loaded, so what they do can be tested
+const pedRnd=p=>{p.seed=(p.seed*16807+11)%2147483647;return p.seed/2147483647};
+// where a person is on their stretch of pavement or crossing, before anything pushes them aside
+function pedSpot(p){
+  const e=p.e,a=p.from,b=a===e.a?e.b:e.a,k=clamp(p.s/e.len,0,1);
+  return[a.x+(b.x-a.x)*k+e.inx*p.o,a.z+(b.z-a.z)*k+e.inz*p.o,Math.atan2(b.x-a.x,b.z-a.z)];
+}
+// whether it is safe to step out onto a crossing: no car standing on it (moving or not: traffic waiting there, your
+// car, one you left), none close by and moving, and none heading for it from further off. "Heading for it" follows
+// the car's actual motion, so a car reversing towards the crossing counts and one driving away doesn't. Traffic
+// stops for someone crossing, so it only needs its stopping distance; your car doesn't, so it gets about 5 s
+function pedClear(e){
+  const ax=e.a.x,az=e.a.z,bx=e.b.x-ax,bz=e.b.z-az,L2=bx*bx+bz*bz,mx=ax+bx/2,mz=az+bz/2,half=e.len/2+2.6;
+  const risk=(x,z,vx,vz,yields)=>{
+    const k=clamp(((x-ax)*bx+(z-az)*bz)/L2,0,1);
+    if(Math.hypot(ax+bx*k-x,az+bz*k-z)<3.6)return true;   // on the stripes: half a car's length plus half the zebra
+    const v=Math.hypot(vx,vz);if(v<.5)return false;
+    const dx=mx-x,dz=mz-z;if(Math.hypot(dx,dz)<24)return true;
+    const ux=vx/v,uz=vz/v,along=dx*ux+dz*uz,side=Math.abs(dx*-uz+dz*ux);
+    return along>0&&side<half&&along<(yields?v*v/14+12:Math.min(120,v*5+10));
+  };
+  for(const t of TRAFFIC)if(t.e&&risk(t.wx,t.wz,Math.sin(t.yaw)*t.v,Math.cos(t.yaw)*t.v,true))return false;
+  // your car, wherever you are: driving it, or standing where you left it
+  if(risk(P.x,P.z,FOOT.on||BOAT.on?0:P.vx,FOOT.on||BOAT.on?0:P.vz,false))return false;
+  for(const l of LEFT)if(risk(l.x,l.z,0,0,false))return false;
+  return true;
+}
+// the next stretch from the corner a person has reached: mostly on round the block, sometimes across the street
+function pedNext(p,node){
+  const walk=node.adj.filter(e=>!e.cross&&e!==p.e),cross=node.adj.filter(e=>e.cross&&e!==p.e);
+  let e;
+  if(p.e.cross)e=walk[Math.floor(pedRnd(p)*walk.length)];              // just crossed: carry on along a pavement
+  else if(cross.length&&pedRnd(p)<.3)e=cross[Math.floor(pedRnd(p)*cross.length)];
+  else e=walk[0];
+  p.e=e;p.from=node;p.s=0;
+  if(e.cross){p.st="wait";p.t=0}
+  else if(pedRnd(p)<.15){p.st="idle";p.t=2+pedRnd(p)*5}
+  else p.st="walk";
+}
+function pedUpdate(dt){
+  if(!PEDS.length)return;
+  const me=BOAT.on?BOAT:FOOT.on?FOOT:P,on=Math.hypot(me.x-660,me.z-36)<PED_V.near;
+  if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)p.m.G.visible=false}
+  if(!on)return;
+  const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
+  for(const p of PEDS){
+    const e=p.e;let want=0,hurry=false;
+    // a car coming at them (yours, or traffic): step in towards the buildings, or hurry off the crossing
+    let danger=driving&&psp>2.5&&Math.hypot(P.x-p.x,P.z-p.z)<4+psp*.9&&((p.x-P.x)*P.vx+(p.z-P.z)*P.vz)/psp>0&&Math.abs((p.x-P.x)*-P.vz+(p.z-P.z)*P.vx)/psp<2.2;
+    if(p.st==="walk"||p.st==="cross"){
+      want=PED_V.walk*p.pace;
+      // you, on foot, standing in the way just ahead: wait for you (other walkers pass through each other for now)
+      const fx=Math.sin(p.h),fz=Math.cos(p.h);
+      const ahead=(X,Z)=>{const dx=X-p.x,dz=Z-p.z,a=dx*fx+dz*fz;return a>0&&a<1.1&&Math.abs(dx*-fz+dz*fx)<.55};
+      if(FOOT.on&&ahead(FOOT.x,FOOT.z))want=0;
+      if(p.st==="cross"&&(danger||p.t>0)){hurry=true;want=PED_V.hurry}
+    }
+    if(p.st==="wait"){p.t+=dt;
+      if(pedClear(e)){p.st="cross";p.t=0}
+      else if(p.t>10){   // tired of waiting: back along the pavement instead
+        const walk=p.from.adj.filter(a=>!a.cross);p.e=walk[Math.floor(pedRnd(p)*walk.length)];p.s=0;p.st="walk"}
+    }else if(p.st==="idle"){p.t-=dt;if(p.t<=0)p.st="walk"}
+    else if(p.st==="cross"&&danger)p.t=1;   // keeps hurrying to the far side once startled
+    // on the pavement, step aside from a car and drift back afterwards
+    p.o+=clamp((!e.cross&&danger?2.1:p.off)-p.o,-1.2*dt,(danger?4:1.2)*dt);
+    p.v+=clamp(want-p.v,-8*dt,(hurry?9:3)*dt);
+    p.s+=p.v*dt;
+    if(p.s>=e.len)pedNext(p,p.from===e.a?e.b:e.a);
+    const[sx,sz,sh]=pedSpot(p);
+    // never inside a wall, a post or a car: whatever is there pushes them out, as it does you
+    const c=footClear(sx,sz);p.x=c[0];p.z=c[1];
+    p.h+=wrapA(sh-p.h)*Math.min(1,dt*8);p.y=footGround(p.x,p.z);
+    const G=p.m.G,vis=Math.hypot(p.x-me.x,p.z-me.z)<PED_V.see;G.visible=vis;
+    if(vis){p.ph+=p.v*dt*3.3;if(p.v<.05)p.ph+=(Math.round(p.ph/Math.PI)*Math.PI-p.ph)*Math.min(1,dt*10);
+      const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
+      G.position.set(p.x,p.y+Math.abs(Math.cos(p.ph))*Math.min(.04,p.v*.012),p.z);G.rotation.y=p.h;
+      p.m.legs[0].rotation.x=sw;p.m.legs[1].rotation.x=-sw;p.m.arms[0].rotation.x=-sw*.7;p.m.arms[1].rotation.x=sw*.7}
+  }
+}
 /* ================================================================ HARBOUR + BOAT */
 // A pier on the east coast, out from the town, and a motorboat moored beside it. Walk onto the pier and board; the
 // driving controls sail (gas, brake for reverse, steering). Back beside the pier, step off. The game stays in the
@@ -6404,6 +6546,7 @@ const STEPS=[
   ["Opening your house",buildHouse],
   ["Stocking the dealership",buildDealer],
   ["Building the harbour",buildHarbour],
+  ["Waking the town",buildPeds],
   ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildJobs()}],
   ["Filling the roads",()=>{initTraffic();buildMapImage()}],
   ["Parking your cars",()=>{parkAll(null);carLights()}],
