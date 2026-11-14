@@ -218,7 +218,8 @@ test.describe("pedestrians", () => {
         z0 = p.z,
         dz = Math.sign(e.b.z - e.a.z);
       // along the pavement straight at them from 20 m, at 8 m/s
-      let minD = 1e9;
+      let minD = 1e9,
+        aside = 0;
       for (let i = 0; i < 60 * 5; i++) {
         P.x = x0;
         P.z = z0 - dz * (20 - (i / 60) * 8);
@@ -230,11 +231,14 @@ test.describe("pedestrians", () => {
         const lx = Math.abs(p.x - P.x),
           lz = Math.abs(p.z - P.z);
         if (lz < 2.3) minD = Math.min(minD, lx);
+        aside = Math.max(aside, p.x - x0);
       }
-      return { minD, aside: p.x - x0 };
+      return { minD, aside, back: p.x - x0 };
     });
     expect(r.minD).toBeGreaterThan(0.95);
     expect(r.aside).toBeGreaterThan(0.8);
+    // and drifts back to their line once it has passed
+    expect(Math.abs(r.back)).toBeLessThan(0.5);
   });
 
   test("away from the town they are hidden and not worked out", async ({ game }) => {
