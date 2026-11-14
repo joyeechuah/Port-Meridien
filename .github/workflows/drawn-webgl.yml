@@ -1,0 +1,59 @@
+# Explicitly run the rendered browser tests on a chosen branch.
+# Unlike the quick logic checks, these tests use SwiftShader to draw real WebGL.
+# GitHub Actions -> Drawn browser tests (WebGL) -> Run workflow -> choose branch.
+name: Drawn browser tests (WebGL)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: drawn-webgl-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  webgl:
+    name: Playwright rendered (SwiftShader)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out selected branch
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install Chromium and required system libraries
+        run: npx playwright install --with-deps chromium
+
+      - name: Show exact rendered tests selected
+        run: npx playwright test --project=webgl --list
+
+      # playwright.config.js routes titles tagged @webgl to the webgl project,
+      # with real drawing and SwiftShader (--use-angle=swiftshader).
+      # Single worker avoids concurrent software-GPU tests competing for CPU/RAM.
+      - name: Run ALL rendered tests
+        run: npx playwright test --project=webgl --workers=1
+
+      - name: Summarise results
+        if: ${{ !cancelled() }}
+        run: node tests/support/summary.js | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Playwright reports and failure traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: rendered-playwright-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: warn
