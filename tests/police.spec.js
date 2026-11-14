@@ -415,29 +415,39 @@ test.describe("police", () => {
     expect(r.st).toBe("idle");
     expect(r.t).toBeGreaterThan(3);
   });
-  // Off the road the cars can't get beside you: an officer gets out and comes on foot
+  // Off the road the cars can't get beside you: an officer gets out and comes on foot. You get there the way a
+  // player would: out of the car and walking away from the road for 9 s (stopped by any wall on the way)
   const offRoad = (game) =>
     game.eval(() => {
       const T = __T,
-        P = T.P,
+        F = T.FOOT,
         { e, s } = window.__road,
         q = T.edgePos(e, s);
-      // a spot 22 m off the road on open ground, on whichever side has some
       for (const sd of [1, -1]) {
-        const x = q.x - q.dz * 22 * sd,
-          z = q.z + q.dx * 22 * sd,
-          c = T.footClear(x, z);
-        if (Math.hypot(c[0] - x, c[1] - z) < 0.01 && T.footGround(x, z) > 0) return { x, z, sd };
+        const ax = -q.dz * sd,
+          az = q.dx * sd;
+        // from beside the car
+        F.x = q.x + ax * 2;
+        F.z = q.z + az * 2;
+        F.y = T.footGround(F.x, F.z);
+        F.h = Math.atan2(ax, az);
+        F.v = 0;
+        T.keys.w = true;
+        for (let i = 0; i < 60 * 9; i++) T.driveUpdate(1 / 60);
+        T.keys.w = false;
+        for (let i = 0; i < 30; i++) T.driveUpdate(1 / 60);
+        const off = (F.x - q.x) * ax + (F.z - q.z) * az;
+        if (off > 14) return { x: F.x, z: F.z, sd, off };
       }
       return null;
     });
 
   test("on foot off the road, an officer gets out of the car, runs to you and catches you", async ({ game }) => {
     await setup(game);
+    await game.key("f");
     const spot = await offRoad(game);
     expect(spot).not.toBeNull();
     await placeCop(game, 0, 40);
-    await game.key("f");
     const r = await game.eval((spot) => {
       const T = __T,
         F = T.FOOT,
@@ -456,8 +466,9 @@ test.describe("police", () => {
       while (T.WANTED.lvl && n++ < 60 * 40) {
         T.driveUpdate(1 / 60);
         if (O.on) {
+          // (from a moment after they got out: the car was still rolling to a stop)
+          if (out && cop.v > 0.3) carStill = false;
           out = true;
-          if (cop.v > 0.3) carStill = false;
           minD = Math.min(minD, Math.hypot(O.x - F.x, O.z - F.z));
         }
       }
@@ -470,9 +481,10 @@ test.describe("police", () => {
 
   test("you can outrun an officer: they give up, go back to the car, and the chase carries on", async ({ game }) => {
     await setup(game);
-    const spot = await offRoad(game);
-    await placeCop(game, 0, 40);
     await game.key("f");
+    const spot = await offRoad(game);
+    expect(spot).not.toBeNull();
+    await placeCop(game, 0, 40);
     const r = await game.eval((spot) => {
       const T = __T,
         F = T.FOOT,
@@ -489,23 +501,34 @@ test.describe("police", () => {
       let n = 0;
       while (!O.on && n++ < 60 * 20) T.driveUpdate(1 / 60);
       const outAt = n / 60;
-      // then run straight away from the road at full running speed (moved by hand: no tree in the way)
+      // then run straight away from the road at full running speed, moved by hand so that no wall stops you (the
+      // officer still has to go round them)
       const ax = -q.dz * spot.sd,
         az = q.dx * spot.sd;
-      let gaveUp = false,
-        backIn = false;
-      for (let i = 0; i < 60 * 30 && !backIn; i++) {
-        F.x += ax * T.FOOT_V.run / 60;
-        F.z += az * T.FOOT_V.run / 60;
+      let fx = F.x,
+        fz = F.z,
+        gaveUp = false,
+        backIn = false,
+        lvlBackIn = 0,
+        grabbed = false;
+      for (let i = 0; i < 60 * 60 && !backIn; i++) {
+        fx += (ax * T.FOOT_V.run) / 60;
+        fz += (az * T.FOOT_V.run) / 60;
+        F.x = fx;
+        F.z = fz;
         T.driveUpdate(1 / 60);
+        if (O.caughtT > 0) grabbed = true;
         if (O.back) gaveUp = true;
-        if (gaveUp && !O.on) backIn = true;
+        if (gaveUp && !O.on) {
+          backIn = true;
+          lvlBackIn = T.WANTED.lvl;
+        }
       }
-      return { outAt, gaveUp, backIn, lvl: T.WANTED.lvl, chase: cop.chase };
+      return { outAt, gaveUp, backIn, lvlBackIn, grabbed, chase: cop.chase };
     }, spot);
     expect(r.outAt).toBeLessThan(20);
-    expect(r).toMatchObject({ gaveUp: true, backIn: true });
-    // still wanted, or lost by now; never caught
+    expect(r).toMatchObject({ gaveUp: true, backIn: true, grabbed: false });
+    // never caught: by the time they are back in the car the chase carries on, or you are far enough away to lose them
     expect(await toasts(game)).not.toContain("CAUGHT");
   });
 });

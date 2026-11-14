@@ -6244,8 +6244,8 @@ const COP_V={patrol:2,pool:isTouch?4:5,see:90,reach:110,caught:8,caughtT:2.5,top
 const WANTED={lvl:0,evadeT:0,seen:true,last:{x:0,z:0},caughtT:0,crimeAt:-99,why:""};
 let copClock=0,copNavT=0,COPNAV=null,sirenAU=null;
 // an officer on foot: out of a police car that has stopped near you but can't get beside you (you're off the road)
-const OFFICER={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,car:null,back:false,m:null,caughtT:0};
-const OFF_V={run:4.6,walk:1.8,reach:45,giveUp:60,grab:1.4,grabCar:2.9,grabT:1};
+const OFFICER={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,car:null,back:false,m:null,caughtT:0,detA:0,detT:0,detSide:0};
+const OFF_V={run:4.4,walk:3,reach:45,giveUp:48,outT:25,grab:1.4,grabCar:2.9,grabT:1};
 const copsChasing=()=>TRAFFIC.filter(t=>t.chase&&t.e);
 function initCops(){
   for(let i=0;i<COP_V.pool;i++){
@@ -6383,8 +6383,9 @@ function copUpdate(dt){
   copNavT-=dt;if(copNavT<=0||!COPNAV){copNavT=.5;if(copsChasing().length<COP_V.stars[W.lvl])copDispatch();COPNAV=copNav()}
   const ch=copsChasing();
   let near=1e9;for(const t of ch)near=Math.min(near,Math.hypot(t.wx-me.x,t.wz-me.z));
-  // in reach of one of them: they know where you are. Out of reach, they head for where you were last seen
-  W.seen=near<COP_V.reach;
+  // in reach of one of them, or of an officer coming for you on foot: they know where you are. Out of reach, they
+  // head for where you were last seen
+  W.seen=near<COP_V.reach||(OFFICER.on&&!OFFICER.back&&Math.hypot(OFFICER.x-me.x,OFFICER.z-me.z)<COP_V.reach);
   if(W.seen){W.evadeT=0;W.last={x:me.x,z:me.z}}
   else{W.evadeT+=dt;if(W.evadeT>=copLoseT()){copClear();toast("LOST THEM","The police have stopped looking for you","gold");return}}
   // caught: one beside you while you're stopped (or on foot); the boat is out of their reach
@@ -6398,27 +6399,43 @@ function copUpdate(dt){
 }
 // The officer: gets out of a chasing car that has stopped within 45 m of you when it can get no nearer (you're off
 // the road), on foot or sitting still in a car. They run at you (a little slower than you run: you can get away), and
-// you're caught when they reach you, on foot, or reach your door while you sit still. Get back on the move or more
-// than 60 m away and they go back to the car, which then carries on. One officer at a time
+// you're caught when they reach you, on foot, or reach your door while you sit still. Get back on the move, get
+// more than 48 m away, keep away for 25 s, or leave them going round walls for 15 s, and they go back to the car, which then carries on.
+// One officer at a time
 function copOfficer(dt,ch,still){
   const O=OFFICER,me=copMe(),car=O.car;
   if(!O.on){
     if(BOAT.on||!(FOOT.on||still)||!WANTED.seen)return false;
-    const t=ch.find(t=>t.v<1&&t.e&&Math.hypot(t.wx-me.x,t.wz-me.z)>COP_V.caught&&Math.hypot(t.wx-me.x,t.wz-me.z)<OFF_V.reach);
+    const t=ch.find(t=>t.v<.4&&t.e&&copClock-(t.offAt??-99)>12&&Math.hypot(t.wx-me.x,t.wz-me.z)>COP_V.caught&&Math.hypot(t.wx-me.x,t.wz-me.z)<OFF_V.reach);
     if(!t)return false;
     // out of the door on the side nearer you
     const rx=Math.cos(t.yaw),rz=-Math.sin(t.yaw),sd=((me.x-t.wx)*rx+(me.z-t.wz)*rz)>=0?1:-1,c=footClear(t.wx+rx*sd*1.6,t.wz+rz*sd*1.6);
-    Object.assign(O,{on:true,x:c[0],z:c[1],y:footGround(c[0],c[1]),h:t.yaw,v:0,car:t,back:false,caughtT:0});O.m.G.visible=true;
+    Object.assign(O,{on:true,x:c[0],z:c[1],y:footGround(c[0],c[1]),h:t.yaw,v:0,car:t,back:false,caughtT:0,detA:0,detT:0,detSide:0,outT:0});O.m.G.visible=true;
     return false;
   }
   if(!car||!car.e){copOfficerIn();return false}
-  const dMe=Math.hypot(me.x-O.x,me.z-O.z);
-  if(!O.back&&(!WANTED.lvl||BOAT.on||(!FOOT.on&&!still)||dMe>OFF_V.giveUp))O.back=true;
-  else if(O.back&&WANTED.lvl&&(FOOT.on||still)&&!BOAT.on&&dMe<OFF_V.giveUp*.7)O.back=false;
+  const dMe=Math.hypot(me.x-O.x,me.z-O.z);O.outT+=dt;
+  // once they turn back they go all the way to the car; it waits 12 s before sending anyone again
+  if(!O.back&&(!WANTED.lvl||BOAT.on||(!FOOT.on&&!still)||dMe>OFF_V.giveUp||O.detT>15||O.outT>OFF_V.outT)){O.back=true;car.offAt=copClock}
   const tx=O.back?car.wx:me.x,tz=O.back?car.wz:me.z,dx=tx-O.x,dz=tz-O.z,d=Math.hypot(dx,dz);
   if(O.back&&d<1.9){copOfficerIn();return false}
+  // the chase over and you long gone: back in the car without the walk
+  if(O.back&&!WANTED.lvl&&dMe>120){copOfficerIn();return false}
   const want=O.back&&!WANTED.lvl?OFF_V.walk:OFF_V.run;O.v+=clamp(want-O.v,-10*dt,6*dt);
-  if(d>.05){const st=Math.min(d,O.v*dt),c=footClear(O.x+dx/d*st,O.z+dz/d*st);O.x=c[0];O.z=c[1];O.h+=wrapA(Math.atan2(dx,dz)-O.h)*Math.min(1,dt*10)}
+  if(d>.05){
+    // straight for you. A wall or fence in the way: round it, keeping to one side (the side with the way open
+    // nearer the straight line), always taking the heading nearest straight that is open for the next metre and a half.
+    // Straight is taken again as soon as it is open (one that only slid along a dry-stone wall stood there for good)
+    const rot=(a)=>[dx/d*Math.cos(a)-dz/d*Math.sin(a),dx/d*Math.sin(a)+dz/d*Math.cos(a)];
+    const open=(a)=>{const[vx,vz]=rot(a);for(const k of[.45,.9,1.35]){const px=O.x+vx*k,pz=O.z+vz*k,q=footClear(px,pz);if(Math.hypot(q[0]-px,q[1]-pz)>.05)return false}return true};
+    if(d<1.4||open(0))O.detA=0;
+    else{if(!O.detA)O.detSide=0;
+      const sides=O.detSide?[O.detSide]:[1,-1];let best=null;
+      for(const a of[.35,.7,1.05,1.4,1.75,2.1,2.45,2.8]){for(const k of sides)if(open(a*k)){best=a*k;break}if(best!==null)break}
+      if(best===null)best=(O.detSide||1)*2.8;
+      O.detA=best;O.detSide=Math.sign(best);O.detT+=dt}
+    const[ux,uz]=rot(O.detA),st=Math.min(d,O.v*dt),c=footClear(O.x+ux*st,O.z+uz*st);
+    O.x=c[0];O.z=c[1];O.h+=wrapA(Math.atan2(ux,uz)-O.h)*Math.min(1,dt*10)}
   O.y+=(footGround(O.x,O.z)-O.y)*Math.min(1,dt*12);
   O.ph+=O.v*dt*3.3;const sw=Math.sin(O.ph)*Math.min(.9,O.v*.3),G=O.m.G;
   G.position.set(O.x,O.y,O.z);G.rotation.y=O.h;O.m.legs[0].rotation.x=sw;O.m.legs[1].rotation.x=-sw;O.m.arms[0].rotation.x=-sw*.8;O.m.arms[1].rotation.x=sw*.8;
@@ -6436,7 +6453,7 @@ function copClear(){
   const W=WANTED;W.lvl=0;W.evadeT=0;W.caughtT=0;W.seen=true;COPNAV=null;
   // patrol cars go back to patrolling where they are; the others drive off and are stood down once out of sight
   for(const t of TRAFFIC)if(t.cop&&t.chase){t.chase=false;if(t.e){t.lane=0;setLane(t);t.v=Math.min(t.v,t.base);t.offDuty=!t.patrol}}
-  if(OFFICER.on){OFFICER.back=true;if(OFFICER.car)OFFICER.car.stopT=60}
+  if(OFFICER.on){OFFICER.back=true;if(OFFICER.car)OFFICER.car.stopT=1e6}
   wantedHud();
 }
 function copCaught(){
