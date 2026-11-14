@@ -5356,6 +5356,9 @@ document.querySelectorAll("#cuViews [data-v]").forEach(b=>b.onclick=()=>goView(b
 $("cuSpin").onclick=()=>goSpin(!GO.spin);
 $("cuMin").onclick=()=>{const m=$("cust").classList.toggle("mini");$("cuMin").innerHTML=m?"&#9652;":"&#9662;";$("cuMin").setAttribute("aria-pressed",String(m));$("cuMin").setAttribute("aria-label",m?"Make the panel bigger":"Make the panel smaller")};$("cuApply").onclick=()=>custClose(true);$("cuCancel").onclick=()=>custClose(false);
 function goGarage(fromFade){
+  // every way home goes through here, so one check closes them all while the police are after you (the repair
+  // screen's RETURN HOME used to get round the pause menu's)
+  if(WANTED.lvl){wantedBlock();return false}
   const doIt=()=>{
     endEvent();if(testDrive)finishTestDrive(false);streetReset();
     P.damage=P.damageT=0;repairWarnLevel=0;if(pc)showDamageSmoke(pc,0);
@@ -5412,6 +5415,7 @@ function exitSeq(dt){
 /* ================================================================ DEALERSHIP */
 let dSel=0,dAng=0,dPaint=0;
 function openDealer(selId){
+  if(WANTED.lvl){wantedBlock();return}
   setState("DEALER");hudOn(false);show("dealer",true);audioOn(false);
   dSel=selId?CARS.findIndex(c=>c.id===selId):CARS.findIndex(c=>!save.owned.includes(c.id));if(dSel<0)dSel=0;
   const list=$("dList");list.innerHTML="";
@@ -5528,8 +5532,8 @@ function repairPanel(){
   $("repairFill").style.background=damage>=90?"#e2483d":damage>=60?"#f2b33d":"#a4c8b0";
   $("repairDetails").textContent=damage?"Engine power reduced by "+Math.round((1-damagePower(P))*100)+"%. The vehicle remains drivable.":"Your vehicle is fully repaired.";
   $("repairHint").textContent=testDrive?"End this test drive to return to your own vehicle.":"Garage repairs are FREE. Roadside repairs cost 1,000 + 20 credits per damage percentage point.";
-  $("repairHome").disabled=!!testDrive;
-  $("repairHome").textContent=job?"RETURN HOME · END CONTRACT · REPAIR FREE":ev?"RETURN HOME · END RACE · REPAIR FREE":"RETURN HOME · REPAIR FREE";
+  $("repairHome").disabled=!!testDrive||!!WANTED.lvl;
+  $("repairHome").textContent=WANTED.lvl?"RETURN HOME · LOSE THE POLICE FIRST":job?"RETURN HOME · END CONTRACT · REPAIR FREE":ev?"RETURN HOME · END RACE · REPAIR FREE":"RETURN HOME · REPAIR FREE";
   if(blocked)repairConfirm=false;
   $("repairNow").disabled=!!blocked;
   $("repairNow").textContent=repairConfirm?"CONFIRM SPEND "+fmtCr(price)+" CR":"ROADSIDE REPAIR · "+fmtCr(price)+" CR";
@@ -5553,6 +5557,7 @@ function closeRepair(){
 $("damageHud").onclick=openRepair;$("pRepair").onclick=openRepair;$("repairClose").onclick=closeRepair;
 $("repairHome").onclick=()=>{
   if(tabIdle||state!=="PAUSE"||$("repair").classList.contains("hide")||testDrive)return;
+  if(WANTED.lvl){wantedBlock();repairPanel();return}
   repairConfirm=false;show("repair",false);goGarage(false);
 };
 $("repairNow").onclick=()=>{
@@ -5581,7 +5586,7 @@ function syncPause(){$("pAssist").textContent="DRIVING ASSIST: "+(save.assist?"O
 $("pRes").onclick=pauseOff;
 $("pMap").onclick=()=>{show("pause",false);setState("DRIVE");openMap()};
 $("pQuit").onclick=()=>{if(testDrive){endTestDrive();return}if(ev&&ev.fin){pauseOff();showResult();return}endEvent();pauseOff();toast("EVENT CANCELLED","Back to free ride")};
-$("pHome").onclick=()=>{if(WANTED.lvl){wantedBlock();return}show("pause",false);goGarage(false)};
+$("pHome").onclick=()=>{if(WANTED.lvl){wantedBlock();return}show("pause",false);goGarage(false)};   // (goGarage checks too; this keeps the menu open)
 $("pTime").onclick=()=>{save.todMode=(save.todMode+1)%TODS.length;CAR_ENV.dirty=true;if(TODS[save.todMode][1]!==null)save.tod=TODS[save.todMode][1];syncPause();persist()};
 $("pAuto").onclick=()=>{save.auto=!save.auto;syncPause();persist()};
 const GFX=["AUTO","SHARP","SMOOTH"];
@@ -6401,7 +6406,7 @@ function copUpdate(dt){
 // The officer: gets out of a chasing car that has stopped within 45 m of you when it can get no nearer (you're off
 // the road), on foot or sitting still in a car. They run at you (a little slower than you run: you can get away), and
 // you're caught when they reach you, on foot, or reach your door while you sit still. Get back on the move, get
-// more than 48 m away, keep away for 25 s, or leave them going round walls for 15 s, and they go back to the car, which then carries on.
+// more than 48 m away, keep away for 25 s, or leave them going round walls for 15 s on end, and they go back to the car, which then carries on.
 // One officer at a time
 function copOfficer(dt,ch,still){
   const O=OFFICER,me=copMe(),car=O.car;
@@ -6429,7 +6434,7 @@ function copOfficer(dt,ch,still){
     // Straight is taken again as soon as it is open (one that only slid along a dry-stone wall stood there for good)
     const rot=(a)=>[dx/d*Math.cos(a)-dz/d*Math.sin(a),dx/d*Math.sin(a)+dz/d*Math.cos(a)];
     const open=(a)=>{const[vx,vz]=rot(a);for(const k of[.45,.9,1.35]){const px=O.x+vx*k,pz=O.z+vz*k,q=footClear(px,pz);if(Math.hypot(q[0]-px,q[1]-pz)>.05)return false}return true};
-    if(d<1.4||open(0))O.detA=0;
+    if(d<1.4||open(0)){O.detA=0;O.detT=0}
     else{if(!O.detA)O.detSide=0;
       const sides=O.detSide?[O.detSide]:[1,-1];let best=null;
       for(const a of[.35,.7,1.05,1.4,1.75,2.1,2.45,2.8]){for(const k of sides)if(open(a*k)){best=a*k;break}if(best!==null)break}

@@ -289,6 +289,111 @@ test.describe("police", () => {
     expect(await toasts(game)).toContain("LOSE THE POLICE FIRST");
   });
 
+  // Codex's review of #28: the repair screen's RETURN HOME went round the pause menu's check
+  test("while wanted, every way home is closed, the repair screen's included; once clear, they all open again", async ({ game, page }) => {
+    await setup(game);
+    await placeCop(game, 0, 30);
+    await game.eval(() => __T.crime("crash", __T.P.x, __T.P.z));
+    await game.key("Escape");
+    await game.waitState("PAUSE");
+    await page.locator("#pRepair").click();
+    await expect(page.locator("#repair")).toBeVisible();
+    const btn = page.locator("#repairHome");
+    expect(await btn.isDisabled()).toBe(true);
+    expect(await btn.textContent()).toContain("LOSE THE POLICE FIRST");
+    // the handler itself refuses too, and so do the house and the dealer by any other route
+    const r = await game.eval(() => {
+      const T = __T;
+      document.getElementById("repairHome").onclick();
+      const a = T.state;
+      T.goGarage(false);
+      T.goGarage(true);
+      const b = T.state;
+      T.openDealer();
+      return { a, b, c: T.state, lvl: T.WANTED.lvl };
+    });
+    expect(r).toEqual({ a: "PAUSE", b: "PAUSE", c: "PAUSE", lvl: 1 });
+    // cleared: the same button takes you home
+    await game.eval(() => {
+      __T.copClear();
+      __T.repairPanel();
+    });
+    expect(await btn.isDisabled()).toBe(false);
+    await btn.click();
+    await game.waitState("GARAGE");
+  });
+
+  test("once the stars clear, the house, the dealer, races and contracts open again", async ({ game }) => {
+    await setup(game);
+    await placeCop(game, 0, 30);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P;
+      T.crime("crash", P.x, P.z);
+      T.copCaught();
+      const at = (x, z) => {
+        P.x = x;
+        P.z = z;
+        P.vx = P.vz = 0;
+        T.updatePrompt();
+        return document.getElementById("promptTxt").textContent;
+      };
+      const hm = T.gW(0, -8),
+        out = { lvl: T.WANTED.lvl, house: at(hm.x, hm.z), dealer: at(T.DEALER_MARK.x, T.DEALER_MARK.z) };
+      const E = T.EVENTS[0];
+      out.race = at(E.x, E.z);
+      out.job = T.jobBlocked();
+      T.openIntro(E);
+      out.intro = T.state;
+      return out;
+    });
+    expect(r.lvl).toBe(0);
+    expect(r.house).toContain("Enter your house");
+    expect(r.dealer).toContain("Enter Auto Gallery");
+    expect(r.race).not.toContain("Lose the police");
+    expect(r.job).toBe("");
+    expect(r.intro).toBe("INTRO");
+  });
+
+  test("the fine: 500 CR a star, never more than you have, charged once", async ({ game }) => {
+    await setup(game);
+    await placeCop(game, 0, 30);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        W = T.WANTED,
+        out = [];
+      const caughtAt = (stars, cr) => {
+        T.save.cr = cr;
+        W.crimeAt = -99;
+        T.crime("crash", P.x, P.z);
+        while (W.lvl < stars) {
+          W.crimeAt = -99;
+          T.crime("crash", P.x, P.z);
+        }
+        T.copCaught();
+        // nothing more is taken afterwards, however long a police car stays beside you
+        for (let i = 0; i < 300; i++) {
+          P.vx = P.vz = 0;
+          T.driveUpdate(1 / 60);
+        }
+        out.push([stars, cr, cr - T.save.cr, W.lvl]);
+      };
+      caughtAt(3, 10000);
+      caughtAt(5, 10000);
+      caughtAt(3, 700);
+      caughtAt(1, 0);
+      return out;
+    });
+    expect(r).toEqual([
+      [3, 10000, 1500, 0],
+      [5, 10000, 2500, 0],
+      [3, 700, 700, 0],
+      [1, 0, 0, 0],
+    ]);
+    expect(await toasts(game)).toContain("No fine");
+  });
+
   test("taking a car, running into someone, and speeding past a patrol: each is a crime in front of the police", async ({ game }) => {
     await setup(game);
     await placeCop(game, 0, 30);
