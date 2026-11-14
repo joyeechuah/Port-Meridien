@@ -4,7 +4,7 @@
 
 An open-world city game for the browser: walk the streets, take any car, and sail from the harbour. Built with three.js as a single `index.html`, with no install and no build step.
 
-> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running, taking cars, the harbour boat, the Old Quay district and people on its streets are in. The police are being built; weapons come after them. See [What's next](#whats-next) and [ROADMAP.md](ROADMAP.md).
+> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running, taking cars, the harbour boat, the Old Quay district, people on its streets, and the police are in. Weapons come next. See [What's next](#whats-next) and [ROADMAP.md](ROADMAP.md).
 
 Port Meridien is an original game. Its name, city, characters and story are its own.
 
@@ -70,12 +70,33 @@ You can walk or drive into the market, the square, the garden and the lanes.
 
 Up to ten people (six on a phone) walk the pavements round the six blocks. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. A car can't hurt them yet: drive at one and they step in towards the houses, or hurry off the crossing. They're only there while you're near the town.
 
+## The police
+
+Two patrol cars drive with the traffic: white, with a blue band and a light bar, and blue dots on the minimap. A crime one of them sees makes you **wanted**, shown as stars under the district name:
+
+| Crime (seen by a patrol within about 90 m) | Stars |
+| --- | --- |
+| Crashing into a car | 1 |
+| Running into someone on foot | 1 |
+| Taking a car | 1 |
+| Speeding past a patrol (over 110 km/h, within 45 m) | 1 |
+| Hitting a police car | 2 |
+
+Each further crime adds a star, up to five. Nothing counts during a race or a test drive.
+
+While you're wanted, police cars chase you along the roads, more of them the more stars you have, with lights and sirens. Stop and let one pull up beside you, and you're **caught**: a fine of 500 CR a star, and the stars are gone. Off the road, an officer gets out and comes for you on foot. You can outrun them, but not for ever.
+
+Get out of their reach and stay out of it long enough (the stars blink meanwhile) and they **lose you**. The boat is out of their reach.
+
+While you're wanted, your house, the Auto Gallery, races, contracts, going home and map travel are closed: lose the police first. A reload clears a wanted level.
+
 ## What works today
 
 - **Driving:** 24 cars with made-up names, paint and customisation; collision damage and roadside repairs; keyboard, touch pads, tilt and game controllers.
 - **On foot:** walking and running, getting in and out, taking stopped traffic cars, and going back to cars you left.
 - **The boat:** a motorboat from the pier, with its own sound.
 - **The world:** an island with roads, traffic, day and night, a map with GPS, Photo Mode, and the Old Quay district with people walking its streets.
+- **The police:** patrols, a wanted level of one to five stars, chases by car and on foot, fines, and losing them.
 - **Things to do:** races, time trials, championships, delivery contracts, speed radars and an explorer passport of 18 landmarks.
 - **Saves** in the browser. Optional cloud saves are built in but switched off until this game has its own Firebase project (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
 
@@ -83,7 +104,6 @@ Up to ten people (six on a phone) walk the pavements round the six blocks. They 
 
 | Step | What you'll be able to do | State |
 | --- | --- | --- |
-| 3 | Police patrols and a wanted level: crimes they see bring a chase; get caught and you're fined, or lose them | Being built |
 | 4 | Weapons, health, arrest, and one setting for how violence is shown | Planned |
 | Later | The full city as its own world, with the island kept as a second place to drive | Planned |
 
@@ -105,6 +125,7 @@ Run one Playwright instance at a time: the test server uses port 4173 and reads 
 - The game is `index.html` and nothing else. `package.json` holds only test tooling.
 - Every fix or feature comes with a test that fails without it.
 - Tests reach the game's internals through `window.__T`; add a name to the list in `tests/support/instrument.js` when a test needs one.
+- In tests the police ignore crimes unless a test opens the game with `game.open({ police: true })`, so a crash in an unrelated test never starts a chase.
 - `tests/world-baseline.spec.js` guards the roads, races, landmarks and contracts. A change to the world that moves any of them must update `tests/fixtures/world-baseline.json` on purpose (see `tests/fixtures/WORLD_BASELINE_README.md`).
 
 ### Documents
@@ -127,4 +148,4 @@ The game stores your progress in your browser's local storage and nowhere else. 
 
 ## Content
 
-Port Meridien is planned as a mature game: later steps add weapons and police. A setting will control how violence is shown.
+Port Meridien is planned as a mature game: the next step adds weapons. A setting will control how violence is shown.
