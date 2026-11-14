@@ -2,7 +2,7 @@
 Research date: 15 November 2026. This refers specifically to **Google Flow Music**, not older MusicFX or Google Flow video alone. No project music ownership or generation account was inspected here.
 
 ## What the official documentation supports
-- Google’s **Google AI Pro benefits** help page explicitly says the Flow Music **Plus** plan benefit includes **“Commercial use rights.”** This is positive wording relevant to paid-plan generations, but it does **not** by itself prove that each of Port Meridien's three existing `audio/*.mp3` files was made on that eligible tier, or that the right survives all subsequent use/distribution contexts.
+- Google’s official **Google AI Plus benefits** page explicitly says Flow Music’s **Starter** benefit includes **“Commercial use rights.”** Its separate **Google AI Pro** benefits page likewise states Flow Music **Plus** includes commercial use rights, and **Google AI Ultra** documents commercial use for the Member tier. **An AI Plus subscription is not automatically disqualified.** Nevertheless, current plan wording alone does **not** prove that each of Port Meridien's three existing `audio/*.mp3` tracks was generated during eligibility, nor settle all scope, third-party input, copyright or resale questions.
 - Google's Flow Music onboarding pages discuss Free, Starter, Plus and Member access. I could not establish an equally explicit, universal commercial licence for **Free** generations from the reviewed Google sources. Do not assume every tier has the same rights.
 - The broader Google Flow help says Google does not claim ownership of original output. **No-ownership-claim is not equivalent to an exclusive copyright assignment or a guarantee against similarities to protected recordings.** General terms, account plan terms, third-party rights and applicable law still matter.
 
@@ -26,10 +26,12 @@ Research date: 15 November 2026. This refers specifically to **Google Flow Music
 4. Keep a soundtrack manifest separate from the code/asset inventory; record hashes of the actual shipped MP3 files.
 5. Keep the required AI disclosure evidence for Steam's content survey (if using Steam), and avoid claiming automatic copyright exclusivity over purely generated music.
 
-**Outcome:** Google AI Pro help specifically documents Flow Music Plus **commercial use rights**, but Port Meridien's **actual songs remain unverified**. This document does **not** clear them for sale.
+**Outcome:** Google AI Plus (Flow Music Starter), AI Pro (Flow Music Plus) and AI Ultra (Flow Music Member) benefits pages each explicitly list **commercial use rights**. Port Meridien's **actual songs remain unverified**: determine the plan and applicable licence on each generation date, preserve evidence and inspect third-party inputs before a commercial release. Do **not** assert that an AI Plus-generated track cannot be sold solely because the plan is Plus.
 
 ## Official source URLs
+- Google AI Plus benefits: https://support.google.com/googleone/answer/16882689?hl=en
 - Google AI Pro benefits: https://support.google.com/googleone/answer/14534406?hl=en
+- Google AI Ultra benefits: https://support.google.com/googleone/answer/16286513?hl=en
 - Google Flow Music start page: https://support.google.com/flow/answer/17083868
 - Google Flow help on output rights: https://support.google.com/flow/answer/16353333
 - Google general Terms of Service: https://policies.google.com/terms
