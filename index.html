@@ -6211,7 +6211,7 @@ function footUpdate(dt){
   placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
 }
 /* ================================================================ PEDESTRIANS
-   People walking in Old Quay: round the blocks on the pavements, across the streets at the corners when no car is
+   People walking in Old Quay: round the blocks on the pavements, across the streets on the zebra crossings when no car is
    coming, standing a while now and then. They are scenery with manners, nothing more yet: a car can't hurt them
    (they hurry out of its way and are never left inside it), and traffic stops for one who is crossing. They are
    only worked out while you are near the town. */
@@ -6246,13 +6246,22 @@ function buildPeds(){
   const node=(x,z)=>{const n={x,z,adj:[]};PED_NODES.push(n);return n};
   // in: the unit direction from the pavement into the block (away from the road), for stepping aside. Crossings have none
   const link=(a,b,cross,inx=0,inz=0)=>{const e={a,b,cross,len:Math.hypot(b.x-a.x,b.z-a.z),inx,inz};a.adj.push(e);b.adj.push(e);PED_EDGES.push(e)};
+  // how far from a junction's middle its zebra crossings are painted (see buildRoadMeshes: 0.8 m clear of the
+  // junction, 3 m wide)
+  const zebra=(x,z)=>{let b=null,bd=1e9;for(const n of NODES){const d=Math.hypot(n.x-x,n.z-z);if(d<bd){bd=d;b=n}}return(b.r||6)+2.3};
+  const chain=(ns,inx,inz)=>{for(let k=1;k<ns.length;k++)link(ns[k-1],ns[k],false,inx,inz)};
   for(let i=0;i<3;i++){B[i]=[];for(let j=0;j<2;j++){
-    const x0=xs[i]+o,x1=xs[i+1]-o,zt=x=>j?avenueZ(x)+o:-120+o,zb=x=>j?190-o:avenueZ(x)-o;
-    const nw=node(x0,zt(x0)),ne=node(x1,zt(x1)),se=node(x1,zb(x1)),sw=node(x0,zb(x0));
-    link(nw,ne,false,0,1);link(ne,se,false,-1,0);link(se,sw,false,0,-1);link(sw,nw,false,1,0);B[i][j]={nw,ne,se,sw}}}
-  // across the side streets between neighbouring blocks, and across the avenue
-  for(let i=0;i<2;i++)for(let j=0;j<2;j++){link(B[i][j].ne,B[i+1][j].nw,true);link(B[i][j].se,B[i+1][j].sw,true)}
-  for(let i=0;i<3;i++){link(B[i][0].sw,B[i][1].nw,true);link(B[i][0].se,B[i][1].ne,true)}
+    const xa=xs[i],xb=xs[i+1],x0=xa+o,x1=xb-o,zT=x=>j?avenueZ(x):-120,zB=x=>j?190:avenueZ(x);
+    // the four corners, and on each side the two places where a zebra crossing meets this pavement
+    const nw=node(x0,zT(x0)+o),ne=node(x1,zT(x1)+o),se=node(x1,zB(x1)-o),sw=node(x0,zB(x0)-o);
+    const top=x=>node(x,zT(x)+o),bot=x=>node(x,zB(x)-o);
+    const N1=top(xa+zebra(xa,zT(xa))),N2=top(xb-zebra(xb,zT(xb))),S1=bot(xa+zebra(xa,zB(xa))),S2=bot(xb-zebra(xb,zB(xb))),
+      W1=node(x0,zT(xa)+zebra(xa,zT(xa))),W2=node(x0,zB(xa)-zebra(xa,zB(xa))),E1=node(x1,zT(xb)+zebra(xb,zT(xb))),E2=node(x1,zB(xb)-zebra(xb,zB(xb)));
+    chain([nw,N1,N2,ne],0,1);chain([ne,E1,E2,se],-1,0);chain([se,S2,S1,sw],0,-1);chain([sw,W2,W1,nw],1,0);
+    B[i][j]={N1,N2,S1,S2,W1,W2,E1,E2}}}
+  // on the zebra crossings: over the side streets between neighbouring blocks, and over the avenue
+  for(let i=0;i<2;i++)for(let j=0;j<2;j++){link(B[i][j].E1,B[i+1][j].W1,true);link(B[i][j].E2,B[i+1][j].W2,true)}
+  for(let i=0;i<3;i++){link(B[i][0].S1,B[i][1].N1,true);link(B[i][0].S2,B[i][1].N2,true)}
   const walks=PED_EDGES.filter(e=>!e.cross);
   for(let i=0;i<PED_V.cap;i++){
     const e=walks[Math.floor(rnd(i,31)*walks.length)],fwd=rnd(i,32)<.5;
@@ -6279,7 +6288,7 @@ function pedNext(p,node){
   const walk=node.adj.filter(e=>!e.cross&&e!==p.e),cross=node.adj.filter(e=>e.cross&&e!==p.e);
   let e;
   if(p.e.cross)e=walk[Math.floor(pedRnd(p)*walk.length)];              // just crossed: carry on along a pavement
-  else if(cross.length&&pedRnd(p)<.35)e=cross[Math.floor(pedRnd(p)*cross.length)];
+  else if(cross.length&&pedRnd(p)<.3)e=cross[Math.floor(pedRnd(p)*cross.length)];
   else e=walk[0];
   p.e=e;p.from=node;p.s=0;
   if(e.cross){p.st="wait";p.t=0}

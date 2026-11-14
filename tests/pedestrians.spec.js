@@ -26,7 +26,7 @@ async function inTown(game, at = [600, -60]) {
 const ROAD_D = `(x, z) => { let m = 1e9; for (const e of __T.EDGES) { if (e.type !== "town") continue; for (let s = 0; s <= e.len; s += 1) { const p = __T.edgePos(e, s); m = Math.min(m, Math.hypot(p.x - x, p.z - z)); } } return m; }`;
 
 test.describe("pedestrians", () => {
-  test("a pavement route rings each of the six blocks, joined by crossings at the corners", async ({ game }) => {
+  test("a pavement route rings each of the six blocks, joined by crossings where the zebras are painted", async ({ game }) => {
     await inTown(game);
     const r = await game.eval((ROAD_D) => {
       const T = __T,
@@ -59,7 +59,7 @@ test.describe("pedestrians", () => {
         cap: T.PED_V.cap,
       };
     }, ROAD_D);
-    expect(r).toMatchObject({ nodes: 24, walks: 24, cross: 14, adj: [2], blocked: 0 });
+    expect(r).toMatchObject({ nodes: 72, walks: 72, cross: 14, adj: [2], blocked: 0 });
     expect(r.n).toBe(r.cap);
     // on the pavement: beyond the kerb (5.2 m from the centre line) and short of the houses (9 m)
     expect(r.minD).toBeGreaterThan(5.6);
