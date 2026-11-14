@@ -4225,11 +4225,12 @@ function audioInit(){
 function acResume(){if(tabIdle||!AC||AC.state==="running"||AC.state==="closed")return;try{const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
 function audioOn(on){if(!AU)return;if(on)acResume();AU.master.gain.setTargetAtTime(on&&save.sound?1:0,AC.currentTime,.12)}
 // surf: 0 on asphalt, 1 on the gravel verge, 2 on grass and dirt
-function audioUpd(rpm,gear,thr,slip,surf,speed,scrape){if(!AU)return;const t=AC.currentTime,sp=pc&&pc.mods&&pc.mods.exhS?1:0,base=(50+rpm*175+gear*6)*(sp?.88:1);
+// vol: how much of the engine is heard (0 with the engine off, on foot). wash: water along a boat's hull
+function audioUpd(rpm,gear,thr,slip,surf,speed,scrape,vol=1,wash=0){if(!AU)return;const t=AC.currentTime,sp=pc&&pc.mods&&pc.mods.exhS?1:0,base=(50+rpm*175+gear*6)*(sp?.88:1);
   AU.o1.frequency.setTargetAtTime(base,t,.05);AU.o2.frequency.setTargetAtTime(base*.5,t,.05);
-  AU.f.frequency.setTargetAtTime(380+rpm*2400+thr*500+sp*350,t,.08);AU.eg.gain.setTargetAtTime((.02+thr*.035+rpm*.025)*(sp?1.45:1),t,.08);
+  AU.f.frequency.setTargetAtTime(380+rpm*2400+thr*500+sp*350,t,.08);AU.eg.gain.setTargetAtTime((.02+thr*.035+rpm*.025)*(sp?1.45:1)*vol,t,.08);
   AU.sg.gain.setTargetAtTime(surf?0:clamp((slip-2.5)*.012,0,.08),t,.06);
-  AU.rg.gain.setTargetAtTime(surf?Math.min(.24,speed*.008):0,t,.08);
+  AU.rg.gain.setTargetAtTime(surf?Math.min(.24,speed*.008):Math.min(.2,wash*.011),t,.08);
   AU.cg.gain.setTargetAtTime(surf?Math.min(.06,speed*.0022)*(surf===1?1.4:.7):0,t,.08);
   AU.scg.gain.setTargetAtTime(Math.min(.12,(scrape||0)*.12),t,.04)}
 function playBrush(v){if(!AU||!save.sound||state!=="DRIVE")return;const s=AC.createBufferSource();s.buffer=AU.buf;const f=AC.createBiquadFilter();f.type="bandpass";f.frequency.value=700;f.Q.value=.7;const g=AC.createGain();
@@ -4907,6 +4908,7 @@ const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3)
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
 function setState(s){if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on)}
+function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
 
 /* ---------- player car ---------- */
@@ -5896,7 +5898,7 @@ function updateHUD(dt){
   if(camMode===3)drawGauges(kph,gi.rpm*8,gi.g);
   const fr=$("streak");fr.classList.toggle("off",!(FR.pts>0&&!ev));
   if(FR.pts>0){$("frLab").textContent=FR.label;$("frPts").textContent=fmtCr(FR.pts);$("frMul").textContent="x"+FR.mult.toFixed(2).replace(/0$/,"");$("frBar").style.width=clamp(FR.timer/4,0,1)*100+"%"}
-  hudT-=dt;if(hudT<=0){hudT=.4;$("zone").textContent=zoneAt(P.x,P.z);const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m;
+  hudT-=dt;if(hudT<=0){hudT=.4;$("zone").textContent=zoneAt(P.x,P.z);hudClock();
     if(testDrive){const t=Math.max(0,Math.ceil(testDrive.t)),mm=Math.floor(t/60),ss=t%60;$("tdT").textContent=mm+":"+(ss<10?"0":"")+ss}}
   $("mblur").style.opacity=clamp((kph-110)/170,0,1);
   $("vig").style.opacity=.35+Math.min(.4,kph/700);
@@ -5911,7 +5913,7 @@ function updateHUD(dt){
 // Getting out of the car and walking. The game stays in the DRIVE state: while FOOT.on, driveUpdate runs footUpdate
 // in place of the car's physics, the car stays where it was left, and the camera follows the walker.
 // Controls are the driving ones: gas walks, brake steps back, steering turns, the handbrake (or Shift) runs.
-const FOOT={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,m:null,cy:0,car:[0,0],cp:new THREE.Vector3(),cl:new THREE.Vector3()};
+const FOOT={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,m:null,cy:0,car:[0,0],hudT:0,cp:new THREE.Vector3(),cl:new THREE.Vector3()};
 const FOOT_V={walk:1.9,run:5.4,back:1.2,turn:2.5,r:.35,reach:3.4,exitMax:6};
 // a simple figure, 1.76 m tall, standing on the group's origin and facing +z; legs and arms swing from hip and shoulder
 function footModel(){
@@ -6106,6 +6108,10 @@ function footUpdate(dt){
   FOOT.ph+=Math.abs(FOOT.v)*dt*3.1;if(Math.abs(FOOT.v)<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
   footPlace(dt);
   footPrompt();
+  // the car you left is switched off: its engine and tyres are silent (they used to hum on at whatever they were
+  // doing when you got out, however far you walked), and the district and the clock keep up with you
+  audioUpd(0,0,0,0,0,0,0,0);
+  FOOT.hudT-=dt;if(FOOT.hudT<=0){FOOT.hudT=.4;$("zone").textContent=zoneAt(FOOT.x,FOOT.z);hudClock()}
   placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
 }
 /* ================================================================ HARBOUR + BOAT */
@@ -6216,7 +6222,9 @@ function boatUpdate(dt){
   else BOAT.v*=-.2;
   boatPlace(dt);
   const sp=boatLandSpot();promptAct=sp?boatLand:null;show("prompt",!!sp);if(sp)$("promptTxt").textContent="Step onto the pier";
-  BOAT.hudT-=dt;if(BOAT.hudT<=0){BOAT.hudT=.25;$("zone").textContent="AT SEA · "+Math.round(Math.abs(BOAT.v)*1.944)+" KN"}
+  BOAT.hudT-=dt;if(BOAT.hudT<=0){BOAT.hudT=.25;$("zone").textContent="AT SEA · "+Math.round(Math.abs(BOAT.v)*1.944)+" KN";hudClock()}
+  // the outboard: it idles at the mooring, rises with speed and throttle, and the hull washes through the water
+  {const sp=Math.abs(BOAT.v);audioUpd(.1+sp/BOAT_V.top*.5,1,Math.max(go,bk*.5),0,0,0,0,.8,sp)}
   boatCam(dt);drawMini();
 }
 // a hint shown at most once every 6 s per kind
