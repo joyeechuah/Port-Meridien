@@ -3612,7 +3612,8 @@ function updateTraffic(dt){
       townN++}}
   const pf=fwdOf(P.h),kph=kphNow();
   for(const t of TRAFFIC){
-    if(!t.e){if(bubble&&t.lost)t.lost=!spawnTraffic(t,220,560,true);continue}
+    // (a police car beyond the two patrols waits off the road until it is called: copDispatch places it)
+    if(!t.e){if(bubble&&t.lost&&(!t.cop||t.patrol))t.lost=!spawnTraffic(t,220,560,true);continue}
     if(t.chase){copDrive(t,dt);continue}
     tickDamage(t,dt);
     let target=t.base*damagePower(t);
@@ -6252,12 +6253,12 @@ function initCops(){
     const bar=new THREE.Mesh(GEO.box,new THREE.MeshLambertMaterial({color:0x22262b}));bar.scale.set(1.15,.1,.3);bar.position.set(0,y+.05,-.25);G.add(bar);
     for(const[sx,m]of[[-.3,red],[.3,blue]]){const l=new THREE.Mesh(GEO.box,m);l.scale.set(.5,.13,.24);l.position.set(sx,y+.15,-.25);G.add(l)}
     G.visible=false;scene.add(G);
-    TRAFFIC.push({c,col:0xf1f2f4,shape:"sedan",e:null,lost:i<COP_V.patrol,dir:1,s:0,lane:0,off:0,offCur:0,base:0,v:0,stopT:0,hitT:0,waitT:0,passT:0,pa:null,
+    TRAFFIC.push({c,col:0xf1f2f4,shape:"sedan",e:null,lost:true,dir:1,s:0,lane:0,off:0,offCur:0,base:0,v:0,stopT:0,hitT:0,waitT:0,passT:0,pa:null,
       wx:1e6,wz:1e6,yaw:0,cop:true,patrol:i<COP_V.patrol,chase:false,offDuty:false,lights:[red,blue]});
   }
 }
 // a car out of service: off the road and out of sight until it is called on
-function copStandDown(t){t.chase=false;t.offDuty=false;t.e=null;t.lost=!!t.patrol;t.c.G.visible=false;t.wx=t.wz=1e6;t.v=0}
+function copStandDown(t){t.chase=false;t.offDuty=false;t.e=null;t.lost=true;t.c.G.visible=false;t.wx=t.wz=1e6;t.v=0}
 const copSees=(x,z)=>TRAFFIC.some(t=>t.cop&&t.e&&Math.hypot(t.wx-x,t.wz-z)<COP_V.see);
 const wantedBlock=()=>toast("LOSE THE POLICE FIRST","They're still after you: get out of their reach for a while","bad");
 const CRIME={crash:["Crashed into a car in front of the police",1],ped:["Ran into someone in front of the police",1],take:["Took a car in front of the police",1],
