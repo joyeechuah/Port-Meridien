@@ -1699,22 +1699,27 @@ function buildOldQuay(){
     PASTEL=[0xcfdcc0,0xc4d9e2,0xf3e3c2,0xf0d2c4,0xf6efdd,0xe6d9a8],TILE_C=[0xb05a3c,0x9c4f38,0xc0714a,0xa8553a],TRIM=0xe9e2d2,STONE=0xd9cdb4,WOOD=0x7d5c3e;
   let sd=1;const R=k=>rnd(sd++,k);
   const box=(x,y,z,w,h,d,c,ry=0,g=GEO.box)=>tileOf(x,z).solid.push({g,m:mat(x,y,z,ry,w,h,d),c});
-  // a house: walls with windows and a shopfront (the town's facade picture, tinted), a roof, and a collider.
+  // a house: walls with windows and a shopfront (the town's facade picture, tinted) and a roof. Its collider comes
+  // from the row it stands in.
   // roof 0 is flat behind a parapet; 1 has its ridge along x, 2 along z
   const house=(cx,cz,w,d,fl,col,roof)=>{
     const h=fl*3.2+.5,y=meshH(cx,cz),top=y+h-.5;
     tileOf(cx,cz).town.push({g:townBlockGeo(w,h,d),m:mat(cx,y+h/2-.5,cz),c:col});
     if(!roof)box(cx,top+.16,cz,w+.3,.34,d+.3,TRIM);
     else{const ax=roof===1,span=ax?d:w,len=ax?w:d;box(cx,top+.1,cz,w+.5,.22,d+.5,TRIM);box(cx,top+.2,cz,span+.7,span*.26,len+.7,TILE_C[Math.floor(R(5)*TILE_C.length)],ax?Math.PI/2:0,ROOF_GEO)}
-    addBox(cx,cz,w/2,d/2,0);QUAY.houses++;
+    QUAY.houses++;
   };
   // houses wall to wall round the edge of a block, leaving the middle open. o.gaps are ways in: [side, from, to]
   const ring=(x0,x1,z0,z1,o)=>{
     const gap=(side,a,b)=>(o.gaps||[]).some(g=>g[0]===side&&a<g[2]&&b>g[1]),
       fl=()=>o.fl[0]+Math.floor(R(1)*(o.fl[1]-o.fl[0]+1)),col=()=>o.pal[Math.floor(R(2)*o.pal.length)],
       plot=left=>{let w=o.w[0]+R(3)*(o.w[1]-o.w[0]);if(left-w<o.w[0]*.7)w=left;return w};
-    for(const[side,zz]of[["n",z0+o.dep/2],["s",z1-o.dep/2]]){let x=x0;while(x1-x>.5){const w=plot(x1-x);if(!gap(side,x,x+w))house(x+w/2,zz,w,o.dep,fl(),col(),R(4)<o.pitch?1:0);x+=w}}
-    for(const[side,xx]of[["w",x0+o.dep/2],["e",x1-o.dep/2]]){let z=z0+o.dep;while(z1-o.dep-z>.5){const w=plot(z1-o.dep-z);if(!gap(side,z,z+w))house(xx,z+w/2,o.dep,w,fl(),col(),R(4)<o.pitch?2:0);z+=w}}
+    // one collider for each unbroken run of houses, not one a house: where two colliders met inside a wall, a car
+    // pushed into the wall there was shoved along it and stopped dead, where anywhere else it slides
+    for(const[side,zz]of[["n",z0+o.dep/2],["s",z1-o.dep/2]]){let x=x0,a=null;const end=b=>{if(a!==null)addBox((a+b)/2,zz,(b-a)/2,o.dep/2,0);a=null};
+      while(x1-x>.5){const w=plot(x1-x);if(gap(side,x,x+w))end(x);else{if(a===null)a=x;house(x+w/2,zz,w,o.dep,fl(),col(),R(4)<o.pitch?1:0)}x+=w}end(x)}
+    for(const[side,xx]of[["w",x0+o.dep/2],["e",x1-o.dep/2]]){let z=z0+o.dep,a=null;const end=b=>{if(a!==null)addBox(xx,(a+b)/2,o.dep/2,(b-a)/2,0);a=null};
+      while(z1-o.dep-z>.5){const w=plot(z1-o.dep-z);if(gap(side,z,z+w))end(z);else{if(a===null)a=z;house(xx,z+w/2,o.dep,w,fl(),col(),R(4)<o.pitch?2:0)}z+=w}end(z)}
   };
   const gy=(x,z)=>meshH(x,z);
   // 1. terraces with shops, north-west: narrow plots, two to four floors, a line of olive trees behind

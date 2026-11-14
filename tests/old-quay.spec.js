@@ -119,4 +119,27 @@ test.describe("Old Quay", () => {
     expect(r.x).toBeLessThan(r.tower[0]);
     expect(Math.abs(r.z - -41)).toBeLessThan(1.5);
   });
+  // Each run of houses is one collider. With one a house, a point just inside a wall near a join was pushed along
+  // the wall instead of out of it, and a car there stopped dead (a race test found it)
+  test("a row of houses pushes you straight out of its wall along its whole length", async ({ game }) => {
+    await town(game);
+    const r = await game.eval(() => {
+      const T = __T;
+      let n = 0,
+        along = 0;
+      // 1 m inside the street wall of the garden block's west row, and of the terraces' east row
+      for (const [x, z0, z1] of [
+        [570, 62, 168],
+        [610, -98, 16],
+      ])
+        for (let z = z0; z <= z1; z += 0.5) {
+          const c = T.footClear(x, z);
+          n++;
+          along = Math.max(along, Math.abs(c[1] - z));
+        }
+      return { n, along };
+    });
+    expect(r.n).toBeGreaterThan(400);
+    expect(r.along).toBeLessThan(0.01);
+  });
 });
