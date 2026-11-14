@@ -415,4 +415,97 @@ test.describe("police", () => {
     expect(r.st).toBe("idle");
     expect(r.t).toBeGreaterThan(3);
   });
+  // Off the road the cars can't get beside you: an officer gets out and comes on foot
+  const offRoad = (game) =>
+    game.eval(() => {
+      const T = __T,
+        P = T.P,
+        { e, s } = window.__road,
+        q = T.edgePos(e, s);
+      // a spot 22 m off the road on open ground, on whichever side has some
+      for (const sd of [1, -1]) {
+        const x = q.x - q.dz * 22 * sd,
+          z = q.z + q.dx * 22 * sd,
+          c = T.footClear(x, z);
+        if (Math.hypot(c[0] - x, c[1] - z) < 0.01 && T.footGround(x, z) > 0) return { x, z, sd };
+      }
+      return null;
+    });
+
+  test("on foot off the road, an officer gets out of the car, runs to you and catches you", async ({ game }) => {
+    await setup(game);
+    const spot = await offRoad(game);
+    expect(spot).not.toBeNull();
+    await placeCop(game, 0, 40);
+    await game.key("f");
+    const r = await game.eval((spot) => {
+      const T = __T,
+        F = T.FOOT,
+        O = T.OFFICER,
+        cop = T.TRAFFIC.find((t) => t.cop && t.e),
+        cr0 = T.save.cr;
+      F.x = spot.x;
+      F.z = spot.z;
+      F.y = T.footGround(spot.x, spot.z);
+      cop.stopT = 0;
+      T.crime("crash", F.x, F.z);
+      let n = 0,
+        out = false,
+        carStill = true,
+        minD = 1e9;
+      while (T.WANTED.lvl && n++ < 60 * 40) {
+        T.driveUpdate(1 / 60);
+        if (O.on) {
+          out = true;
+          if (cop.v > 0.3) carStill = false;
+          minD = Math.min(minD, Math.hypot(O.x - F.x, O.z - F.z));
+        }
+      }
+      return { out, carStill, minD, lvl: T.WANTED.lvl, fine: cr0 - T.save.cr, on: O.on, shown: O.m.G.visible, stopT: cop.stopT, seconds: n / 60 };
+    }, spot);
+    expect(r).toMatchObject({ out: true, carStill: true, lvl: 0, fine: 500, on: false, shown: false, stopT: 0 });
+    expect(r.minD).toBeLessThan(1.5);
+    expect(await toasts(game)).toContain("CAUGHT");
+  });
+
+  test("you can outrun an officer: they give up, go back to the car, and the chase carries on", async ({ game }) => {
+    await setup(game);
+    const spot = await offRoad(game);
+    await placeCop(game, 0, 40);
+    await game.key("f");
+    const r = await game.eval((spot) => {
+      const T = __T,
+        F = T.FOOT,
+        O = T.OFFICER,
+        cop = T.TRAFFIC.find((t) => t.cop && t.e),
+        { e, s } = window.__road,
+        q = T.edgePos(e, s);
+      F.x = spot.x;
+      F.z = spot.z;
+      F.y = T.footGround(spot.x, spot.z);
+      cop.stopT = 0;
+      T.crime("crash", F.x, F.z);
+      // wait for the officer to get out
+      let n = 0;
+      while (!O.on && n++ < 60 * 20) T.driveUpdate(1 / 60);
+      const outAt = n / 60;
+      // then run straight away from the road at full running speed (moved by hand: no tree in the way)
+      const ax = -q.dz * spot.sd,
+        az = q.dx * spot.sd;
+      let gaveUp = false,
+        backIn = false;
+      for (let i = 0; i < 60 * 30 && !backIn; i++) {
+        F.x += ax * T.FOOT_V.run / 60;
+        F.z += az * T.FOOT_V.run / 60;
+        T.driveUpdate(1 / 60);
+        if (O.back) gaveUp = true;
+        if (gaveUp && !O.on) backIn = true;
+      }
+      return { outAt, gaveUp, backIn, lvl: T.WANTED.lvl, chase: cop.chase };
+    }, spot);
+    expect(r.outAt).toBeLessThan(20);
+    expect(r).toMatchObject({ gaveUp: true, backIn: true });
+    // still wanted, or lost by now; never caught
+    expect(await toasts(game)).not.toContain("CAUGHT");
+  });
 });
