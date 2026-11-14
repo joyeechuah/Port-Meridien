@@ -119,6 +119,10 @@ body.touch #lhint{display:none}
 #wanted{display:flex;gap:4px;align-items:center;background:var(--panel);padding:4px 10px;border-radius:4px;font-size:17px;line-height:1;width:max-content}
 #wanted i{font-style:normal;color:rgba(255,255,255,.22)}#wanted i.on{color:#f2b33d;text-shadow:0 0 6px rgba(242,179,61,.6)}
 #wanted.lost i.on{animation:wantedBlink .8s steps(2,start) infinite}
+#gunHud{display:flex;gap:10px;align-items:center;background:var(--panel);padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.14em;width:max-content}
+#gunHud .hp{display:block;width:80px;height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}#gunHud .hp i{display:block;height:100%;width:100%;background:#7fd08a}
+#gunHud.low .hp i{background:#e2483d}#gunHud.empty #gunTxt{color:#e2483d}
+#bF{width:62px;height:62px;font-size:11px;background:rgba(226,72,61,.22);border-color:rgba(226,72,61,.55)}
 @keyframes wantedBlink{to{opacity:.25}}
 #streak{position:absolute;top:calc(16px + var(--st));left:50%;transform:translateX(-50%);text-align:center;min-width:220px;transition:opacity .25s}
 #streak.off{opacity:0}
@@ -422,6 +426,7 @@ body.touch #phExit kbd{display:none}
     </div>
     <div class="acts">
       <button class="btn ghost" id="gCust">CUSTOMISE</button>
+      <button class="btn ghost" id="gGun" aria-pressed="false">PISTOL: LEFT HERE</button>
       <button class="btn" id="drive">DRIVE</button>
     </div>
   </div>
@@ -444,6 +449,7 @@ body.touch #phExit kbd{display:none}
     <div class="lvl"><span>LEVEL <b id="lvv">1</b></span><div class="xp"><i id="xpf"></i></div></div>
     <div class="loc"><span id="zone">OLD QUAY</span><span class="num" id="clock">16:30</span></div>
     <div id="wanted" class="hide" aria-live="polite"></div>
+    <div id="gunHud" class="hide"><span class="hp"><i id="hpBar"></i></span><span id="gunTxt">PISTOL 48</span></div>
   </div>
   <div id="tdPill" class="pill hide">TEST DRIVE <b class="num" id="tdT">1:30</b></div>
   <div id="streak" class="off"><div class="lab" id="frLab">STREAK</div><div class="pts"><b id="frPts">0</b><span id="frMul">x1.0</span></div><div class="bar"><i id="frBar"></i></div></div>
@@ -474,7 +480,7 @@ body.touch #phExit kbd{display:none}
 
 <div id="pads" class="hide">
   <div class="pz"><div class="pb" id="bL">&#9664;</div><div class="pb" id="bR">&#9654;</div></div>
-  <div class="pz"><div class="pb" id="bH">HAND<br>BRAKE</div></div>
+  <div class="pz"><div class="pb hide" id="bF">FIRE</div><div class="pb" id="bH">HAND<br>BRAKE</div></div>
   <div class="pz" style="flex-direction:column-reverse;gap:10px"><div class="pb" id="bG">GAS</div><div class="pb" id="bB">BRAKE</div></div>
 </div>
 
@@ -509,6 +515,7 @@ body.touch #phExit kbd{display:none}
   <button class="mbtn" id="pMus">MUSIC: ON</button>
   <button class="mbtn" id="pGfx">GRAPHICS: AUTO</button>
   <button class="mbtn" id="pGhost">GHOST CAR: ON</button>
+  <button class="mbtn" id="pViol">VIOLENCE: STANDARD</button>
   <button class="mbtn" id="pCloud">SAVE MY PROGRESS</button>
   <button class="mbtn" id="pSteer">STEERING: NORMAL</button>
   <button class="mbtn hide" id="pTilt">TILT STEERING: OFF</button>
@@ -766,6 +773,8 @@ try{
   save.steer=Math.round(num(save.steer,1,0,2));if(typeof save.tilt!=="boolean")save.tilt=false;
   // which side of the road traffic keeps to: L (the default, as in Malaysia or the UK) or R (as in Spain)
   save.side=save.side==="R"?"R":"L";
+  // the pistol: whether you took it from the garage, and how violence is shown (0 LOW, 1 STANDARD, 2 STRONG)
+  if(typeof save.armed!=="boolean")save.armed=false;save.violence=Math.round(num(save.violence,1,0,2));
   // customisation, by car: only cars that exist, only known options with values in range; the rest is dropped
   {const m=save.mods&&typeof save.mods==="object"&&!Array.isArray(save.mods)?save.mods:{},o={};
    for(const id of Object.keys(m)){if(!CARS.some(c=>c.id===id)||!m[id]||typeof m[id]!=="object")continue;const v=m[id],c={};
@@ -3176,7 +3185,7 @@ function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
   if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=false;GO.stick[0]=GO.stick[1]=0;return}
   const ax=g.axes[0]||0,b=i=>g.buttons[i]||{pressed:false,value:0},v=i=>{const q=b(i);return typeof q.value==="number"&&q.value>0?q.value:q.pressed?1:0};
-  GP.on=true;GP.steer=Math.abs(ax)<.12?0:Math.sign(ax)*(Math.abs(ax)-.12)/.88;GP.gas=v(7);GP.brake=v(6);GP.hb=b(0).pressed;GP.rear=b(4).pressed;
+  GP.on=true;GP.steer=Math.abs(ax)<.12?0:Math.sign(ax)*(Math.abs(ax)-.12)/.88;GP.gas=v(7);GP.brake=v(6);GP.hb=b(0).pressed;GP.rear=b(4).pressed;GP.fire=b(5).pressed;
   // buttons pressed since the last frame
   const now=g.buttons.map(q=>!!(q&&q.pressed)),was=GP.prev,hit=i=>now[i]&&!was[i];GP.prev=now;
   // the cloud save's screens sit over the garage or the pause menu: B closes them, and nothing behind them reacts
@@ -5383,9 +5392,12 @@ function goGarage(fromFade){
   };
   if(fromFade)doIt();else fadeThen(450,doIt);
 }
+function gunSync(){const b=$("gGun");b.textContent=save.armed?"PISTOL: TAKING IT":"PISTOL: LEFT HERE";b.setAttribute("aria-pressed",save.armed?"true":"false")}
+$("gGun").onclick=()=>{if(state!=="GARAGE")return;save.armed=!save.armed;persist();gunSync()};
 function goDrive(){
   if(state!=="GARAGE")return;
   audioInit();audioOn(true);
+  GUN.ammo=save.armed?GUN.max:0;HEALTH.hp=HEALTH.max;
   attachCar(save.owned[gSel]);persist();
   setState("EXIT");exitT=0;show("gui",false);selRing.visible=false;selSpot.intensity=0;
   const s=SPOTS[gSel];
@@ -5591,7 +5603,8 @@ function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audi
   syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);show("pause",true)}
 function pauseOff(){show("pause",false);if(state==="PAUSE"){setState("DRIVE");audioOn(true);TILT.zero=TILT.phi}}
 const TODS=[["AUTO",null],["MORNING",8.5],["NOON",13],["SUNSET",17.75],["NIGHT",22.5]];
-function syncPause(){$("pAssist").textContent="DRIVING ASSIST: "+(save.assist?"ON":"OFF");$("pTime").textContent="TIME OF DAY: "+TODS[save.todMode][0];$("pAuto").textContent="AUTO GAS: "+(save.auto?"ON":"OFF");$("pSnd").textContent="SOUND FX: "+(save.sound?"ON":"OFF");$("pMus").textContent=$("gMus").textContent="MUSIC: "+(save.music?"ON":"OFF");$("pGfx").textContent="GRAPHICS: "+["AUTO","SHARP","SMOOTH"][save.gfx];$("pGhost").textContent="GHOST CAR: "+(save.ghostOn?"ON":"OFF");$("pSteer").textContent="STEERING: "+["LOW","NORMAL","HIGH"][save.steer];$("pTilt").textContent="TILT STEERING: "+(save.tilt?"ON":"OFF");show("pTilt",isTouch);$("pSide").textContent="DRIVE ON: "+(save.side==="R"?"RIGHT":"LEFT")}
+const VIOL=["LOW","STANDARD","STRONG"];
+function syncPause(){$("pViol").textContent="VIOLENCE: "+VIOL[save.violence];$("pAssist").textContent="DRIVING ASSIST: "+(save.assist?"ON":"OFF");$("pTime").textContent="TIME OF DAY: "+TODS[save.todMode][0];$("pAuto").textContent="AUTO GAS: "+(save.auto?"ON":"OFF");$("pSnd").textContent="SOUND FX: "+(save.sound?"ON":"OFF");$("pMus").textContent=$("gMus").textContent="MUSIC: "+(save.music?"ON":"OFF");$("pGfx").textContent="GRAPHICS: "+["AUTO","SHARP","SMOOTH"][save.gfx];$("pGhost").textContent="GHOST CAR: "+(save.ghostOn?"ON":"OFF");$("pSteer").textContent="STEERING: "+["LOW","NORMAL","HIGH"][save.steer];$("pTilt").textContent="TILT STEERING: "+(save.tilt?"ON":"OFF");show("pTilt",isTouch);$("pSide").textContent="DRIVE ON: "+(save.side==="R"?"RIGHT":"LEFT")}
 $("pRes").onclick=pauseOff;
 $("pMap").onclick=()=>{show("pause",false);setState("DRIVE");openMap()};
 $("pQuit").onclick=()=>{if(testDrive){endTestDrive();return}if(ev&&ev.fin){pauseOff();showResult();return}endEvent();pauseOff();toast("EVENT CANCELLED","Back to free ride")};
@@ -5614,6 +5627,7 @@ $("pTilt").onclick=()=>{
   const D=window.DeviceOrientationEvent;
   if(D&&typeof D.requestPermission==="function")D.requestPermission().then(r=>{if(r==="granted")on();else toast("TILT NOT ALLOWED","Allow motion and orientation access to steer by tilting","bad")}).catch(()=>toast("TILT NOT ALLOWED","Allow motion and orientation access to steer by tilting","bad"));
   else on()};
+$("pViol").onclick=()=>{save.violence=(save.violence+1)%3;syncPause();persist();toast("VIOLENCE: "+VIOL[save.violence],["Nobody falls: a hit only flashes","People fall when hit, no blood","People fall, and hits leave a red mark that fades"][save.violence])};
 $("pGhost").onclick=()=>{save.ghostOn=!save.ghostOn;syncPause();persist();if(!save.ghostOn)ghostHide()};
 $("pSnd").onclick=()=>{save.sound=!save.sound;if(save.sound)audioInit();syncPause();persist()};
 $("pMus").onclick=$("gMus").onclick=()=>{save.music=!save.music;audioInit();musicInit();syncPause();persist()};
@@ -5723,7 +5737,7 @@ addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false});
 // to right) without lifting, and with two fingers down the one that landed or moved there last counts. Before, a
 // press stayed with the button it started on, and BRAKE held by one finger beat GAS pressed by another, so pulling
 // away after braking could do nothing, or reverse
-for(const grp of [[["bL","L"],["bR","R"]],[["bG","G"],["bB","B"]],[["bH","H"]]]){
+for(const grp of [[["bL","L"],["bR","R"]],[["bG","G"],["bB","B"]],[["bH","H"],["bF","F"]]]){
   const els=grp.map(([id,k])=>({el:$(id),k})),own=new Map();PAD_OWN.push(own);
   const keyAt=(x,y)=>{let best=null,bd=1e9;for(const o of els){const r=o.el.getBoundingClientRect(),d=Math.hypot(Math.max(r.left-x,0,x-r.right),Math.max(r.top-y,0,y-r.bottom));if(d<bd){bd=d;best=o.k}}return best};
   const sync=()=>{let top=null;for(const v of own.values())if(!top||v.t>top.t)top=v;for(const o of els){const on=!!top&&top.k===o.k;pad[o.k]=on;o.el.classList.toggle("on",on)}};
