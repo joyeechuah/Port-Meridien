@@ -4,7 +4,7 @@
 
 An open-world city game for the browser: walk the streets, take any car, and sail from the harbour. Built with three.js as a single `index.html`, with no install and no build step.
 
-> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running, taking cars, the harbour boat and the Old Quay district are in. Pedestrians and the police are being built; weapons come after them. See [What's next](#whats-next) and [ROADMAP.md](ROADMAP.md).
+> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running, taking cars, the harbour boat, the Old Quay district and people on its streets are in. The police are being built; weapons come after them. See [What's next](#whats-next) and [ROADMAP.md](ROADMAP.md).
 
 Port Meridien is an original game. Its name, city, characters and story are its own.
 
@@ -66,12 +66,16 @@ The port town on the east side has six blocks between its streets:
 
 You can walk or drive into the market, the square, the garden and the lanes.
 
+### People
+
+Up to ten people (six on a phone) walk the pavements round the six blocks. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. A car can't hurt them yet: drive at one and they step in towards the houses, or hurry off the crossing. They're only there while you're near the town.
+
 ## What works today
 
 - **Driving:** 24 cars with made-up names, paint and customisation; collision damage and roadside repairs; keyboard, touch pads, tilt and game controllers.
 - **On foot:** walking and running, getting in and out, taking stopped traffic cars, and going back to cars you left.
 - **The boat:** a motorboat from the pier, with its own sound.
-- **The world:** an island with roads, traffic, day and night, a map with GPS, Photo Mode, and the Old Quay district.
+- **The world:** an island with roads, traffic, day and night, a map with GPS, Photo Mode, and the Old Quay district with people walking its streets.
 - **Things to do:** races, time trials, championships, delivery contracts, speed radars and an explorer passport of 18 landmarks.
 - **Saves** in the browser. Optional cloud saves are built in but switched off until this game has its own Firebase project (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
 
@@ -79,7 +83,6 @@ You can walk or drive into the market, the square, the garden and the lanes.
 
 | Step | What you'll be able to do | State |
 | --- | --- | --- |
-| 2 | People walking in Old Quay, crossing on the zebra crossings | In review: pull request #24 |
 | 3 | Police patrols and a wanted level: crimes they see bring a chase; get caught and you're fined, or lose them | Being built |
 | 4 | Weapons, health, arrest, and one setting for how violence is shown | Planned |
 | Later | The full city as its own world, with the island kept as a second place to drive | Planned |
@@ -95,7 +98,7 @@ npx playwright test --project=chromium        # logic tests (about 25 min)
 npx playwright test --project=webgl           # drawn tests, slow with a software GPU
 ```
 
-GitHub Actions runs lint and both test projects on every pull request.
+GitHub Actions runs lint and both test projects on every pull request. The drawn tests can also be run on their own: Actions → **Drawn browser tests (WebGL)** → Run workflow.
 
 Run one Playwright instance at a time: the test server uses port 4173 and reads `index.html` from disk on each page load, so don't edit it during a run.
 
