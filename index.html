@@ -6250,9 +6250,10 @@ const copsChasing=()=>TRAFFIC.filter(t=>t.chase&&t.e);
 function initCops(){
   for(let i=0;i<COP_V.pool;i++){
     const c=buildTrafficCar(0xf1f2f4,"sedan"),G=c.G,y=TPROF.sedan.b.reduce((m,q)=>Math.max(m,q[1]),0);
-    // a blue band along each side, a black bonnet line, and a light bar on the roof (red on the left, blue on the right)
+    // a blue band along each side and a light bar on the roof (red on the left, blue on the right)
     const band=new THREE.MeshLambertMaterial({color:0x1d4fa8}),red=new THREE.MeshBasicMaterial({color:0x4a1010}),blue=new THREE.MeshBasicMaterial({color:0x10204a});
-    for(const sx of[-1,1]){const b=new THREE.Mesh(GEO.box,band);b.scale.set(.05,.2,3.6);b.position.set(sx*.93,.68,0);G.add(b)}
+    // (along the doors only: the body narrows towards the bonnet and the boot, where a band stood out from it)
+    for(const sx of[-1,1]){const b=new THREE.Mesh(GEO.box,band);b.scale.set(.04,.18,2.3);b.position.set(sx*.9,.7,.05);G.add(b)}
     const bar=new THREE.Mesh(GEO.box,new THREE.MeshLambertMaterial({color:0x22262b}));bar.scale.set(1.15,.1,.3);bar.position.set(0,y+.05,-.25);G.add(bar);
     for(const[sx,m]of[[-.3,red],[.3,blue]]){const l=new THREE.Mesh(GEO.box,m);l.scale.set(.5,.13,.24);l.position.set(sx,y+.15,-.25);G.add(l)}
     G.visible=false;scene.add(G);
