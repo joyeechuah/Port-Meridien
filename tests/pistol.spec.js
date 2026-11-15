@@ -122,7 +122,7 @@ test.describe("pistol", () => {
     expect(await toasts(game)).toContain("OUT OF ROUNDS");
   });
 
-  test("someone shot is knocked down and gets up again; on LOW nobody falls; on STRONG a red mark fades", async ({ game }) => {
+  test("someone shot is knocked down and gets up again; on LOW they stand still for as long; on STRONG a red mark fades", async ({ game }) => {
     await game.open();
     await game.waitState("GARAGE");
     await game.eval(() => document.getElementById("gGun").click());
@@ -186,7 +186,8 @@ test.describe("pistol", () => {
       return out;
     });
     expect(r.standard).toEqual({ locked: true, st: "down", lay: 1.57, mark: false, up: true });
-    expect(r.low).toMatchObject({ locked: true, st: "idle", lay: 0, mark: false, up: true });
+    // LOW changes only what you see: down for as long, standing instead of lying
+    expect(r.low).toMatchObject({ locked: true, st: "down", lay: 0, mark: false, up: true });
     expect(r.strong).toMatchObject({ locked: true, st: "down", mark: true, up: true });
   });
 

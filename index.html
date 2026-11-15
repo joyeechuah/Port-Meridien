@@ -6455,7 +6455,7 @@ function copOfficer(dt,ch,still){
     return false;
   }
   if(!car||!car.e){copOfficerIn();return false}
-  // shot: down for a few seconds (standing still and flinching on LOW), then back to the car
+  // shot: down for 6 s (standing still on LOW, where nobody falls), then back to the car
   if(O.down>0){O.down-=dt;O.caughtT=0;O.fall=Math.min(1,(O.fall||0)+dt*4*(save.violence?1:0));O.m.G.rotation.set(-Math.PI/2*O.fall,O.h,0,"YXZ");
     if(O.down<=0){O.back=true;car.offAt=copClock;O.fall=0;O.m.G.rotation.set(0,O.h,0,"YXZ")}return false}
   const dMe=Math.hypot(me.x-O.x,me.z-O.z);O.outT+=dt;
@@ -6589,8 +6589,10 @@ function gunFire(){
     // badly damaged: it stops where it is, out of the chase for good
     if((t.damage||0)>=100){t.stopT=1e6;t.v=0;if(t.cop){t.chase=false;t.offDuty=true}}
     crime(q.k==="cop"?"shootCop":"shoot",q.x,q.z)}
-  else if(q.k==="ped"){const p=q.o;if(save.violence){p.st="down";p.t=6}else{p.st="idle";p.t=2}p.v=0;gunMark(p.x,p.z);crime("shootPed",p.x,p.z)}
-  else{const O=q.o;O.down=save.violence?6:1.5;O.caughtT=0;gunMark(O.x,O.z);crime("shootCop",O.x,O.z)}
+  // the same in every violence setting: down for 6 s. The setting only changes what you see (on LOW they stand still
+  // instead of falling)
+  else if(q.k==="ped"){const p=q.o;p.st="down";p.t=6;p.v=0;gunMark(p.x,p.z);crime("shootPed",p.x,p.z)}
+  else{const O=q.o;O.down=6;O.caughtT=0;gunMark(O.x,O.z);crime("shootCop",O.x,O.z)}
   return true;
 }
 // on foot, every frame: the pistol in your hand, the lock, firing, the right arm raised to aim
@@ -6777,7 +6779,7 @@ function pedUpdate(dt){
     if(vis){p.ph+=p.v*dt*3.3;if(p.v<.05)p.ph+=(Math.round(p.ph/Math.PI)*Math.PI-p.ph)*Math.min(1,dt*10);
       const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
       // lying down after being shot, and getting up again
-      p.fall=clamp((p.fall||0)+(p.st==="down"?dt*4:-dt*1.6),0,1);
+      p.fall=clamp((p.fall||0)+(p.st==="down"&&save.violence?dt*4:-dt*1.6),0,1);
       G.position.set(p.x,p.y+Math.abs(Math.cos(p.ph))*Math.min(.04,p.v*.012)+p.fall*.12,p.z);G.rotation.set(-Math.PI/2*p.fall,p.h,0,"YXZ");
       p.m.legs[0].rotation.x=sw;p.m.legs[1].rotation.x=-sw;p.m.arms[0].rotation.x=-sw*.7;p.m.arms[1].rotation.x=sw*.7}
   }
