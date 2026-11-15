@@ -39,13 +39,15 @@ for (const [name, w, h] of [
           const b = e.getBoundingClientRect();
           return b.width && b.height && getComputedStyle(e).display !== "none" ? b : null;
         };
-        const toasts = [...document.querySelectorAll("#toasts>.toast")].filter((t) => getComputedStyle(t).display !== "none").map((t) => t.getBoundingClientRect());
+        const shownToasts = [...document.querySelectorAll("#toasts>.toast")].filter((t) => getComputedStyle(t).display !== "none"),
+          toasts = shownToasts.map((t) => t.getBoundingClientRect());
         return {
           shown: ["#tl .loc", "#damageHud", "#wanted", "#gunHud", "#mini", "#prompt"].map((s) => !!box(s)),
           tl: ["#tl .money", "#damageHud", "#tl .lvl", "#tl .loc", "#wanted", "#gunHud"].map(box).filter(Boolean),
           mini: box("#mini"),
           prompt: box("#prompt"),
           toasts,
+          words: shownToasts.map((t) => t.textContent),
           pads: ["#bL", "#bR", "#bF", "#bH", "#bG", "#bB"].map(box).filter(Boolean),
         };
       });
@@ -54,5 +56,7 @@ for (const [name, w, h] of [
       for (const t of r.toasts) expect(overlap(t, r.prompt), "a message covers the prompt").toBe(false);
       for (const p of r.pads) expect(overlap(p, r.prompt), "the prompt covers a pad").toBe(false);
       expect(r.toasts.length).toBeGreaterThan(0);
+      // the newest message is always among those shown (where only one fits, it is that one)
+      expect(r.words.join(" ")).toContain("LOSE THE POLICE FIRST");
     });
   });

@@ -235,8 +235,9 @@ body.touch #speedo{bottom:auto;top:calc(60px + var(--st))}
 body.touch #toasts{top:calc(196px + var(--st))}
 /* short landscape phones: the touch pads fill the lower right, so toasts sit in the clear band under the top bar */
 @media (max-height:520px){body.touch #toasts{top:calc(130px + var(--st));right:auto;left:50%;transform:translateX(-50%);align-items:center;width:min(300px,40vw)}}
-/* there's room for one message between the top bar and a prompt: while a prompt shows, only the newest message does */
-@media (max-height:520px) and (min-width:561px){#hud:has(>#prompt:not(.hide)) #toasts>.toast:not(:last-child){display:none}}
+/* there's room for one message between the top bar and a prompt: while a prompt shows, only the newest message does
+   (new messages go in first; Codex's review of #32 caught that the oldest was kept) */
+@media (max-height:520px) and (min-width:561px){#hud:has(>#prompt:not(.hide)) #toasts>.toast:not(:first-child){display:none}}
 /* and on the shortest (360 px tall), the smaller minimap and its GPS line sit higher, clear of the steering buttons */
 @media (max-height:400px){body.touch #minWrap{top:calc(124px + var(--st) + var(--tlx,0px))}}
 /* landscape phones: the damage pill, the wanted stars and the pistol and health bar sit beside the money, level and
