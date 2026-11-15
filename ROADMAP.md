@@ -8,7 +8,7 @@ Each step ships as its own pull requests, with tests. Earlier steps are playable
 | 1 | A character who walks and runs in a first waterfront district, gets in and out of cars, takes any parked or traffic car, and sails a boat from the harbour | Done on the island: walking, taking cars, the boat and pier, the harbour lane, and the Old Quay district's six blocks. Not yet tested on a real phone |
 | 2 | The city at full size: more districts, pedestrians on the pavements | Started: people walk Old Quay's pavements and cross on its zebra crossings (first version). More districts not started |
 | 3 | Police and a wanted level: patrol cars chase you, and losing them clears it | Done on the island: patrols, one to five stars, chases by car and on foot, fines, losing them. No roadblocks or arrest yet |
-| 4 | Weapons: pick up guns, shoot on foot, health, being arrested or taken out. One setting controls how violence is shown | Planned |
+| 4 | Weapons: pick up guns, shoot on foot, health, being arrested or taken out. One setting controls how violence is shown | First part done: the pistol on foot, health, knock-out, arrest, VIOLENCE and FLASHES settings (working decisions in `docs/STEP4_DECISIONS.md`). More weapons and shooting from vehicles not decided |
 
 ## How the new city arrives (decided 13 Nov 2026)
 
