@@ -67,7 +67,9 @@ body.touch #lhint{display:none}
 #gMus{position:absolute;top:calc(64px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gMus:hover{border-color:#fff}
 #gCloud{position:absolute;top:calc(104px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink);max-width:260px;text-align:right}
-#gCloud:hover{border-color:#fff}#gCloud.warn{border-color:var(--acc);color:var(--acc)}
+#gCloud:hover{border-color:#fff}
+#gGun{position:absolute;top:calc(144px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
+#gGun:hover{border-color:#fff}#gGun[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}#gCloud.warn{border-color:var(--acc);color:var(--acc)}
 .clp{font-size:13px;line-height:1.5;color:var(--mute);margin:10px 0 0}.clp b{color:var(--ink)}
 #clStat{font-size:12px;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:6px}#clStat.bad{border-color:var(--acc);color:var(--acc)}
 .clw{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.clw>div{border:1px solid var(--line);border-radius:8px;padding:12px}
@@ -416,6 +418,7 @@ body.touch #phExit kbd{display:none}
   <div id="gcr" class="pill">Credits<b class="num" id="gcrv">0</b></div>
   <button id="gMus" class="pill">MUSIC: ON</button>
   <button id="gCloud" class="pill">SAVE MY PROGRESS</button>
+  <button id="gGun" class="pill" aria-pressed="false">PISTOL: LEFT HERE</button>
   <div id="gpick"><button class="gnav" id="gprev" aria-label="Previous car">&#10094;</button><div id="gdots"></div><button class="gnav" id="gnext" aria-label="Next car">&#10095;</button></div>
   <div id="gbar">
     <div class="cname"><div class="mk" id="gmk"></div><div class="md" id="gmd"></div><div class="yr" id="gyr"></div><div class="sw" id="gSw" role="group" aria-label="Paint colour"></div></div>
@@ -426,7 +429,6 @@ body.touch #phExit kbd{display:none}
     </div>
     <div class="acts">
       <button class="btn ghost" id="gCust">CUSTOMISE</button>
-      <button class="btn ghost" id="gGun" aria-pressed="false">PISTOL: LEFT HERE</button>
       <button class="btn" id="drive">DRIVE</button>
     </div>
   </div>
@@ -6552,7 +6554,9 @@ function initGun(){
   const m=footModel(),gm=new THREE.MeshStandardMaterial({color:0x1d1f22,roughness:.5,metalness:.4});
   GUN.m=new THREE.Group();const b=new THREE.Mesh(GEO.box,gm);b.scale.set(.045,.11,.2);b.position.set(0,-.02,.06);GUN.m.add(b);
   const g2=new THREE.Mesh(GEO.box,gm);g2.scale.set(.04,.12,.05);g2.position.set(0,-.09,0);g2.rotation.x=.3;GUN.m.add(g2);
-  GUN.m.position.set(0,-.27,.04);m.elbows[0].add(GUN.m);GUN.m.visible=false;
+  // in the scene, not in the walker's figure, following the right forearm each frame (as part of the figure it
+  // changed the figure's size and shape)
+  GUN.m.visible=false;scene.add(GUN.m);GUN.hand=new THREE.Object3D();GUN.hand.position.set(0,-.27,.04);m.elbows[0].add(GUN.hand);
   const hot=new THREE.MeshBasicMaterial({color:0xffd27a,transparent:true,opacity:.95,depthWrite:false,blending:THREE.AdditiveBlending});
   GUN.flash=new THREE.Mesh(GEO.ball,hot);GUN.flash.scale.setScalar(.09);GUN.flash.position.set(0,-.02,.2);GUN.m.add(GUN.flash);GUN.flash.visible=false;
   GUN.ring=new THREE.Mesh(new THREE.TorusGeometry(.55,.05,6,24),new THREE.MeshBasicMaterial({color:0xe2483d,transparent:true,opacity:.85,depthWrite:false}));
@@ -6612,6 +6616,7 @@ function gunFoot(dt){
   if(on&&(q||GUN.aimT>0)){const m=FOOT.m;m.arms[0].rotation.x=-1.45;m.elbows[0].rotation.x=-.05;
     // turn a little towards the target while aiming, so the arm points at it
     if(q)FOOT.h+=wrapA(Math.atan2(q.x-FOOT.x,q.z-FOOT.z)-FOOT.h)*Math.min(1,dt*6);m.G.rotation.y=FOOT.h}
+  if(on){FOOT.m.G.updateMatrixWorld(true);GUN.hand.matrixWorld.decompose(GUN.m.position,GUN.m.quaternion,GUN.m.scale)}
 }
 function hurt(n){
   const H=HEALTH;if(H.hp<=0||n<=0)return;H.hp=Math.max(0,H.hp-n);H.calm=0;H.hurtT=.5;
