@@ -275,7 +275,7 @@ test.describe("harbour and boat", () => {
       w.geometry.computeBoundingBox();
       return { attached: w.parent === T.BOAT.m, inScene: (() => { let o = w; while (o.parent) o = o.parent; return o === T.scene; })(), seen: w.visible, opacity: w.material.opacity, behind: w.geometry.boundingBox.max.z < 0 };
     });
-    expect(wake).toEqual({ attached: true, inScene: true, seen: true, opacity: 0.3, behind: true });
+    expect(wake).toEqual({ attached: true, inScene: true, seen: true, opacity: 0.22, behind: true });
     // and it lies on the water all the way back, though the bow is up (it tilted with the hull: its far end was 2 m under)
     const tail = await game.eval(() => {
       const w = __T.BOAT.wake;
@@ -287,10 +287,10 @@ test.describe("harbour and boat", () => {
       expect(y).toBeGreaterThan(0.05);
       expect(y).toBeLessThan(0.6);
     }
-    // it turns under way (right is clockwise from above, as in the car)
+    // it turns under way, and right turns right, as in the car: the heading goes down (it went up, the wrong way)
     await game.steps(90, { w: true, d: true });
     const d = await now(game);
-    expect(d.bh - c.bh).toBeGreaterThan(0.6);
+    expect(c.bh - d.bh).toBeGreaterThan(0.6);
     // throttle shut: the water slows it; then reverse backs it up, slowly
     await game.steps(900, {});
     expect(Math.abs((await now(game)).bv)).toBeLessThan(0.2);
