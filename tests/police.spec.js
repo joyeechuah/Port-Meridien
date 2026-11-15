@@ -636,4 +636,23 @@ test.describe("police", () => {
     // never caught: by the time they are back in the car the chase carries on, or you are far enough away to lose them
     expect(await toasts(game)).not.toContain("CAUGHT");
   });
+  test("back on the road while wanted: a chaser beside you drops back, it doesn't vanish", async ({ game }) => {
+    await setup(game);
+    await placeCop(game, 0, 6);
+    await game.eval(() => __T.crime("crash", __T.P.x, __T.P.z));
+    await game.key("r");
+    await game.waitState("FADE");
+    await game.waitState("DRIVE");
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        cop = T.TRAFFIC.find((t) => t.cop && t.chase);
+      return { lvl: T.WANTED.lvl, chasing: !!cop, d: cop ? Math.hypot(cop.wx - P.x, cop.wz - P.z) : null, kph: Math.hypot(P.vx, P.vz) * 3.6 };
+    });
+    expect(r.lvl).toBe(1);
+    expect(r.chasing).toBe(true);
+    expect(r.d).toBeGreaterThan(10);
+    expect(r.d).toBeLessThan(60);
+    expect(r.kph).toBeLessThan(1);
+  });
 });
