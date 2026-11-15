@@ -516,6 +516,7 @@ body.touch #phExit kbd{display:none}
   <button class="mbtn" id="pGfx">GRAPHICS: AUTO</button>
   <button class="mbtn" id="pGhost">GHOST CAR: ON</button>
   <button class="mbtn" id="pViol">VIOLENCE: STANDARD</button>
+  <button class="mbtn" id="pFlash">FLASHES: ON</button>
   <button class="mbtn" id="pCloud">SAVE MY PROGRESS</button>
   <button class="mbtn" id="pSteer">STEERING: NORMAL</button>
   <button class="mbtn hide" id="pTilt">TILT STEERING: OFF</button>
@@ -774,7 +775,7 @@ try{
   // which side of the road traffic keeps to: L (the default, as in Malaysia or the UK) or R (as in Spain)
   save.side=save.side==="R"?"R":"L";
   // the pistol: whether you took it from the garage, and how violence is shown (0 LOW, 1 STANDARD, 2 STRONG)
-  if(typeof save.armed!=="boolean")save.armed=false;save.violence=Math.round(num(save.violence,1,0,2));
+  if(typeof save.armed!=="boolean")save.armed=false;if(typeof save.flash!=="boolean")save.flash=true;save.violence=Math.round(num(save.violence,1,0,2));
   // customisation, by car: only cars that exist, only known options with values in range; the rest is dropped
   {const m=save.mods&&typeof save.mods==="object"&&!Array.isArray(save.mods)?save.mods:{},o={};
    for(const id of Object.keys(m)){if(!CARS.some(c=>c.id===id)||!m[id]||typeof m[id]!=="object")continue;const v=m[id],c={};
@@ -5612,7 +5613,7 @@ function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audi
 function pauseOff(){show("pause",false);if(state==="PAUSE"){setState("DRIVE");audioOn(true);TILT.zero=TILT.phi}}
 const TODS=[["AUTO",null],["MORNING",8.5],["NOON",13],["SUNSET",17.75],["NIGHT",22.5]];
 const VIOL=["LOW","STANDARD","STRONG"];
-function syncPause(){$("pViol").textContent="VIOLENCE: "+VIOL[save.violence];$("pAssist").textContent="DRIVING ASSIST: "+(save.assist?"ON":"OFF");$("pTime").textContent="TIME OF DAY: "+TODS[save.todMode][0];$("pAuto").textContent="AUTO GAS: "+(save.auto?"ON":"OFF");$("pSnd").textContent="SOUND FX: "+(save.sound?"ON":"OFF");$("pMus").textContent=$("gMus").textContent="MUSIC: "+(save.music?"ON":"OFF");$("pGfx").textContent="GRAPHICS: "+["AUTO","SHARP","SMOOTH"][save.gfx];$("pGhost").textContent="GHOST CAR: "+(save.ghostOn?"ON":"OFF");$("pSteer").textContent="STEERING: "+["LOW","NORMAL","HIGH"][save.steer];$("pTilt").textContent="TILT STEERING: "+(save.tilt?"ON":"OFF");show("pTilt",isTouch);$("pSide").textContent="DRIVE ON: "+(save.side==="R"?"RIGHT":"LEFT")}
+function syncPause(){$("pViol").textContent="VIOLENCE: "+VIOL[save.violence];$("pFlash").textContent="FLASHES: "+(save.flash?"ON":"OFF");$("pAssist").textContent="DRIVING ASSIST: "+(save.assist?"ON":"OFF");$("pTime").textContent="TIME OF DAY: "+TODS[save.todMode][0];$("pAuto").textContent="AUTO GAS: "+(save.auto?"ON":"OFF");$("pSnd").textContent="SOUND FX: "+(save.sound?"ON":"OFF");$("pMus").textContent=$("gMus").textContent="MUSIC: "+(save.music?"ON":"OFF");$("pGfx").textContent="GRAPHICS: "+["AUTO","SHARP","SMOOTH"][save.gfx];$("pGhost").textContent="GHOST CAR: "+(save.ghostOn?"ON":"OFF");$("pSteer").textContent="STEERING: "+["LOW","NORMAL","HIGH"][save.steer];$("pTilt").textContent="TILT STEERING: "+(save.tilt?"ON":"OFF");show("pTilt",isTouch);$("pSide").textContent="DRIVE ON: "+(save.side==="R"?"RIGHT":"LEFT")}
 $("pRes").onclick=pauseOff;
 $("pMap").onclick=()=>{show("pause",false);setState("DRIVE");openMap()};
 $("pQuit").onclick=()=>{if(testDrive){endTestDrive();return}if(ev&&ev.fin){pauseOff();showResult();return}endEvent();pauseOff();toast("EVENT CANCELLED","Back to free ride")};
@@ -5635,6 +5636,8 @@ $("pTilt").onclick=()=>{
   const D=window.DeviceOrientationEvent;
   if(D&&typeof D.requestPermission==="function")D.requestPermission().then(r=>{if(r==="granted")on();else toast("TILT NOT ALLOWED","Allow motion and orientation access to steer by tilting","bad")}).catch(()=>toast("TILT NOT ALLOWED","Allow motion and orientation access to steer by tilting","bad"));
   else on()};
+// off: no muzzle flash, and no red flash at the screen edges when you are hit (only a steady tint while health is low)
+$("pFlash").onclick=()=>{save.flash=!save.flash;syncPause();persist()};
 $("pViol").onclick=()=>{save.violence=(save.violence+1)%3;syncPause();persist();toast("VIOLENCE: "+VIOL[save.violence],["Nobody falls: a hit only flashes","People fall when hit, no blood","People fall, and hits leave a red mark that fades"][save.violence])};
 $("pGhost").onclick=()=>{save.ghostOn=!save.ghostOn;syncPause();persist();if(!save.ghostOn)ghostHide()};
 $("pSnd").onclick=()=>{save.sound=!save.sound;if(save.sound)audioInit();syncPause();persist()};
@@ -6302,7 +6305,8 @@ function initCops(){
   }
 }
 // a car out of service: off the road and out of sight until it is called on
-function copStandDown(t){t.chase=false;t.offDuty=false;t.e=null;t.lost=true;t.c.G.visible=false;t.wx=t.wz=1e6;t.v=0}
+// (repaired while out of service: one shot to a stop comes back whole the next time it is called)
+function copStandDown(t){t.chase=false;t.offDuty=false;t.e=null;t.lost=true;t.c.G.visible=false;t.wx=t.wz=1e6;t.v=0;t.damage=t.damageT=0;t.stopT=0;showDamageSmoke(t.c,0)}
 const copSees=(x,z)=>TRAFFIC.some(t=>t.cop&&t.e&&Math.hypot(t.wx-x,t.wz-z)<COP_V.see);
 const wantedBlock=()=>toast("LOSE THE POLICE FIRST","They're still after you: get out of their reach for a while","bad");
 const CRIME={crash:["Crashed into a car in front of the police",1],ped:["Ran into someone in front of the police",1],take:["Took a car in front of the police",1],
@@ -6329,7 +6333,8 @@ const copMe=()=>BOAT.on?BOAT:FOOT.on?FOOT:P;
 // as many police cars after you as your stars call for: the nearest patrol first, then cars from out of sight
 function copDispatch(){
   const me=copMe(),want=COP_V.stars[WANTED.lvl];let have=copsChasing().length;
-  const free=TRAFFIC.filter(t=>t.cop&&!t.chase).sort((a,b)=>(a.e?Math.hypot(a.wx-me.x,a.wz-me.z):1e9)-(b.e?Math.hypot(b.wx-me.x,b.wz-me.z):1e9));
+  // never one still standing wrecked where you stopped it (Codex's review of #31: it could be sent after you again)
+  const free=TRAFFIC.filter(t=>t.cop&&!t.chase&&!(t.e&&(t.damage||0)>=100)).sort((a,b)=>(a.e?Math.hypot(a.wx-me.x,a.wz-me.z):1e9)-(b.e?Math.hypot(b.wx-me.x,b.wz-me.z):1e9));
   for(const t of free){if(have>=want)break;
     if(!t.e||Math.hypot(t.wx-me.x,t.wz-me.z)>400){if(!copPlace(t,170,340))continue}
     t.chase=true;t.offDuty=false;t.passT=0;have++}
@@ -6585,19 +6590,22 @@ function gunFire(){
   const F=FOOT,q=GUN.lock;
   if(!q){const x=F.x+Math.sin(F.h)*25,z=F.z+Math.cos(F.h)*25;gunSpark(x,footGround(x,z)+.2,z);crime("fire",F.x,F.z);return true}
   gunSpark(q.x,q.y+(q.k==="car"||q.k==="cop"?0:.1),q.z);
+  // a hit counts where the police can see it happen, or see you fire (Codex's review of #31: a patrol beside you
+  // could watch you shoot someone 40 m away and do nothing). One crime either way, never two
+  const seen=(k,x,z)=>{if(!copSees(x,z)&&copSees(F.x,F.z))crime(k,F.x,F.z);else crime(k,x,z)};
   if(q.k==="car"||q.k==="cop"){const t=q.o;t.damageT=0;damageVehicle(t,4+GUN.dmg/1.4);
     // badly damaged: it stops where it is, out of the chase for good
     if((t.damage||0)>=100){t.stopT=1e6;t.v=0;if(t.cop){t.chase=false;t.offDuty=true}}
-    crime(q.k==="cop"?"shootCop":"shoot",q.x,q.z)}
+    seen(q.k==="cop"?"shootCop":"shoot",q.x,q.z)}
   // the same in every violence setting: down for 6 s. The setting only changes what you see (on LOW they stand still
   // instead of falling)
-  else if(q.k==="ped"){const p=q.o;p.st="down";p.t=6;p.v=0;gunMark(p.x,p.z);crime("shootPed",p.x,p.z)}
-  else{const O=q.o;O.down=6;O.caughtT=0;gunMark(O.x,O.z);crime("shootCop",O.x,O.z)}
+  else if(q.k==="ped"){const p=q.o;p.st="down";p.t=6;p.v=0;gunMark(p.x,p.z);seen("shootPed",p.x,p.z)}
+  else{const O=q.o;O.down=6;O.caughtT=0;gunMark(O.x,O.z);seen("shootCop",O.x,O.z)}
   return true;
 }
 // on foot, every frame: the pistol in your hand, the lock, firing, the right arm raised to aim
 function gunFoot(dt){
-  const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0;
+  const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0&&save.flash;
   GUN.lock=on?gunPick():null;
   if(on&&gunWant()&&GUN.cool<=0)gunFire();
   const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,(q.k==="car"||q.k==="cop"?footGround(q.x,q.z)+2.1:footGround(q.x,q.z)+2.05),q.z);GUN.ring.rotation.z+=dt*2}
@@ -6625,10 +6633,12 @@ function gunArrest(fine){
 }
 function healthTick(dt){
   const H=HEALTH;H.calm+=dt;H.hurtT-=dt;
+  // the pistol and the lock ring go when you get into a car or onto the boat (the ring stayed over the target)
+  if(!FOOT.on){GUN.ring.visible=false;GUN.m.visible=false;GUN.lock=null}
   if(H.calm>6&&H.hp<50&&H.hp>0)H.hp=Math.min(50,H.hp+4*dt);
   for(const s of GUN.sparks)if(s.t>0){s.t-=dt;if(s.t<=0)s.m.visible=false}
   for(const k of GUN.marks)if(k.t>0){k.t-=dt;k.m.material.opacity=Math.min(.7,k.t*.35);if(k.t<=0)k.m.visible=false}
-  if(H.hurtT>0||FOOT.on)$("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(Math.max(0,H.hurtT)*.9+(H.hp<30?.15:0)).toFixed(3)})`;
+  if(H.hurtT>0||FOOT.on)$("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(Math.max(0,save.flash?H.hurtT:0)*.9+(H.hp<30?.15:0)).toFixed(3)})`;
   GUN.hudT-=dt;if(GUN.hudT<=0){GUN.hudT=.1;
     const show1=(FOOT.on&&save.armed)||H.hp<H.max;show("gunHud",show1);
     if(show1){$("hpBar").style.width=Math.round(H.hp/H.max*100)+"%";$("gunHud").classList.toggle("low",H.hp<30);

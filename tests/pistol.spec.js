@@ -84,7 +84,8 @@ test.describe("pistol", () => {
     expect(inCar).toEqual({ ammo: 48, gun: false });
     await game.park();
     await game.key("f");
-    await game.frames(4);
+    // the HUD is refreshed ten times a second
+    await game.page.waitForFunction(() => !document.getElementById("gunHud").classList.contains("hide"), null, { timeout: 5000 });
     const onFoot = await game.eval(() => ({ gun: __T.GUN.m.visible, hud: !document.getElementById("gunHud").classList.contains("hide"), txt: document.getElementById("gunTxt").textContent }));
     expect(onFoot).toEqual({ gun: true, hud: true, txt: "PISTOL 48" });
   });
@@ -311,5 +312,112 @@ test.describe("pistol", () => {
     });
     expect(r.lvl).toBe(3);
     expect(r.hp).toBe(90);
+  });
+  // Codex's review of #31
+  test("a police car shot to a stop is never sent after you again while wrecked, and comes back repaired", async ({ game }) => {
+    await armed(game, { police: true });
+    const k = await carAhead(game, 14, true);
+    const r = await game.eval((k) => {
+      const T = __T,
+        W = T.WANTED,
+        cop = T.TRAFFIC[k];
+      T.crime("crash", T.FOOT.x, T.FOOT.z);
+      cop.damage = 100;
+      cop.stopT = 1e6;
+      cop.chase = false;
+      cop.offDuty = true;
+      // more stars: more cars are called, several dispatch rounds
+      const out = { wreckedCalled: false };
+      for (let i = 0; i < 4; i++) {
+        W.crimeAt = -99;
+        T.crime("crash", T.FOOT.x, T.FOOT.z);
+        for (let f = 0; f < 40; f++) {
+          T.driveUpdate(1 / 60);
+          if (cop.chase) out.wreckedCalled = true;
+        }
+      }
+      out.lvl = W.lvl;
+      out.chasing = T.copsChasing().length;
+      // stood down out of sight, it is repaired
+      T.copStandDown(cop);
+      out.repaired = cop.damage === 0 && cop.stopT === 0;
+      return out;
+    }, k);
+    expect(r.wreckedCalled).toBe(false);
+    expect(r.lvl).toBe(5);
+    expect(r.chasing).toBeGreaterThan(0);
+    expect(r.repaired).toBe(true);
+  });
+
+  test("a hit the police can't see happen still counts if they can see you fire; and only once", async ({ game }) => {
+    await armed(game, { police: true });
+    // a patrol beside you, a traffic car 35 m on: more than 90 m from the patrol at the target end
+    await carAhead(game, 35);
+    const r = await game.eval(() => {
+      const T = __T,
+        F = T.FOOT,
+        W = T.WANTED,
+        car = T.TRAFFIC[0],
+        cop = T.TRAFFIC.find((t) => t.cop),
+        { e } = window.__road;
+      // 60 m straight behind you, looking on (not moved by traffic: no frames run from here)
+      const dx = F.x - car.wx,
+        dz = F.z - car.wz,
+        d = Math.hypot(dx, dz);
+      Object.assign(cop, { e, lost: false, v: 0, stopT: 1e6, chase: false });
+      cop.wx = F.x + (dx / d) * 60;
+      cop.wz = F.z + (dz / d) * 60;
+      const out = { seesTarget: Math.hypot(cop.wx - car.wx, cop.wz - car.wz) < T.COP_V.see, seesYou: Math.hypot(cop.wx - F.x, cop.wz - F.z) < T.COP_V.see };
+      T.GUN.lock = T.gunPick();
+      out.locked = !!T.GUN.lock && T.GUN.lock.o === car;
+      T.GUN.cool = 0;
+      T.gunFire();
+      out.lvl = W.lvl;
+      return out;
+    });
+    expect(r).toEqual({ seesTarget: false, seesYou: true, locked: true, lvl: 1 });
+  });
+
+  test("getting into the car puts the pistol and the lock ring away", async ({ game }) => {
+    await armed(game);
+    await carAhead(game, 14);
+    const before = await game.eval(() => __T.GUN.ring.visible);
+    expect(before).toBe(true);
+    await game.eval(() => {
+      const T = __T;
+      T.FOOT.x = T.P.x + 1.5;
+      T.FOOT.z = T.P.z;
+      T.driveUpdate(1 / 60);
+    });
+    await game.key("f");
+    await game.frames(3);
+    expect(await game.eval(() => [__T.FOOT.on, __T.GUN.ring.visible, __T.GUN.m.visible])).toEqual([false, false, false]);
+  });
+
+  test("FLASHES: OFF hides the muzzle flash and the red flash when you're hit", async ({ game, page }) => {
+    await armed(game);
+    const flash = () =>
+      game.eval(() => {
+        const T = __T;
+        T.GUN.cool = 0;
+        T.gunFire();
+        T.driveUpdate(1 / 60);
+        const muzzle = T.GUN.flash.visible;
+        T.hurt(5);
+        T.driveUpdate(1 / 60);
+        return { muzzle, edge: document.getElementById("edge").style.boxShadow };
+      });
+    const on = await flash();
+    expect(on.muzzle).toBe(true);
+    expect(on.edge).not.toContain("0)");
+    await game.key("Escape");
+    await game.waitState("PAUSE");
+    await page.locator("#pFlash").click();
+    expect(await page.locator("#pFlash").textContent()).toBe("FLASHES: OFF");
+    await page.locator("#pRes").click();
+    await game.waitState("DRIVE");
+    const off = await flash();
+    expect(off.muzzle).toBe(false);
+    expect(off.edge).toContain("rgba(226, 72, 61, 0)");
   });
 });
