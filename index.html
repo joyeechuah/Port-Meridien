@@ -3677,7 +3677,7 @@ function updateTraffic(dt){
     {const stopFor=(X,Z)=>{const wx=X-t.wx,wz=Z-t.wz,wa=wx*tx+wz*tz;
         if(wa>0&&wa<Math.max(14,7+t.v*t.v/14)&&Math.abs(wx*-tz+wz*tx)<1.9){target=Math.min(target,wa<7?0:Math.sqrt(14*(wa-7)));if(wa<9)close=true}};
       if(FOOT.on)stopFor(FOOT.x,FOOT.z);
-      if(pedOn)for(const p of PEDS)if(p.st==="cross")stopFor(p.x,p.z)}
+      if(pedOn)for(const p of PEDS)if(p.st==="cross"||p.st==="down")stopFor(p.x,p.z)}
     const ln=RT[t.e.type].lanes,offT=t.passT>0?(ln.length>1&&t.lane===0?ln[1]:-ln[0])*SIDE():t.off;
     t.offCur+=clamp(offT-t.offCur,-2.2*dt,2.2*dt);
     t.v+=clamp(target-t.v,-(close?20:9)*dt,3*dt);
@@ -3700,6 +3700,7 @@ function updateTraffic(dt){
   }
   copUpdate(dt);
   pedUpdate(dt);
+  healthTick(dt);
 }
 
 /* ================================================================ STREAK
@@ -5038,7 +5039,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
+function setState(s){if(s==="GARAGE")gunSync();if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on)}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
@@ -6213,6 +6214,7 @@ function footEnd(){
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
 function footHud(on){
+  show("bF",on&&save.armed);
   show("speedo",!on);show("streak",!on);show("chFoot",!on);show("chRear",!on);show("chCam",!on);
   $("bG").textContent=on?"WALK":"GAS";$("bH").innerHTML=on?"RUN":"HAND<br>BRAKE";
   const b=$("bB");if(on){b.textContent="BACK";b.classList.remove("rev")}
@@ -6260,6 +6262,7 @@ function footUpdate(dt){
   const g=footGround(FOOT.x,FOOT.z);FOOT.y+=(g-FOOT.y)*Math.min(1,dt*14);
   FOOT.ph+=Math.abs(FOOT.v)*dt*3.1;if(Math.abs(FOOT.v)<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
   footPlace(dt);
+  gunFoot(dt);
   footPrompt();
   // the car you left is switched off: its engine and tyres are silent (they used to hum on at whatever they were
   // doing when you got out, however far you walked), and the district and the clock keep up with you
@@ -6303,7 +6306,8 @@ function copStandDown(t){t.chase=false;t.offDuty=false;t.e=null;t.lost=true;t.c.
 const copSees=(x,z)=>TRAFFIC.some(t=>t.cop&&t.e&&Math.hypot(t.wx-x,t.wz-z)<COP_V.see);
 const wantedBlock=()=>toast("LOSE THE POLICE FIRST","They're still after you: get out of their reach for a while","bad");
 const CRIME={crash:["Crashed into a car in front of the police",1],ped:["Ran into someone in front of the police",1],take:["Took a car in front of the police",1],
-  speed:["Speeding past the police",1],cop:["Hit a police car",2]};
+  speed:["Speeding past the police",1],cop:["Hit a police car",2],fire:["Fired a gun in front of the police",1],
+  shoot:["Shot at a car in front of the police",1],shootPed:["Shot at someone in front of the police",1],shootCop:["Shot at the police",2]};
 // a crime at (x,z): it counts only where a police car can see it, never during a race or a test drive, and at most
 // one star every 4 s (a crash is several contacts in a row). In tests the police look away unless a test asks
 function crime(kind,x,z){
@@ -6447,10 +6451,13 @@ function copOfficer(dt,ch,still){
     if(!t)return false;
     // out of the door on the side nearer you
     const rx=Math.cos(t.yaw),rz=-Math.sin(t.yaw),sd=((me.x-t.wx)*rx+(me.z-t.wz)*rz)>=0?1:-1,c=footClear(t.wx+rx*sd*1.6,t.wz+rz*sd*1.6);
-    Object.assign(O,{on:true,x:c[0],z:c[1],y:footGround(c[0],c[1]),h:t.yaw,v:0,car:t,back:false,caughtT:0,detA:0,detT:0,detSide:0,outT:0,best:1e9});O.m.G.visible=true;
+    Object.assign(O,{on:true,x:c[0],z:c[1],y:footGround(c[0],c[1]),h:t.yaw,v:0,car:t,back:false,caughtT:0,detA:0,detT:0,detSide:0,outT:0,best:1e9,down:0,fall:0});O.m.G.rotation.set(0,t.yaw,0,"YXZ");O.m.G.visible=true;
     return false;
   }
   if(!car||!car.e){copOfficerIn();return false}
+  // shot: down for a few seconds (standing still and flinching on LOW), then back to the car
+  if(O.down>0){O.down-=dt;O.caughtT=0;O.fall=Math.min(1,(O.fall||0)+dt*4*(save.violence?1:0));O.m.G.rotation.set(-Math.PI/2*O.fall,O.h,0,"YXZ");
+    if(O.down<=0){O.back=true;car.offAt=copClock;O.fall=0;O.m.G.rotation.set(0,O.h,0,"YXZ")}return false}
   const dMe=Math.hypot(me.x-O.x,me.z-O.z);O.outT+=dt;
   // once they turn back they go all the way to the car; it waits 12 s before sending anyone again
   if(!O.back&&(!WANTED.lvl||BOAT.on||(!FOOT.on&&!still)||dMe>OFF_V.giveUp||O.detT>15||O.outT>OFF_V.outT)){O.back=true;car.offAt=copClock}
@@ -6478,6 +6485,13 @@ function copOfficer(dt,ch,still){
   O.y+=(footGround(O.x,O.z)-O.y)*Math.min(1,dt*12);
   O.ph+=O.v*dt*3.3;const sw=Math.sin(O.ph)*Math.min(.9,O.v*.3),G=O.m.G;
   G.position.set(O.x,O.y,O.z);G.rotation.y=O.h;O.m.legs[0].rotation.x=sw;O.m.legs[1].rotation.x=-sw;O.m.arms[0].rotation.x=-sw*.8;O.m.arms[1].rotation.x=sw*.8;
+  // at three stars or more an officer fires at you while you're on foot, from within 20 m with a clear line: about
+  // one shot in three hits at 10 m, fewer further off, 10 health a hit (the violence setting changes how hits look,
+  // not the rules)
+  O.shootT=(O.shootT||0)-dt;
+  if(WANTED.lvl>=3&&FOOT.on&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6)){
+    O.shootT=1.2;gunSpark(O.x+Math.sin(O.h)*.5,O.y+1.35,O.z+Math.cos(O.h)*.5);gunSound();
+    if(Math.random()<Math.max(.08,.45-dMe*.015))hurt(10)}
   // caught: they have hold of you (on foot), or are at your door while you sit still
   const grab=FOOT.on?dMe<OFF_V.grab:still&&dMe<OFF_V.grabCar;
   if(!O.back&&grab)O.caughtT+=dt;else O.caughtT=0;
@@ -6496,8 +6510,9 @@ function copClear(){
   wantedHud();
 }
 function copCaught(){
-  const fine=Math.min(save.cr,COP_V.fine*WANTED.lvl);
-  save.cr-=fine;persist();updateMoney();copClear();
+  const fine=Math.min(save.cr,COP_V.fine*WANTED.lvl),armed=save.armed;
+  save.cr-=fine;if(armed)save.armed=false;persist();updateMoney();copClear();
+  if(armed){gunArrest(fine);return}
   toast("CAUGHT",fine?"Fined "+fmtCr(fine)+" CR. Drive carefully near the police":"No fine: you have no credits","bad");
 }
 function wantedHud(){
@@ -6513,6 +6528,109 @@ function copSiren(dt){
   const me=copMe();let d=1e9;for(const t of TRAFFIC)if(t.chase&&t.e)d=Math.min(d,Math.hypot(t.wx-me.x,t.wz-me.z));
   const now=AC.currentTime,v=save.sound?clamp(1-d/320,0,1)*.045:0;
   sirenAU.g.gain.setTargetAtTime(v,now,.15);sirenAU.o.frequency.setTargetAtTime(copClock%1.2<.6?660:880,now,.04);
+}
+/* ================================================================ PISTOL AND HEALTH (roadmap step 4, first part)
+   Working decisions in docs/STEP4_DECISIONS.md. Take the pistol from the garage (GARAGE: PISTOL) and you carry it
+   on foot: it locks onto the nearest target in front of you (a car, a police car, someone walking, an officer) and
+   fires with G, the FIRE pad, or the controller's right shoulder. 48 rounds, refilled at the house. Cars and police
+   cars stop when badly damaged; people are knocked down and get up again; officers go back to their car. What the
+   police see counts towards the wanted level, as for any crime. Once you carry the pistol, being caught is an
+   arrest: the fine, the pistol back to the garage, and you start outside the Harbour Hall.
+   Health is yours only: 100, back to 50 slowly when nothing hurts you for 6 s, full at the house; at 0 you are
+   knocked out and wake at home, 10% of your credits poorer (at most 5,000). The VIOLENCE setting: LOW nobody falls,
+   STANDARD people fall, STRONG hits leave a red mark that fades. */
+const GUN={max:48,ammo:0,cool:0,range:40,cone:.6,dmg:12,lock:null,flashT:0,m:null,flash:null,ring:null,sparks:[],marks:[],aimT:0,hudT:0};
+const HEALTH={hp:100,max:100,calm:99,hurtT:0};
+function initGun(){
+  // the pistol in the right hand (the walker's right is its arm on the -x side), a flash at the muzzle, a ring
+  // over the locked target, and small pools of sparks and marks: all made now, so the graphics card has them ready
+  const m=footModel(),gm=new THREE.MeshStandardMaterial({color:0x1d1f22,roughness:.5,metalness:.4});
+  GUN.m=new THREE.Group();const b=new THREE.Mesh(GEO.box,gm);b.scale.set(.045,.11,.2);b.position.set(0,-.02,.06);GUN.m.add(b);
+  const g2=new THREE.Mesh(GEO.box,gm);g2.scale.set(.04,.12,.05);g2.position.set(0,-.09,0);g2.rotation.x=.3;GUN.m.add(g2);
+  GUN.m.position.set(0,-.27,.04);m.elbows[0].add(GUN.m);GUN.m.visible=false;
+  const hot=new THREE.MeshBasicMaterial({color:0xffd27a,transparent:true,opacity:.95,depthWrite:false,blending:THREE.AdditiveBlending});
+  GUN.flash=new THREE.Mesh(GEO.ball,hot);GUN.flash.scale.setScalar(.09);GUN.flash.position.set(0,-.02,.2);GUN.m.add(GUN.flash);GUN.flash.visible=false;
+  GUN.ring=new THREE.Mesh(new THREE.TorusGeometry(.55,.05,6,24),new THREE.MeshBasicMaterial({color:0xe2483d,transparent:true,opacity:.85,depthWrite:false}));
+  GUN.ring.rotation.x=Math.PI/2;GUN.ring.visible=false;scene.add(GUN.ring);
+  for(let i=0;i<6;i++){const k=new THREE.Mesh(GEO.ball,hot.clone());k.scale.setScalar(.18);k.visible=false;scene.add(k);GUN.sparks.push({m:k,t:0})}
+  const red=new THREE.MeshBasicMaterial({color:0x7a0d0d,transparent:true,opacity:0,depthWrite:false});
+  for(let i=0;i<6;i++){const k=new THREE.Mesh(new THREE.CircleGeometry(.35,12),red.clone());k.rotation.x=-Math.PI/2;k.visible=false;scene.add(k);GUN.marks.push({m:k,t:0})}
+}
+const gunWant=()=>!locked&&(keys.g||pad.F||GP.fire);
+// whether a shot from (x0,z0) gets to (x1,z1) without a wall in the way (cars count as cover too)
+function gunClear(x0,z0,x1,z1,stop){
+  const d=Math.hypot(x1-x0,z1-z0),n=Math.max(1,Math.floor((d-stop)/.8));
+  for(let k=1;k<=n;k++){const t=k*.8/d,x=x0+(x1-x0)*t,z=z0+(z1-z0)*t,c=footClear(x,z);if(Math.hypot(c[0]-x,c[1]-z)>.05)return false}
+  return true;
+}
+// the nearest target within 40 m and about 35 degrees of where you face, in a clear line
+function gunPick(){
+  const F=FOOT,fx=Math.sin(F.h),fz=Math.cos(F.h),list=[];
+  for(const t of TRAFFIC)if(t.e&&t.c.G.visible&&(t.damage||0)<100)list.push({k:t.cop?"cop":"car",x:t.wx,z:t.wz,y:1,o:t,stop:2.8});
+  if(pedOn)for(const p of PEDS)if(p.m.G.visible&&p.st!=="down")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
+  if(OFFICER.on&&!(OFFICER.down>0))list.push({k:"officer",x:OFFICER.x,z:OFFICER.z,y:1.2,o:OFFICER,stop:.6});
+  let best=null,bs=1e9;
+  for(const q of list){const dx=q.x-F.x,dz=q.z-F.z,d=Math.hypot(dx,dz);if(d<.8||d>GUN.range)continue;
+    const a=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1));if(a>GUN.cone)continue;
+    const sc=d+a*25;if(sc<bs&&gunClear(F.x,F.z,q.x,q.z,q.stop)){bs=sc;best=q}}
+  return best;
+}
+function gunSpark(x,y,z){const s=GUN.sparks.find(s=>s.t<=0)||GUN.sparks[0];s.t=.12;s.m.position.set(x,y,z);s.m.visible=true}
+function gunMark(x,z){if(save.violence<2)return;const k=GUN.marks.find(k=>k.t<=0)||GUN.marks[0];k.t=4;k.m.position.set(x,footGround(x,z)+.03,z);k.m.material.opacity=.7;k.m.visible=true}
+function gunSound(){if(!AU||!save.sound)return;const s=AC.createBufferSource();s.buffer=AU.buf;const f=AC.createBiquadFilter();f.type="bandpass";f.frequency.value=1500;f.Q.value=.6;
+  const g=AC.createGain(),t=AC.currentTime;g.gain.setValueAtTime(.45,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);s.connect(f);f.connect(g);g.connect(AU.master);s.start(0,Math.random()*.5);s.stop(t+.18)}
+function gunFire(){
+  if(GUN.ammo<=0){toastOnce("gun",["OUT OF ROUNDS","Refill at your house"]);GUN.cool=.4;return false}
+  GUN.ammo--;GUN.cool=.32;GUN.flashT=.06;GUN.aimT=1.2;gunSound();
+  const F=FOOT,q=GUN.lock;
+  if(!q){const x=F.x+Math.sin(F.h)*25,z=F.z+Math.cos(F.h)*25;gunSpark(x,footGround(x,z)+.2,z);crime("fire",F.x,F.z);return true}
+  gunSpark(q.x,q.y+(q.k==="car"||q.k==="cop"?0:.1),q.z);
+  if(q.k==="car"||q.k==="cop"){const t=q.o;t.damageT=0;damageVehicle(t,4+GUN.dmg/1.4);
+    // badly damaged: it stops where it is, out of the chase for good
+    if((t.damage||0)>=100){t.stopT=1e6;t.v=0;if(t.cop){t.chase=false;t.offDuty=true}}
+    crime(q.k==="cop"?"shootCop":"shoot",q.x,q.z)}
+  else if(q.k==="ped"){const p=q.o;if(save.violence){p.st="down";p.t=6}else{p.st="idle";p.t=2}p.v=0;gunMark(p.x,p.z);crime("shootPed",p.x,p.z)}
+  else{const O=q.o;O.down=save.violence?6:1.5;O.caughtT=0;gunMark(O.x,O.z);crime("shootCop",O.x,O.z)}
+  return true;
+}
+// on foot, every frame: the pistol in your hand, the lock, firing, the right arm raised to aim
+function gunFoot(dt){
+  const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0;
+  GUN.lock=on?gunPick():null;
+  if(on&&gunWant()&&GUN.cool<=0)gunFire();
+  const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,(q.k==="car"||q.k==="cop"?footGround(q.x,q.z)+2.1:footGround(q.x,q.z)+2.05),q.z);GUN.ring.rotation.z+=dt*2}
+  if(on&&(q||GUN.aimT>0)){const m=FOOT.m;m.arms[0].rotation.x=-1.45;m.elbows[0].rotation.x=-.05;
+    // turn a little towards the target while aiming, so the arm points at it
+    if(q)FOOT.h+=wrapA(Math.atan2(q.x-FOOT.x,q.z-FOOT.z)-FOOT.h)*Math.min(1,dt*6);m.G.rotation.y=FOOT.h}
+}
+function hurt(n){
+  const H=HEALTH;if(H.hp<=0||n<=0)return;H.hp=Math.max(0,H.hp-n);H.calm=0;H.hurtT=.5;
+  if(H.hp<=0)knockedOut();
+}
+// out cold: home, a little poorer; nothing you were doing carries on (a chase, a contract, a taken car)
+function knockedOut(){
+  const fine=Math.min(Math.round(save.cr*.1),5000);save.cr-=fine;persist();updateMoney();
+  if(OFFICER.on)copOfficerIn();copClear();
+  toast("KNOCKED OUT","You came round at home"+(fine?" · "+fmtCr(fine)+" CR gone":""),"bad");
+  goGarage(false);HEALTH.hp=HEALTH.max;
+}
+// arrested (caught while carrying the pistol): out of the car, the pistol taken back to the garage, and set down
+// on the road outside the Harbour Hall
+function gunArrest(fine){
+  if(FOOT.on)footEnd();
+  fadeThen(420,()=>{const nr=nearestRoadGlobal(QUAY.hall[0],QUAY.hall[1]+QUAY.hall[3]+14,true);if(nr){placeOnRoad(nr,1);snapCam()}});
+  toast("ARRESTED",(fine?"Fined "+fmtCr(fine)+" CR. ":"")+"Your pistol is back in the garage","bad");
+}
+function healthTick(dt){
+  const H=HEALTH;H.calm+=dt;H.hurtT-=dt;
+  if(H.calm>6&&H.hp<50&&H.hp>0)H.hp=Math.min(50,H.hp+4*dt);
+  for(const s of GUN.sparks)if(s.t>0){s.t-=dt;if(s.t<=0)s.m.visible=false}
+  for(const k of GUN.marks)if(k.t>0){k.t-=dt;k.m.material.opacity=Math.min(.7,k.t*.35);if(k.t<=0)k.m.visible=false}
+  if(H.hurtT>0||FOOT.on)$("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(Math.max(0,H.hurtT)*.9+(H.hp<30?.15:0)).toFixed(3)})`;
+  GUN.hudT-=dt;if(GUN.hudT<=0){GUN.hudT=.1;
+    const show1=(FOOT.on&&save.armed)||H.hp<H.max;show("gunHud",show1);
+    if(show1){$("hpBar").style.width=Math.round(H.hp/H.max*100)+"%";$("gunHud").classList.toggle("low",H.hp<30);
+      const t=save.armed?(GUN.ammo?"PISTOL "+GUN.ammo:"PISTOL EMPTY"):"";$("gunTxt").textContent=t;$("gunHud").classList.toggle("empty",save.armed&&!GUN.ammo)}}
 }
 /* ================================================================ PEDESTRIANS
    People walking in Old Quay: round the blocks on the pavements, across the streets on the zebra crossings when no car is
@@ -6627,6 +6745,7 @@ function pedUpdate(dt){
     const e=p.e;let want=0,hurry=false;
     // a car coming at them (yours, or traffic): step in towards the buildings, or hurry off the crossing
     let danger=driving&&psp>2.5&&Math.hypot(P.x-p.x,P.z-p.z)<4+psp*.9&&((p.x-P.x)*P.vx+(p.z-P.z)*P.vz)/psp>0&&Math.abs((p.x-P.x)*-P.vz+(p.z-P.z)*P.vx)/psp<2.2;
+    if(p.st==="down")danger=false;
     if(p.st==="walk"||p.st==="cross"){
       want=PED_V.walk*p.pace;
       // you, on foot, standing in the way just ahead: wait for you (other walkers pass through each other for now)
@@ -6640,6 +6759,7 @@ function pedUpdate(dt){
       else if(p.t>10){   // tired of waiting: back along the pavement instead
         const walk=p.from.adj.filter(a=>!a.cross);p.e=walk[Math.floor(pedRnd(p)*walk.length)];p.s=0;p.st="walk"}
     }else if(p.st==="idle"){p.t-=dt;if(p.t<=0)p.st="walk"}
+    else if(p.st==="down"){p.t-=dt;if(p.t<=0){p.st="idle";p.t=1.5}}
     else if(p.st==="cross"&&danger)p.t=1;   // keeps hurrying to the far side once startled
     // on the pavement, step aside from a car and drift back afterwards
     p.o+=clamp((!e.cross&&danger?2.1:p.off)-p.o,-1.2*dt,(danger?4:1.2)*dt);
@@ -6656,7 +6776,9 @@ function pedUpdate(dt){
     const G=p.m.G,vis=Math.hypot(p.x-me.x,p.z-me.z)<PED_V.see;G.visible=vis;
     if(vis){p.ph+=p.v*dt*3.3;if(p.v<.05)p.ph+=(Math.round(p.ph/Math.PI)*Math.PI-p.ph)*Math.min(1,dt*10);
       const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
-      G.position.set(p.x,p.y+Math.abs(Math.cos(p.ph))*Math.min(.04,p.v*.012),p.z);G.rotation.y=p.h;
+      // lying down after being shot, and getting up again
+      p.fall=clamp((p.fall||0)+(p.st==="down"?dt*4:-dt*1.6),0,1);
+      G.position.set(p.x,p.y+Math.abs(Math.cos(p.ph))*Math.min(.04,p.v*.012)+p.fall*.12,p.z);G.rotation.set(-Math.PI/2*p.fall,p.h,0,"YXZ");
       p.m.legs[0].rotation.x=sw;p.m.legs[1].rotation.x=-sw;p.m.arms[0].rotation.x=-sw*.7;p.m.arms[1].rotation.x=sw*.7}
   }
 }
@@ -6727,7 +6849,7 @@ function boatLandSpot(){
   const x=clamp(BOAT.x,PIER.x0+2.2,PIER.x1-1),z=BOAT.z<0?PIER.z0+.75:PIER.z1-.75;
   return Math.hypot(BOAT.x-x,BOAT.z-z)<=BOAT_V.land?[x,z]:null;
 }
-function boatHud(){footHud(true);$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
+function boatHud(){footHud(true);show("bF",false);$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
 function boatBoard(){
   if(!FOOT.on||BOAT.on||!BOAT.m)return false;
   FOOT.on=false;FOOT.m.G.visible=false;BOAT.on=true;BOAT.v=0;BOAT.steer=0;BOAT.car=[P.x,P.z];BOAT.cy=BOAT.h;
@@ -6855,7 +6977,7 @@ const STEPS=[
   ["Opening your house",buildHouse],
   ["Stocking the dealership",buildDealer],
   ["Building the harbour",buildHarbour],
-  ["Waking the town",buildPeds],
+  ["Waking the town",()=>{buildPeds();initGun()}],
   ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildJobs()}],
   ["Filling the roads",()=>{initTraffic();initCops();buildMapImage()}],
   ["Parking your cars",()=>{parkAll(null);carLights()}],
