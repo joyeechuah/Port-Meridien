@@ -1,6 +1,6 @@
 # Mobile lag and broken sound: investigation
 
-**Status: investigating. No fix is approved.** This answers Codex's investigation request of 16 Nov 2026 (priority P1). Device measurements are still to come: section 5 says how to take them.
+**Status: the sound's cause is found (section 6); the lag is still being measured. No fix is approved.** This answers Codex's investigation request of 16 Nov 2026 (priority P1).
 
 ## 1. Reproduction
 
@@ -108,14 +108,73 @@ A single screenshot can't tie a counter to one break, so the comparison between 
 | 7 | `?perf` | GRAPHICS SMOOTH | Lightest setting |
 | 8 | `?perf` | As run 1, 10 minutes | Heat, memory and node growth over time |
 
-## 6. Fix proposals, ranked (none to build until section 5's results are in)
+## 6. Results, 17 Nov 2026
+
+### Sound: cause found
+
+| Where | Sound | Panel |
+| --- | --- | --- |
+| The live site (the README's Play Now link), main's default buffer | **No breaks** (Jo Yee, listening) | (not taken) |
+| raw.githack.com, `?perf` at `14fbb5c` (the code merged as #39), default buffer, 42 s recording | **Breaks**: 88 short silences in 42 s, about 2 a second | See below |
+
+The raw.githack.com panel, on an Android 10 phone with Chrome 157, 392 × 731 at 2.75:
+
+| Reading | After 0.2 min | After 0.8 min |
+| --- | --- | --- |
+| music | **failed** | **failed** |
+| underruns (Chrome's `playbackStats`) | 75 (400 ms) | **1,018 (5,429 ms)** |
+| clocks behind | audio 14 ms, output 5 ms | audio 187 ms, output 174 ms |
+| sound sources active | 15 (most 27) | 24 (most 45) |
+| buffer (base + output) | 5 + 104 ms | 5 + 104 ms |
+
+There, the recorded songs failed to load, so the game played its composed backup music. The backup music builds every note live (a reverb, an echo, dozens of short oscillators and filters at once). On this phone that overloads the browser's audio thread, which shows in three ways:
+
+- Chrome's own count of underruns, over a thousand in under a minute.
+- Both clocks falling steadily behind.
+- The breaks Jo Yee heard.
+
+Where the songs load, on the live site, there are no breaks on the same phone with the same default buffer.
+
+| # | Cause | Now |
+| --- | --- | --- |
+| A1 | Audio output runs dry | **Confirmed** (underrun counter, listening), when the backup music plays |
+| A4 | Too many sound sources: the composed backup music | **Confirmed** as the load behind A1 |
+| A2, A3, A5 | | Rejected, as in section 3 |
+
+Why the songs failed there isn't known; raw.githack.com is only a test host. On the live site they can fail too, on a slow or broken connection, and the player then gets the same breaks.
+
+### Picture: first numbers (raw.githack.com, with the backup music's load)
+
+| Reading | After 0.2 min (garage) | After 0.9 min (driving) |
+| --- | --- | --- |
+| fps; frame p50 / p95 / p99 | 46; 17 / 44 / 58 ms | 38; 22 / 45 / 67 ms |
+| over 33 / 50 / 100 ms | 149 / 15 / 1 of 616 | 665 / 76 / 2 of 2,044 |
+| CPU per frame: sim, render call | 0.3, 7.4 ms | 4.2, 9.0 ms |
+| long tasks | 14 (max 705 ms, loading) | 21 (max 705 ms) |
+| render scale | 1.75 of 2 | **0.75 of 2** (2.00 > 1.75 > 1.50 > 1.25 > 1.00 > 0.75) |
+
+AUTO stepped the picture all the way down to its floor within a minute. That's the blur, and it's on main's own thresholds, not #38's. Frames still took about 22 ms with about 13 ms of CPU, so the rest of the time is outside the game's code: the graphics chip, the compositor, or the audio thread competing for the CPU. These numbers include the backup music's load, so they can't be used for the picture until a run on the live site gives a clean baseline.
+
+## 7. Fix proposals, ranked
+
+### Sound (cause found)
+
+| # | Proposal | Benefit | Risk | Regression plan |
+| --- | --- | --- | --- | --- |
+| S1 | **Recommended.** When a recorded song fails, render the composed backup music once, offline (`OfflineAudioContext`; `makeMusic` already works on any context), and loop the result like a recorded song | Same music, and the audio thread plays one sample instead of dozens of live notes, as with the recorded songs that play cleanly | A one-time render of a few seconds in the background; about 13 MB for the road loop at 24 kHz; the loop's seam needs the same crossfade as the recorded songs | Test: with the songs blocked, the backup plays from one buffer, and active sound sources stay low; the loop repeats without a gap; the music tests pass; phone listening check |
+| S2 | Try the recorded songs again after a failure, before giving up | The recorded songs come back after a passing network failure | Doesn't help if they keep failing | Test: a song that fails once then loads plays |
+| S3 | On phones, play no music when the recorded songs fail | Simplest; no load | No music for those players | Test: no composed music on a touch device |
+
+S1 and S2 together are the proposal. #38's larger buffer isn't needed: there were no breaks without it where the songs loaded.
+
+### Picture (still being measured)
 
 | # | Proposal | When the data supports it | Expected benefit | Risk | Regression plan |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Larger sound buffer on phones (#38's first change) | Run 3 breaks clearly less than run 1, and its reported buffer is actually larger | Fewer or no dropouts | Sound a few hundredths of a second later | Test that phones get the larger buffer and computers don't (in #38); listening check on the phone |
-| 2 | Lighten the audio thread: skip the composed music's reverb on phones, or don't build the composed backup while a recorded song plays | Run 2 clearly better than run 1, or many sources playing | Fewer dropouts | Backup music sounds drier | Count of sources and nodes after 10 minutes stays flat; music tests pass |
+| 1 | ~~Larger sound buffer on phones (#38's first change)~~ | Not needed: no breaks without it where the songs load (section 6) | | | |
+| 2 | ~~Lighten the audio thread~~ | Replaced by S1 above | | | |
 | 3 | Lighten the picture without blurring it: smaller shadow map or harder shadows, or antialiasing off on phones, before lowering the render scale | High "render" time, and SMOOTH much smoother than AUTO | Smoother at the same sharpness | Rougher shadow and edge quality | Graphics tests; drawn screenshot comparison; phone check |
 | 4 | Retune AUTO's thresholds (#38's second change) | Only if 3 isn't enough | Smoother | Blurrier (Jo Yee saw this with #38) | Graphics tests (in #38) |
 | 5 | Reduce game-code cost (traffic, pedestrians, police) | High "sim" time | Smoother | Gameplay changes | The full gameplay suite must pass unchanged |
 
-#38 is held until then: it bundles proposals 1 and 4 without data.
+#38 is held until the picture has a clean baseline. Its sound change (row 1) is no longer needed.
