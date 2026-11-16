@@ -17,12 +17,12 @@ const ROOT = path.resolve(__dirname, "..", "..");
 // internal names the tests read; each is exposed as a getter, so the value is always the live one, and a name
 // that no longer exists fails only the tests that use it, with "<name> is not defined"
 const NAMES = (
-  "DIAG VRANGE WARM QUAY footClear PEDS PED_NODES PED_EDGES PED_V pedOn pedUpdate pedClear WANTED COP_V copClock crime copUpdate copDispatch copNav copLoseT copsChasing wantedBlock initCops copBump jobBlocked setLane OFFICER OFF_V exitSeq wantedHud copClear copCaught openDealer goGarage repairPanel GUN HEALTH gunPick gunFire gunFoot gunCar KITS copCarFire hurt knockedOut VIOL copStandDown AC AU BOATS CARS DEALER DEALER_MARK EDGES EVENTS FR GARAGE_CAP H HOUSE JOBS JOB_R LANDMARKS LANDMARK_REWARD MV " +
+  "WARM QUAY footClear PEDS PED_NODES PED_EDGES PED_V pedOn pedUpdate pedClear WANTED COP_V copClock crime copUpdate copDispatch copNav copLoseT copsChasing wantedBlock initCops copBump jobBlocked setLane OFFICER OFF_V exitSeq wantedHud copClear copCaught openDealer goGarage repairPanel GUN HEALTH gunPick gunFire gunFoot gunCar KITS copCarFire hurt knockedOut VIOL copStandDown AC AU BOATS CARS DEALER DEALER_MARK EDGES EVENTS FR GARAGE_CAP H HOUSE JOBS JOB_R LANDMARKS LANDMARK_REWARD MV " +
   "NODES P PASSPORT_BONUS PH PHOTO_LOOKS PZ RADARS RES ROADS JOB_PTS SAVE_KEY SHOW STARTERS TODS TRAFFIC VTL W " +
   "adaptRes applyDayNight attachCar camMode camera carById closeDealer closeMap curCar curId cycleCam dPick dSel " +
   "discoverLandmark drawMap driveUpdate collidePlayer showDamageSmoke spawnTraffic earn edgePos endTestDrive ev fastTravel finishEvent parkAll phTarget edgeY PIER BOAT BOAT_V onPier boatBoard boatLand boatEnd boatFree OGRID meshH obstaclesNear paintOf LEFT STREET takeTraffic takeLeft streetReset footTarget FOOT FOOT_V footExit footEnter footEnd footGround footPlace updateEvent endEvent fishT fitZoom " +
   "foam foundCount gPick gSel gW goDrive goGarage gps grassT groundH hudOn job jobEnd jobRestart jobStart " +
-  "jobTarget jobsClose jobsOpen keys mapToWorld mapZoomAt nearestRoad nearestRoadGlobal openDealer openIntro " +
+  "DIAG VRANGE jobTarget jobsClose jobsOpen keys mapToWorld mapZoomAt nearestRoad nearestRoadGlobal openDealer openIntro " +
   "openMap openMapPopup pad passportClose passportOpen pauseOff pauseOn pc persist photoCapture photoEnter " +
   "photoExit photoLook photoLookSet photoReset prNow promptAct renderer resetToRoad routeBetween save scene " +
   "seaT setGPS clearGPS setState skyClock skyU startEvent startTestDrive state streakReset testDrive " +
