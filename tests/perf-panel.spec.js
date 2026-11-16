@@ -23,19 +23,20 @@ test("?perf shows the panel with frame, code, drawing and sound readings", async
   await game.open({ path: "/index.html?perf" });
   await startSound(game, page);
   const panel = page.locator("#perf");
-  await expect(panel).toContainText(/audio behind \d+ ms in [\d.]+ min/, { timeout: 20_000 });
+  await expect(panel).toContainText(/clocks behind, [\d.]+ min: audio \d+ ms, output (-?\d+ ms|n\/a)/, { timeout: 20_000 });
   const text = await panel.textContent();
   for (const re of [
     /\d+ fps {2}frame p50 \d+ p95 \d+ p99 \d+ ms/,
     /over 33\/50\/100 ms: \d+\/\d+\/\d+ of \d+/,
-    /sim [\d.]+ \(max \d+\) {2}render [\d.]+ \(max \d+\) ms/,
-    /long tasks \d+/,
+    /CPU\/frame: sim [\d.]+ \(max \d+\) {2}render call [\d.]+ \(max \d+\) ms/,
+    /long tasks (\d+ \(max \d+ ms\)|n\/a)/,
+    /underruns (\d+ \(\d+ ms\)|n\/a)/,
     /draws \d+ {2}tris \d+k {2}textures \d+ {2}geometries \d+/,
     /scale [\d.]+ of [\d.]+ \d+x\d+ (AUTO|SHARP|SMOOTH)/,
   ])
     expect(text).toMatch(re);
   // the engine's oscillators and noise are counted as they start
-  expect(Number(/sources playing (\d+)/.exec(text)[1])).toBeGreaterThan(0);
+  expect(Number(/sources active (\d+)/.exec(text)[1])).toBeGreaterThan(0);
 });
 
 test("without ?perf there is no panel, and the sound uses the browser's default buffer", async ({ game, page }) => {
@@ -58,6 +59,20 @@ test.describe("on a phone", () => {
     await game.open({ path: "/index.html?perf&audio=safe" });
     await startSound(game, page, true);
     expect(await game.eval(() => window.__acOptions[0])).toEqual({ latencyHint: "playback" });
-    await expect(page.locator("#perf")).toContainText("(safe)", { timeout: 20_000 });
+    await expect(page.locator("#perf")).toContainText("(larger asked)", { timeout: 20_000 });
   });
+});
+
+test("counters the browser doesn't offer read n/a, not zero", async ({ game, page }) => {
+  await page.addInitScript(watchAudio);
+  await page.addInitScript(() => {
+    Object.defineProperty(AudioContext.prototype, "playbackStats", { configurable: true, get: () => undefined });
+    Object.defineProperty(PerformanceObserver, "supportedEntryTypes", { configurable: true, get: () => [] });
+  });
+  await game.open({ path: "/index.html?perf" });
+  await startSound(game, page);
+  const panel = page.locator("#perf");
+  await expect(panel).toContainText(/clocks behind/, { timeout: 20_000 });
+  await expect(panel).toContainText("underruns n/a");
+  await expect(panel).toContainText("long tasks n/a");
 });
