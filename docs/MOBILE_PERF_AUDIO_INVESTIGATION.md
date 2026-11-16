@@ -1,6 +1,6 @@
 # Mobile lag and broken sound: investigation
 
-**Status: the sound's cause is found (section 6); the lag is still being measured. No fix is approved.** This answers Codex's investigation request of 16 Nov 2026 (priority P1).
+**Status: the sound's cause is found, and the blur's cause is found (section 6). No fix is approved.** This answers Codex's investigation request of 16 Nov 2026 (priority P1).
 
 ## 1. Reproduction
 
@@ -155,6 +155,32 @@ Why the songs failed there isn't known; raw.githack.com is only a test host. On 
 
 AUTO stepped the picture all the way down to its floor within a minute. That's the blur, and it's on main's own thresholds, not #38's. Frames still took about 22 ms with about 13 ms of CPU, so the rest of the time is outside the game's code: the graphics chip, the compositor, or the audio thread competing for the CPU. These numbers include the backup music's load, so they can't be used for the picture until a run on the live site gives a clean baseline.
 
+### Live site baseline (17 Nov 2026, 1.4 min, `?perf` on main `c40bf5f`)
+
+Same phone. Route: garage, Eastbank, Central Grove, the highway into Old Quay; one chase (two stars).
+
+**Sound: clean.** music **ready**, underruns **3 (16 ms)** in 1.4 min, clocks 0 to 24 ms behind, 5 to 6 sound sources active. The recording has no silences at all (0 in 68 s). This confirms the sound result above.
+
+**Picture:**
+
+| Reading | 0.4 min | 0.7 min | 0.8 min | 1.4 min |
+| --- | --- | --- | --- | --- |
+| render scale (of 2.00) | **2.00** (784 × 1462) | 1.00 (392 × 731) | 1.00 | 1.00 |
+| fps | 44 | 39 | 47 | 42 |
+| frame p50 / p95 / p99 | **22** / 33 / 56 ms | **22** / 56 / 89 ms | **22** / 45 / 67 ms | **22** / 45 / 56 ms |
+| CPU per frame: sim + render call | 1.8 + 7.0 ms | 2.8 + 8.3 ms | 2.9 + 7.6 ms | 3.5 + 8.3 ms |
+| draws, triangles | 183, 620k | 242, 712k | 177, 629k | 204, 598k |
+| scale history | 2.00 > 1.75 > 2.00 | … > 1.25 > 1.00 | … > 0.75 > 1.00 | 0.75 > 1.00 > 0.75 > 1.00 > 1.25 > 1.00 |
+
+Frames over 33 / 50 / 100 ms after 1.4 min: 906 / 105 / 5 of 3,244 (28% over 33 ms).
+
+What this shows:
+
+- **The number of pixels isn't the limit.** At full sharpness and at a quarter of the pixels, the median frame is the same 22 ms. Lowering the render scale gains nothing on this phone.
+- **AUTO lowers it anyway.** It reacts to the average frame time, which the slow frames keep above its threshold, so it steps down to 1.00 or 0.75 within a minute and keeps moving between 0.75 and 1.25. That's the blur Jo Yee sees, and the picture changing sharpness. It's main's behaviour, made worse by #38's higher threshold.
+- **The limit is work that doesn't depend on pixels.** The median frame of 22 ms looks like two screen refreshes of a 90 Hz screen (11.1 ms each). The game's CPU work per frame (sim plus render call) is 9 to 12 ms, so it usually just misses one refresh and waits for the next. The rest of the per-frame work is also independent of pixels: about 600k to 700k triangles and about 200 draw calls, plus the shadow pass, which draws the scene again from the sun. The panel can't separate CPU draw-call cost from the graphics chip's vertex work; switches to test them are proposed below.
+- **What a player feels as lag** is the slow frames more than the median: 28% over 33 ms, and a p99 of 56 to 89 ms.
+
 ## 7. Fix proposals, ranked
 
 ### Sound (cause found)
@@ -167,14 +193,14 @@ AUTO stepped the picture all the way down to its floor within a minute. That's t
 
 S1 and S2 together are the proposal. #38's larger buffer isn't needed: there were no breaks without it where the songs loaded.
 
-### Picture (still being measured)
+### Picture (cause found: the limit doesn't depend on pixels)
 
-| # | Proposal | When the data supports it | Expected benefit | Risk | Regression plan |
-| --- | --- | --- | --- | --- | --- |
-| 1 | ~~Larger sound buffer on phones (#38's first change)~~ | Not needed: no breaks without it where the songs load (section 6) | | | |
-| 2 | ~~Lighten the audio thread~~ | Replaced by S1 above | | | |
-| 3 | Lighten the picture without blurring it: smaller shadow map or harder shadows, or antialiasing off on phones, before lowering the render scale | High "render" time, and SMOOTH much smoother than AUTO | Smoother at the same sharpness | Rougher shadow and edge quality | Graphics tests; drawn screenshot comparison; phone check |
-| 4 | Retune AUTO's thresholds (#38's second change) | Only if 3 isn't enough | Smoother | Blurrier (Jo Yee saw this with #38) | Graphics tests (in #38) |
-| 5 | Reduce game-code cost (traffic, pedestrians, police) | High "sim" time | Smoother | Gameplay changes | The full gameplay suite must pass unchanged |
+| # | Proposal | Benefit | Risk | Regression plan |
+| --- | --- | --- | --- | --- |
+| P1 | **Recommended first.** AUTO checks whether a lower render scale actually made frames faster. If a step down doesn't lower the median frame time, it steps back up and stops lowering for that session. AUTO should also judge by the median frame time, not the average that slow frames pull up | Full sharpness back on phones like this one, at the same frame rate | On a phone where pixels *are* the limit it must still step down: the check keeps that | Tests: a simulated phone whose frame time doesn't change with scale stays sharp; one whose frame time does still steps down (the existing graphics tests); phone check |
+| P2 | Diagnostic switches, like `?audio`: `?shadows=off` and a switch for distant trees and scenery, to measure what the shadow pass and the triangles cost on the phone | Says which of P3 to build | None: off by default | Tests that the switches do nothing unless asked for |
+| P3 | Then, by P2's result: shadows from fewer objects or a shorter shadow distance on phones; or fewer or simpler distant trees; or fewer draw calls, by merging static scenery | Fewer slow frames, possibly one refresh instead of two | Visible changes to shadows or scenery at a distance | Drawn screenshot comparison; world-baseline test; phone check |
+| P4 | ~~Retune AUTO's thresholds (#38's second change)~~ | Rejected: lowering the scale doesn't help this phone | | |
+| P5 | Reduce game-code cost (traffic, pedestrians, police) | Sim time is 2 to 4 ms; worth it only after P3 | Gameplay changes | The full gameplay suite must pass unchanged |
 
-#38 is held until the picture has a clean baseline. Its sound change (row 1) is no longer needed.
+#38 can be closed: its sound change isn't needed, and its graphics change (P4) makes the blur worse.
