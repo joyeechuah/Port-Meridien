@@ -139,6 +139,9 @@ test.describe("map on a computer", () => {
 
   test("an event marker opens a popup that travels there", async ({ game, page }) => {
     await resetView(game);
+    // The map becomes MAP before the next drawMap() frame has refreshed MV's scale and offsets.
+    // Wait for the real canvas/layout to settle before converting marker world coords to screen pixels.
+    await game.frames(3);
     const E = await game.eval(() => [__T.EVENTS[3].x, __T.EVENTS[3].z]);
     const p = await game.eval(SCREEN_OF, E);
     // the point found is on the marker and not under one of the map's own panels
