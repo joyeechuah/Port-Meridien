@@ -13,7 +13,30 @@ test.describe("traffic", () => {
       const T = __T,
         dur = new Map(),
         stop = new Map(),
-        out = { overlaps: 0, brushes: 0, longestOverlap: 0, longestStop: 0 };
+        out = { overlaps: 0, brushes: 0, longestOverlap: 0, longestStop: 0, seen: [] };
+      // everything about one car at the moment two are found inside each other, so a rare failure says what happened
+      // (one was seen in a full run on 16 Nov 2026 and not again in 8 repeats; Codex's review asked for this)
+      const who = (t) => {
+        const jn = t.dir > 0 ? t.e.b : t.e.a,
+          f = (n) => +n.toFixed(1);
+        return {
+          car: T.TRAFFIC.indexOf(t),
+          police: !!t.cop,
+          chasing: !!t.chase,
+          at: [Math.round(t.wx), Math.round(t.wz)],
+          road: t.e.type + " " + T.EDGES.indexOf(t.e),
+          s: f(t.s),
+          dir: t.dir,
+          lane: t.lane,
+          off: f(t.offCur),
+          v: f(t.v),
+          passT: f(t.passT),
+          stopT: f(t.stopT),
+          toJunction: Math.round(t.dir > 0 ? t.e.len - t.s : t.s),
+          junction: [Math.round(jn.x), Math.round(jn.z)],
+          heldBy: jn.res ? T.TRAFFIC.indexOf(jn.res) : null,
+        };
+      };
       for (let i = 0; i < 21600; i++) {
         T.driveUpdate(1 / 60);
         for (const t of T.TRAFFIC) {
@@ -41,7 +64,10 @@ test.describe("traffic", () => {
             dur.set(k, d);
             // half a second or more counts; two cars in opposite lanes brushing for a moment at a sharp corner
             // (their lanes meet at an angle there) is only recorded
-            if (Math.abs(d - 0.5) < 1e-6) out.overlaps++;
+            if (Math.abs(d - 0.5) < 1e-6) {
+              out.overlaps++;
+              if (out.seen.length < 3) out.seen.push({ second: +(i / 60).toFixed(1), apart: +Math.hypot(L[a].wx - L[b].wx, L[a].wz - L[b].wz).toFixed(2), a: who(L[a]), b: who(L[b]), you: [Math.round(T.P.x), Math.round(T.P.z)] });
+            }
             out.longestOverlap = Math.max(out.longestOverlap, +d.toFixed(1));
           }
         for (const [k, d] of dur)
@@ -54,7 +80,7 @@ test.describe("traffic", () => {
       return out;
     });
     test.info().annotations.push({ type: "6 minutes of traffic", description: JSON.stringify(r) });
-    expect(r.overlaps, "times two traffic cars stayed inside each other for half a second or more").toBe(0);
+    expect(r.overlaps, "times two traffic cars stayed inside each other for half a second or more" + (r.seen.length ? ": " + JSON.stringify(r.seen) : "")).toBe(0);
     // turn-taking at junctions must not leave cars stuck, and the queue behind a parked car clears
     expect(r.longestStop, "seconds the longest-stopped traffic car waited" + (r.stuck ? ": " + r.stuck : "")).toBeLessThan(60);
   });
