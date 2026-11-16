@@ -4353,7 +4353,10 @@ let AC=null,AU=null;
 function audioInit(){
   if(AC)return;
   try{
-    AC=new (window.AudioContext||window.webkitAudioContext)();
+    // on a phone, a larger audio buffer: the audio is a few hundredths of a second later, but it no longer drops out
+    // when the phone is busy drawing (it cut out three or four times a second on an Android phone)
+    const ACtor=window.AudioContext||window.webkitAudioContext;
+    try{AC=new ACtor(isTouch?{latencyHint:"playback"}:undefined)}catch(e){AC=new ACtor()}
     const master=AC.createGain();master.gain.value=0;master.connect(AC.destination);
     const o1=AC.createOscillator();o1.type="sawtooth";const o2=AC.createOscillator();o2.type="square";
     const f=AC.createBiquadFilter();f.type="lowpass";f.frequency.value=700;const eg=AC.createGain();eg.gain.value=0;
@@ -7004,8 +7007,9 @@ function adaptRes(dt){
   if(document.hidden)return;dt=Math.min(dt,.25);RES.avg+=(Math.min(dt,.1)-RES.avg)*.05;RES.t+=dt;RES.badT+=dt;RES.upT+=dt;if(RES.t<RES.wait)return;
   if(RES.badT>30)RES.bad=99;
   if(PR_MIN>=PR_MAX)return;
-  let p=prNow;if(RES.avg>1/36){p=Math.max(PR_MIN,p-.25);if(p!==prNow&&RES.upT<8){RES.bad=prNow;RES.badT=0}}
-  else if(RES.avg<1/50){const next=Math.min(PR_MAX,p+.25);if(next>p&&next<RES.bad){p=next;RES.upT=0}}
+  // it aims for 45 frames a second or more (it used to settle for 36, which looked choppy on a phone)
+  let p=prNow;if(RES.avg>1/45){p=Math.max(PR_MIN,p-.25);if(p!==prNow&&RES.upT<8){RES.bad=prNow;RES.badT=0}}
+  else if(RES.avg<1/56){const next=Math.min(PR_MAX,p+.25);if(next>p&&next<RES.bad){p=next;RES.upT=0}}
   RES.t=0;RES.wait=.5;
   if(p!==prNow){prNow=p;renderer.setPixelRatio(p);renderer.setSize(W,H,false);RES.wait=3}
 }
