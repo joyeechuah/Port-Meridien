@@ -457,6 +457,16 @@ test.describe("races and time trials", () => {
       T.save.diff = 2;
       T.startEvent(T.EVENTS[3]);
       const R = T.ev.R;
+      // Isolate the four deliberate traffic blockers: ambient traffic is randomly spawned
+      // and may impede a rival for reasons unrelated to this overtaking test.
+      for (const t of T.TRAFFIC) {
+        t.e = null;
+        t.lost = false;
+        t.chase = false;
+        t.c.G.visible = false;
+        t.wx = t.wz = 1e6;
+      }
+      T.keys.w = T.keys.s = T.keys.a = T.keys.d = false;
       // four slow traffic cars in the race's direction on the route ahead
       const placed = [];
       for (const [k, s] of [200, 420, 640, 900].entries()) {
