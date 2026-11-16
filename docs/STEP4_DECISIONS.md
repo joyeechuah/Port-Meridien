@@ -33,3 +33,30 @@
 5. The violence setting, with tests for each level.
 
 Each step is its own pull request with tests, after #28 (police) merges.
+
+## Part 2: working decisions (16 Nov 2026)
+
+Jo Yee chose "use your suggestions" for the questions in `docs/STEP4_PART2_QUESTIONS.md` (pull request #34). As with part 1, these are working choices and may change before release.
+
+| Question | Decision for now |
+| --- | --- |
+| Police cars shooting | At **four stars or more**, a chasing police car within 30 m, with a clear line to you, fires every 1.5 s. At most two police cars fire at once. They never fire at anyone else, nor from a wrecked car, a car no longer chasing, or at you on the boat |
+| What their hits do | In a car: damage to your car (6 a hit; it slows and finally stops it, as crashes do). On foot: 8 health a hit. Never both |
+| Their accuracy | About one shot in three hits at 10 m, fewer further off, the same as officers on foot. No difference by phone or graphics setting |
+| Shooting from a car | Yes, while driving or stopped, with the same lock-on, forward only (about 35°), and the same controls (`G`, the FIRE pad, the right shoulder). Your own car doesn't block your shots. Not during a race or a test drive |
+| Shooting from the boat | Not yet |
+| Health pickups | **First-aid kits** at four fixed places: the civic square, the harbour lane, beside your house, and the Auto Gallery. Walk or drive over one: +50 health, up to 100. Each comes back 2 minutes after it is taken. Shown on the minimap as a small green cross when within 150 m. Recovery to 50 when nothing hurts you for 6 s stays as it is |
+| More weapons | Not yet: the pistol only |
+| Arrest | As in part 1: if you took the pistol from the garage, being caught is an arrest, whether you are on foot or in a car and whatever rounds are left |
+| The police's own rounds | Unlimited; they reload nothing |
+| Limits | At most two police cars and one officer firing at once; six sparks and six marks on screen at a time (as now) |
+| Settings | VIOLENCE and FLASHES apply to police fire as to yours: FLASHES OFF hides their muzzle flashes and the red flash when you're hit, and changes nothing else |
+| Content disclosures | The Steam survey and itch.io settings describe police firing at the player as well as the player's pistol |
+
+## Part 2 to build
+
+1. Shooting from a car.
+2. Police cars firing at four stars.
+3. First-aid kits.
+
+One pull request, with tests for each, after #32 merges.

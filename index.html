@@ -4249,6 +4249,8 @@ function drawMini(){
   // the police, on top: blue on patrol, flashing red and blue when they're after you
   for(const t of TRAFFIC)if(t.cop&&t.e&&(t.c.G.visible||t.chase))dotAt(c,t.wx,t.wz,3.4,t.chase?(copClock%.5<.25?"#e2483d":"#3d7bf2"):"#3d7bf2",sc,true);
   if(ev)for(const a of ev.ai)dotAt(c,a.x,a.z,3.6,"#e2483d",sc,true);
+  // first-aid kits within 150 m, as a small green cross
+  for(const k of KITS)if(k.back<=0&&Math.hypot(k.x-P.x,k.z-P.z)<150){c.fillStyle="#3fbf6a";const u=3/sc;c.fillRect(k.x-u,k.z-u*3,u*2,u*6);c.fillRect(k.x-u*3,k.z-u,u*6,u*2)}
   const hm=gW(0,-8);
   // icons stay upright: undo the map rotation around each one
   const up=(fn,x,z)=>{c.save();c.translate(x,z);c.rotate(-rot);fn();c.restore()};
@@ -6229,7 +6231,6 @@ function footEnd(){
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
 function footHud(on){
-  show("bF",on&&save.armed);
   show("speedo",!on);show("streak",!on);show("chFoot",!on);show("chRear",!on);show("chCam",!on);
   $("bG").textContent=on?"WALK":"GAS";$("bH").innerHTML=on?"RUN":"HAND<br>BRAKE";
   const b=$("bB");if(on){b.textContent="BACK";b.classList.remove("rev")}
@@ -6451,6 +6452,7 @@ function copUpdate(dt){
   if(still&&near<COP_V.caught)W.caughtT+=dt;else W.caughtT=Math.max(0,W.caughtT-dt);
   if(W.caughtT>=COP_V.caughtT){copCaught();return}
   if(copOfficer(dt,ch,still))return;
+  copCarFire(dt,ch);
   // one that has fallen far behind is brought back nearer, out of sight
   for(const t of ch)if(Math.hypot(t.wx-me.x,t.wz-me.z)>700&&!t.c.G.visible)copPlace(t,200,360);
   wantedHud();
@@ -6507,7 +6509,7 @@ function copOfficer(dt,ch,still){
   // not the rules)
   O.shootT=(O.shootT||0)-dt;
   if(WANTED.lvl>=3&&FOOT.on&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6)){
-    O.shootT=1.2;gunSpark(O.x+Math.sin(O.h)*.5,O.y+1.35,O.z+Math.cos(O.h)*.5);gunSound();
+    O.shootT=1.2;gunMuzzle(O.x+Math.sin(O.h)*.5,O.y+1.35,O.z+Math.cos(O.h)*.5);gunSound();
     if(Math.random()<Math.max(.08,.45-dMe*.015))hurt(10)}
   // caught: they have hold of you (on foot), or are at your door while you sit still
   const grab=FOOT.on?dMe<OFF_V.grab:still&&dMe<OFF_V.grabCar;
@@ -6517,6 +6519,17 @@ function copOfficer(dt,ch,still){
 }
 // the officer back in their car (or gone, if the car has been taken off the road), and the car free to drive again
 function copOfficerIn(){const O=OFFICER;if(O.car)O.car.stopT=0;O.on=false;O.car=null;O.back=false;O.m.G.visible=false}
+// At four stars or more the two nearest chasing police cars within 30 m, with a clear line to you, fire every 1.5 s:
+// in your car a hit damages the car (6), on foot it hurts you (8). Never at sea, never from a wrecked car
+function copCarFire(dt,ch){
+  if(WANTED.lvl<4||BOAT.on)return;
+  const me=copMe(),near=ch.filter(t=>(t.damage||0)<100).map(t=>[t,Math.hypot(t.wx-me.x,t.wz-me.z)]).filter(a=>a[1]<30).sort((a,b)=>a[1]-b[1]).slice(0,2);
+  for(const[t,d]of near){t.shootT=(t.shootT??.6)-dt;if(t.shootT>0)continue;t.shootT=1.5;
+    // the line starts 3 m out of the police car's front, clear of its own body
+    const stop=FOOT.on?.6:2.8,ux=(me.x-t.wx)/d,uz=(me.z-t.wz)/d;if(d<4||!gunClear(t.wx+ux*3,t.wz+uz*3,me.x,me.z,stop))continue;
+    gunMuzzle(t.wx+Math.sin(t.yaw)*2.2,1.3+footGround(t.wx,t.wz),t.wz+Math.cos(t.yaw)*2.2);gunSound();
+    if(Math.random()<Math.max(.08,.45-d*.015)){if(FOOT.on)hurt(8);else{P.damageT=0;damageVehicle(P,4+6/1.4);HEALTH.hurtT=.35}}}
+}
 // how long out of reach it takes to lose them: longer with more stars
 const copLoseT=()=>6+3*WANTED.lvl;
 function copClear(){
@@ -6582,9 +6595,11 @@ function gunClear(x0,z0,x1,z1,stop){
   for(let k=1;k<=n;k++){const t=k*.8/d,x=x0+(x1-x0)*t,z=z0+(z1-z0)*t,c=footClear(x,z);if(Math.hypot(c[0]-x,c[1]-z)>.05)return false}
   return true;
 }
-// the nearest target within 40 m and about 35 degrees of where you face, in a clear line
+// the nearest target within 40 m and about 35 degrees of where you face, in a clear line. From the car, the shot
+// starts 3 m ahead of its middle (clear of its own body: your car never blocks your shots)
+function gunFrom(){if(FOOT.on)return{x:FOOT.x,z:FOOT.z,h:FOOT.h,y:FOOT.y+1.3};const f=fwdOf(P.h);return{x:P.x+f.x*3,z:P.z+f.z*3,h:P.h,y:P.y+1.1}}
 function gunPick(){
-  const F=FOOT,fx=Math.sin(F.h),fz=Math.cos(F.h),list=[];
+  const F=gunFrom(),fx=Math.sin(F.h),fz=Math.cos(F.h),list=[];
   for(const t of TRAFFIC)if(t.e&&t.c.G.visible&&(t.damage||0)<100)list.push({k:t.cop?"cop":"car",x:t.wx,z:t.wz,y:1,o:t,stop:2.8});
   if(pedOn)for(const p of PEDS)if(p.m.G.visible&&p.st!=="down")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
   if(OFFICER.on&&!(OFFICER.down>0))list.push({k:"officer",x:OFFICER.x,z:OFFICER.z,y:1.2,o:OFFICER,stop:.6});
@@ -6595,13 +6610,17 @@ function gunPick(){
   return best;
 }
 function gunSpark(x,y,z){const s=GUN.sparks.find(s=>s.t<=0)||GUN.sparks[0];s.t=.12;s.m.position.set(x,y,z);s.m.visible=true}
+// a flash at a gun's muzzle: none with FLASHES OFF (Codex's review of #35: police and car shots still flashed).
+// Where a shot lands still shows; nothing else about the shot changes
+function gunMuzzle(x,y,z){if(save.flash)gunSpark(x,y,z)}
 function gunMark(x,z){if(save.violence<2)return;const k=GUN.marks.find(k=>k.t<=0)||GUN.marks[0];k.t=4;k.m.position.set(x,footGround(x,z)+.03,z);k.m.material.opacity=.7;k.m.visible=true}
 function gunSound(){if(!AU||!save.sound)return;const s=AC.createBufferSource();s.buffer=AU.buf;const f=AC.createBiquadFilter();f.type="bandpass";f.frequency.value=1500;f.Q.value=.6;
   const g=AC.createGain(),t=AC.currentTime;g.gain.setValueAtTime(.45,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);s.connect(f);f.connect(g);g.connect(AU.master);s.start(0,Math.random()*.5);s.stop(t+.18)}
 function gunFire(){
   if(GUN.ammo<=0){toastOnce("gun",["OUT OF ROUNDS","Refill at your house"]);GUN.cool=.4;return false}
   GUN.ammo--;GUN.cool=.32;GUN.flashT=.06;GUN.aimT=1.2;gunSound();
-  const F=FOOT,q=GUN.lock;
+  const F=gunFrom(),q=GUN.lock;
+  if(!FOOT.on)gunMuzzle(F.x,F.y,F.z);   // from the car: the flash at the bonnet
   if(!q){const x=F.x+Math.sin(F.h)*25,z=F.z+Math.cos(F.h)*25;gunSpark(x,footGround(x,z)+.2,z);crime("fire",F.x,F.z);return true}
   gunSpark(q.x,q.y+(q.k==="car"||q.k==="cop"?0:.1),q.z);
   // a hit counts where the police can see it happen, or see you fire (Codex's review of #31: a patrol beside you
@@ -6617,6 +6636,13 @@ function gunFire(){
   else{const O=q.o;O.down=6;O.caughtT=0;gunMark(O.x,O.z);seen("shootCop",O.x,O.z)}
   return true;
 }
+// in the car, every frame: the lock ahead and firing (the pistol itself isn't seen). Not in a race or a test drive
+function gunCar(dt){
+  const on=save.armed&&!ev&&!testDrive;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.m.visible=false;GUN.flash.visible=false;
+  GUN.lock=on?gunPick():null;
+  if(on&&gunWant()&&GUN.cool<=0)gunFire();
+  const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,footGround(q.x,q.z)+(q.k==="car"||q.k==="cop"?2.1:2.05),q.z);GUN.ring.rotation.z+=dt*2}
+}
 // on foot, every frame: the pistol in your hand, the lock, firing, the right arm raised to aim
 function gunFoot(dt){
   const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0&&save.flash;
@@ -6627,6 +6653,25 @@ function gunFoot(dt){
     // turn a little towards the target while aiming, so the arm points at it
     if(q)FOOT.h+=wrapA(Math.atan2(q.x-FOOT.x,q.z-FOOT.z)-FOOT.h)*Math.min(1,dt*6);m.G.rotation.y=FOOT.h}
   if(on){FOOT.m.G.updateMatrixWorld(true);GUN.hand.matrixWorld.decompose(GUN.m.position,GUN.m.quaternion,GUN.m.scale)}
+}
+// First-aid kits at four fixed places: walk or drive over one for +50 health (up to 100). Each comes back 2 minutes
+// after it is taken; a kit isn't taken at full health. Shown on the minimap within 150 m
+const KITS=[];
+function initKits(){
+  const hm=gW(0,-8),spots=[[QUAY.fountain[0]+13,QUAY.fountain[1]],[PIER.x0-18,4],[hm.x+6,hm.z+4],[DEALER_MARK.x-8,DEALER_MARK.z+3]];
+  const white=new THREE.MeshLambertMaterial({color:0xf4f4f2}),red=new THREE.MeshBasicMaterial({color:0xd8322a});
+  for(const[x0,z0]of spots){const c=footClear(x0,z0),G=new THREE.Group();
+    const b=new THREE.Mesh(GEO.box,white);b.scale.set(.6,.42,.42);G.add(b);
+    for(const[w,h]of[[.34,.1],[.1,.34]])for(const sz of[-1,1]){const r=new THREE.Mesh(GEO.box,red);r.scale.set(w,h,.02);r.position.z=sz*.215;G.add(r)}
+    G.position.set(c[0],footGround(c[0],c[1])+.8,c[1]);scene.add(G);KITS.push({x:c[0],z:c[1],G,back:0})}
+}
+function kitTick(dt){
+  const me=FOOT.on?FOOT:P,reach=FOOT.on?1.6:3,H=HEALTH;
+  for(const k of KITS){
+    if(k.back>0){k.back-=dt;k.G.visible=k.back<=0;continue}
+    k.G.rotation.y+=dt*1.5;k.G.position.y=footGround(k.x,k.z)+.8+Math.sin(copClock*2+k.x)*.08;
+    if(!BOAT.on&&state==="DRIVE"&&H.hp<H.max&&H.hp>0&&Math.hypot(me.x-k.x,me.z-k.z)<reach){H.hp=Math.min(H.max,H.hp+50);k.back=120;k.G.visible=false;
+      toast("FIRST AID","+50 health · this one is back in 2 minutes","gold")}}
 }
 function hurt(n){
   const H=HEALTH;if(H.hp<=0||n<=0)return;H.hp=Math.max(0,H.hp-n);H.calm=0;H.hurtT=.5;
@@ -6647,15 +6692,18 @@ function gunArrest(fine){
   toast("ARRESTED",(fine?"Fined "+fmtCr(fine)+" CR. ":"")+"Your pistol is back in the garage","bad");
 }
 function healthTick(dt){
-  const H=HEALTH;H.calm+=dt;H.hurtT-=dt;
-  // the pistol and the lock ring go when you get into a car or onto the boat (the ring stayed over the target)
-  if(!FOOT.on){GUN.ring.visible=false;GUN.m.visible=false;GUN.lock=null}
+  const H=HEALTH;H.calm+=dt;H.hurtT-=dt;kitTick(dt);
+  // the pistol and the lock ring go on the boat and whenever you aren't playing (the ring stayed over the target)
+  if(BOAT.on||state!=="DRIVE"){GUN.ring.visible=false;GUN.m.visible=false;GUN.lock=null}
   if(H.calm>6&&H.hp<50&&H.hp>0)H.hp=Math.min(50,H.hp+4*dt);
   for(const s of GUN.sparks)if(s.t>0){s.t-=dt;if(s.t<=0)s.m.visible=false}
   for(const k of GUN.marks)if(k.t>0){k.t-=dt;k.m.material.opacity=Math.min(.7,k.t*.35);if(k.t<=0)k.m.visible=false}
   if(H.hurtT>0||FOOT.on)$("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(Math.max(0,save.flash?H.hurtT:0)*.9+(H.hp<30?.15:0)).toFixed(3)})`;
   GUN.hudT-=dt;if(GUN.hudT<=0){GUN.hudT=.1;
-    const show1=(FOOT.on&&save.armed)||H.hp<H.max;show("gunHud",show1);
+    const show1=(save.armed&&!BOAT.on)||H.hp<H.max;show("gunHud",show1);
+    // the FIRE pad: whenever the pistol can be fired, kept up to date here rather than only on getting in or out
+    // (Codex's review of #35: it was missing on the first drive after taking the pistol, and stayed in races)
+    show("bF",save.armed&&state==="DRIVE"&&!BOAT.on&&(FOOT.on||(!ev&&!testDrive)));
     if(show1){$("hpBar").style.width=Math.round(H.hp/H.max*100)+"%";$("gunHud").classList.toggle("low",H.hp<30);
       const t=save.armed?(GUN.ammo?"PISTOL "+GUN.ammo:"PISTOL EMPTY"):"";$("gunTxt").textContent=t;$("gunHud").classList.toggle("empty",save.armed&&!GUN.ammo)}}
 }
@@ -6876,7 +6924,7 @@ function boatLandSpot(){
   const x=clamp(BOAT.x,PIER.x0+2.2,PIER.x1-1),z=BOAT.z<0?PIER.z0+.75:PIER.z1-.75;
   return Math.hypot(BOAT.x-x,BOAT.z-z)<=BOAT_V.land?[x,z]:null;
 }
-function boatHud(){footHud(true);show("bF",false);$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
+function boatHud(){footHud(true);$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
 function boatBoard(){
   if(!FOOT.on||BOAT.on||!BOAT.m)return false;
   FOOT.on=false;FOOT.m.G.visible=false;BOAT.on=true;BOAT.v=0;BOAT.steer=0;BOAT.car=[P.x,P.z];BOAT.cy=BOAT.h;
@@ -6939,7 +6987,7 @@ function driveUpdate(dt){
   if(ev)updateEvent(dt);
   if(state!=="DRIVE")return;
   if(testDrive){testDrive.t-=dt;if(testDrive.t<=0){testDrive.t=1e9;toast("TEST DRIVE OVER","Taking the car back to the dealer");endTestDrive()}}
-  updateStreak(dt);updateRadars(dt);updatePassport();jobTick(dt);if(state!=="DRIVE")return;updateGPS(dt);updatePrompt();
+  updateStreak(dt);updateRadars(dt);updatePassport();jobTick(dt);if(state!=="DRIVE")return;updateGPS(dt);updatePrompt();gunCar(dt);
   placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);updateCam(dt);updateHUD(dt);drawMini();
   // every visit to the sea gets the same 0.6 s: the count starts again at the reset and whenever the car is out
   // of the water (it used to be left at -1 after a reset, so every later visit took 1.6 s). Nothing moves during
@@ -7004,7 +7052,7 @@ const STEPS=[
   ["Opening your house",buildHouse],
   ["Stocking the dealership",buildDealer],
   ["Building the harbour",buildHarbour],
-  ["Waking the town",()=>{buildPeds();initGun()}],
+  ["Waking the town",()=>{buildPeds();initGun();initKits()}],
   ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildJobs()}],
   ["Filling the roads",()=>{initTraffic();initCops();buildMapImage()}],
   ["Parking your cars",()=>{parkAll(null);carLights()}],

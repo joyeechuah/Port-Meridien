@@ -378,7 +378,7 @@ test.describe("pistol", () => {
     expect(r).toEqual({ seesTarget: false, seesYou: true, locked: true, lvl: 1 });
   });
 
-  test("getting into the car puts the pistol and the lock ring away", async ({ game }) => {
+  test("getting into the car puts the pistol away; the ring then shows what the car's own lock sees", async ({ game }) => {
     await armed(game);
     await carAhead(game, 14);
     const before = await game.eval(() => __T.GUN.ring.visible);
@@ -391,7 +391,8 @@ test.describe("pistol", () => {
     });
     await game.key("f");
     await game.frames(3);
-    expect(await game.eval(() => [__T.FOOT.on, __T.GUN.ring.visible, __T.GUN.m.visible])).toEqual([false, false, false]);
+    // (part 2: you can shoot from the car, so the ring stays on a target ahead of it, and only on one: never left behind)
+    expect(await game.eval(() => [__T.FOOT.on, __T.GUN.m.visible, __T.GUN.ring.visible === !!__T.GUN.lock])).toEqual([false, false, true]);
   });
 
   test("FLASHES: OFF hides the muzzle flash and the red flash when you're hit", async ({ game, page }) => {
