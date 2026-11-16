@@ -3579,6 +3579,12 @@ function spawnTraffic(t,dmin,dmax,avoidView){
     if(e.type==="town"&&townN>=TOWN_CAP&&d<TOWN_R+150)continue;
     if(avoidView){const cf=new V3();camera.getWorldDirection(cf);if((dx*cf.x+dz*cf.z)/d>.2)continue}
     let dir=Math.random()<.5?1:-1;if(oncoming(e,dir)){dir=-dir;if(oncoming(e,dir))continue}
+    // never too close to a junction ahead to slow for it at its speed, nor just past one (a car put on the highway
+    // 25 m before a junction at 87 km/h couldn't stop when another car took its turn there, overshot the line and
+    // stood in the junction, and the car crossing drove through it)
+    {const ahead=dir>0?e.b:e.a,behind=dir>0?e.a:e.b,vmax=RT[e.type].spd*1.15;
+      if(ahead.adj.length>2&&(dir>0?e.len-s:s)<20+vmax*vmax/14)continue;
+      if(behind.adj.length>2&&(dir>0?s:e.len-s)<12)continue}
     // never on top of another car
     if(TRAFFIC.some(o=>o!==t&&o.e&&Math.abs(o.wx-p.x)<14&&Math.abs(o.wz-p.z)<14))continue;
     t.e=e;t.lost=false;t.s=s;t.dir=dir;t.lane=Math.floor(Math.random()*2);setLane(t);t.v=t.base;t.stopT=0;t.pa=null;
@@ -3675,6 +3681,10 @@ function updateTraffic(dt){
         you=jn.res!==t&&!pBehind&&(pd<10||(pTo>2&&pd<10+pTo*2.2));
       if((jn.res&&jn.res!==t)||stuck||you){target=Math.min(target,Math.sqrt(14*Math.max(0,dEnd-7.5)),Math.max(0,(dEnd-7.5)*1.2+(dEnd>12?6:0)));if(dEnd<12)close=true;if(stuck&&jn.res===t)jn.res=null}
       else if(dEnd<12)jn.res=t;
+      // until it has its turn it comes in at a speed it can stop from: 40 km/h by 12 m out, where it takes its turn
+      // if the junction is free (a car off the highway at 78 km/h found the junction taken when it was 13 m out,
+      // overshot the stop line and stood in the junction, and the car crossing drove through it)
+      if(jn.res!==t)target=Math.min(target,Math.sqrt(121+14*Math.max(0,dEnd-12)));
     }
     // slow down behind you (or a car left standing in its lane); if it stays stopped in its way it pulls out and drives round
     if(t.passT>0){t.passT-=dt;target=Math.min(target,8)}
