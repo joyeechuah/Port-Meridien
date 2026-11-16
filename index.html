@@ -7062,14 +7062,16 @@ function perfEnd(t0,tR,raw){if(!PERF.on)return;const now=performance.now();
       "clocks behind, "+am.toFixed(1)+" min: audio "+Math.round(behind)+" ms, output "+outB+"\n"+
       "sources active "+PERF.src+" (most "+PERF.srcMax+"; created in all "+PERF.made+")\n"+
       "fx "+(save.sound?"on":"off")+"  music "+(save.music?(SONGS.coast.st||"-"):"off")}
-  const sw=[DIAG.scale?"scale held "+DIAG.scale:"",DIAG.shadows?"":"shadows off",DIAG.near?"far near":""].filter(Boolean).join(", ");
-  PERF.el.textContent=os+" "+br+"  "+innerWidth+"x"+innerHeight+" @"+(devicePixelRatio||1).toFixed(2)+"  "+sha+"  "+mins+" min\n"+(sw?"switches: "+sw+"\n":"")+
+  PERF.el.textContent=os+" "+br+"  "+innerWidth+"x"+innerHeight+" @"+(devicePixelRatio||1).toFixed(2)+"  "+sha+"  "+mins+" min\n"+
     fps.toFixed(0)+" fps  frame p50 "+q(.5)+" p95 "+q(.95)+" p99 "+q(.99)+" ms (10 s)\n"+
     "slowest "+Math.round(PERF.worst)+" ms  over 33/50/100 ms: "+PERF.over.join("/")+" of "+PERF.frames+"\n"+
     "CPU/frame: sim "+(PERF.sim/PERF.n).toFixed(1)+" (max "+Math.round(PERF.simMax)+")  render call "+(PERF.ren/PERF.n).toFixed(1)+" (max "+Math.round(PERF.renMax)+") ms\n"+
     "long tasks "+(PERF.ltOk?PERF.lt+" (max "+Math.round(PERF.ltMax)+" ms)":"n/a")+"  heap "+mem+"\n"+
     "draws "+ri.render.calls+"  tris "+Math.round(ri.render.triangles/1000)+"k  textures "+ri.memory.textures+"  geometries "+ri.memory.geometries+"\n"+
     "scale "+prNow.toFixed(2)+" of "+PR_DEV.toFixed(2)+" "+cv.width+"x"+cv.height+" "+["AUTO","SHARP","SMOOTH"][save.gfx]+"\nscale history "+PERF.res.map(x=>x.toFixed(2)).join(" > ")+"\n"+au;
+  // the diagnostic switches in use, last
+  const sw=[DIAG.scale?"scale held "+DIAG.scale:"",DIAG.shadows?"":"shadows off",DIAG.near?"far near":""].filter(Boolean).join(", ");
+  if(sw)PERF.el.textContent+="\nswitches: "+sw;
   PERF.n=PERF.sim=PERF.ren=PERF.simMax=PERF.renMax=0;PERF.t0=now}
 // An immediate Photo Mode capture needs the same sky and shadow placement as a frame from the main loop.
 function syncRenderView(){
