@@ -150,7 +150,8 @@ test.describe("map on a computer", () => {
       },
       [p, E]
     );
-    expect(check.metres).toBeLessThan(check.limit);
+    // (messages: this failed once in a full local run, 15 Nov 2026, without saying which check)
+    expect(check.metres, "the point found is on the marker").toBeLessThan(check.limit);
     expect(check.on).toBe("mapc");
     await page.mouse.click(p.x, p.y);
     await expect(page.locator("#mapPop")).toBeVisible();

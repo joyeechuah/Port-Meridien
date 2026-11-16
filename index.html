@@ -230,13 +230,23 @@ a.mbtn{color:inherit;text-decoration:none;box-sizing:border-box}
 #dNote{font-size:11px;color:var(--mute);margin-top:2px}
 #fade{position:fixed;inset:0;background:#000;z-index:90;pointer-events:none;opacity:0;transition:opacity .45s}
 
-body.touch #minWrap{bottom:auto;top:calc(150px + var(--st));left:calc(14px + var(--sl))}
+body.touch #minWrap{bottom:auto;top:calc(150px + var(--st) + var(--tlx,0px));left:calc(14px + var(--sl))}
 body.touch #speedo{bottom:auto;top:calc(60px + var(--st))}
 body.touch #toasts{top:calc(196px + var(--st))}
 /* short landscape phones: the touch pads fill the lower right, so toasts sit in the clear band under the top bar */
 @media (max-height:520px){body.touch #toasts{top:calc(130px + var(--st));right:auto;left:50%;transform:translateX(-50%);align-items:center;width:min(300px,40vw)}}
+/* there's room for one message between the top bar and a prompt: while a prompt shows, only the newest message does
+   (new messages go in first; Codex's review of #32 caught that the oldest was kept) */
+@media (max-height:520px) and (min-width:561px){#hud:has(>#prompt:not(.hide)) #toasts>.toast:not(:first-child){display:none}}
 /* and on the shortest (360 px tall), the smaller minimap and its GPS line sit higher, clear of the steering buttons */
-@media (max-height:400px){body.touch #minWrap{top:calc(124px + var(--st))}}
+@media (max-height:400px){body.touch #minWrap{top:calc(124px + var(--st) + var(--tlx,0px))}}
+/* landscape phones: the damage pill, the wanted stars and the pistol and health bar sit beside the money, level and
+   place instead of under them, so the column keeps its height and the minimap stays where it is (stacked, they ran
+   down over the minimap) */
+@media (max-height:520px) and (min-width:561px){
+  body.touch #tl>#damageHud,body.touch #tl>#wanted,body.touch #tl>#gunHud{position:absolute;left:calc(100% + 8px)}
+  body.touch #tl>#damageHud{top:0}body.touch #tl>#wanted{top:42px}body.touch #tl>#gunHud{top:72px}
+}
 body.touch #prompt{bottom:calc(150px + var(--sb))}
 body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 @media (max-width:980px){#evhud{top:calc(60px + var(--st))}#streak{top:calc(60px + var(--st))}}
@@ -261,7 +271,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   #evhud>div{min-width:0;padding:4px 9px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
   #evhud span{font-size:8px;letter-spacing:.16em}
   #evhud b{font-size:17px}
-  #toasts,body.touch #toasts{top:calc(394px + var(--st) + var(--tlx,0px));right:auto;left:50%;transform:translateX(-50%);align-items:center;width:min(300px,calc(100% - 32px))}
+  #toasts,body.touch #toasts{top:auto;bottom:calc(300px + var(--sb));right:auto;left:50%;transform:translateX(-50%);align-items:center;width:min(300px,calc(100% - 32px))}
   #count{top:58%;font-size:96px}
   #wrong{top:48%}
   #prompt,body.touch #prompt{bottom:calc(250px + var(--sb));white-space:normal;text-align:center;width:max-content;max-width:calc(100% - 32px)}
@@ -4139,11 +4149,11 @@ function fitCanvas(cv,css){const d=Math.min(devicePixelRatio,2);cv.width=css*d;c
 let spD=1,mmD=1;
 // very short touch screens (a phone held sideways, 360 px tall on many Androids) get a smaller dial and minimap,
 // so neither runs into the pedals and steering buttons below them
-// On a portrait phone the minimap sits under the money, level and place. When that block grows (the damage pill
-// appears) the minimap, and everything below it, moves down by as much: it used to cover the place and the clock
+// On a phone the minimap sits under the money, level and place. When that block grows (the damage pill, the stars,
+// the pistol) the minimap, and everything below it, moves down by as much: it used to cover the place and the clock
 function hudStack(){
   const r=document.documentElement;r.style.setProperty("--tlx","0px");
-  if(!isTouch||!matchMedia("(max-width:560px)").matches)return;
+  if(!isTouch)return;
   const tl=$("tl").getBoundingClientRect(),mw=$("minWrap").getBoundingClientRect();if(!tl.height||!mw.height)return;
   r.style.setProperty("--tlx",Math.max(0,Math.ceil(tl.bottom+6-mw.top))+"px");
 }

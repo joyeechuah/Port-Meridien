@@ -4,7 +4,7 @@
 
 An open-world city game for the browser: walk the streets, take any car, and sail from the harbour. Built with three.js as a single `index.html`, with no install and no build step.
 
-> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running, taking cars, the harbour boat, the Old Quay district, people on its streets, and the police are in. Weapons come next. See [What's next](#whats-next) and [ROADMAP.md](ROADMAP.md).
+> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running, taking cars, the harbour boat, the Old Quay district, people on its streets, the police, and a pistol with health and arrest are in. See [What's next](#whats-next) and [ROADMAP.md](ROADMAP.md).
 
 Port Meridien is an original game. Its name, city, characters and story are its own.
 
@@ -35,6 +35,7 @@ Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an in
 | Look behind | Hold `B` | REAR | Hold left shoulder |
 | Photo Mode | `V` | PHOTO | |
 | Back to the road | `R` | Pause menu | |
+| Fire the pistol (on foot) | `G` | FIRE | Right shoulder |
 | Pause | `Esc` or `P` | PAUSE | Menu / Start |
 
 On foot and on the boat the same controls walk and sail: see below.
@@ -90,6 +91,25 @@ Get out of their reach and stay out of it long enough (the stars blink meanwhile
 
 While you're wanted, your house, the Auto Gallery, races, contracts, going home and map travel are closed: lose the police first. A reload clears a wanted level.
 
+## The pistol and health
+
+Take the pistol from the garage with **PISTOL**, top right under MUSIC (it stays chosen until you change it). You carry it on foot only, with 48 rounds, refilled each time you leave the house.
+
+It locks onto the nearest target in front of you, shown by a red ring: a car, a police car, someone walking, or an officer. Walls and cars are cover. Fire with `G`, the **FIRE** pad, or the controller's right shoulder. A car stops after about nine hits; someone shot is knocked down for 6 s and gets up again.
+
+The police see shooting as they see any crime: firing is one star, hitting a car or a person one, shooting at the police two. At three stars, an officer on foot fires back.
+
+Your **health** is 100, shown as a bar under the place and clock. After 6 s with nothing hurting you it comes back to 50; it's full again at the house. At 0 you're **knocked out** and wake at home, 10% of your credits poorer (at most 5,000). Caught by the police while carrying the pistol, you're **arrested**: the fine, the pistol back in the garage, and you start again outside the Harbour Hall.
+
+Two settings in the pause menu, both saved:
+
+| Setting | Choices |
+| --- | --- |
+| VIOLENCE | **LOW**: nobody falls. **STANDARD** (the default): people fall, no blood. **STRONG**: hits also leave a red mark that fades. It changes only what you see |
+| FLASHES | **ON**, or **OFF**: no muzzle flash and no red flash when you're hit |
+
+These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/STEP4_DECISIONS.md), and may change before release.
+
 ## What works today
 
 - **Driving:** 24 cars with made-up names, paint and customisation; collision damage and roadside repairs; keyboard, touch pads, tilt and game controllers.
@@ -97,6 +117,7 @@ While you're wanted, your house, the Auto Gallery, races, contracts, going home 
 - **The boat:** a motorboat from the pier, with its own sound.
 - **The world:** an island with roads, traffic, day and night, a map with GPS, Photo Mode, and the Old Quay district with people walking its streets.
 - **The police:** patrols, a wanted level of one to five stars, chases by car and on foot, fines, and losing them.
+- **The pistol:** lock-on aiming, health, being knocked out, arrest, and settings for violence and flashes.
 - **Things to do:** races, time trials, championships, delivery contracts, speed radars and an explorer passport of 18 landmarks.
 - **Saves** in the browser. Optional cloud saves are built in but switched off until this game has its own Firebase project (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
 
@@ -104,7 +125,7 @@ While you're wanted, your house, the Auto Gallery, races, contracts, going home 
 
 | Step | What you'll be able to do | State |
 | --- | --- | --- |
-| 4 | Weapons, health, arrest, and one setting for how violence is shown | Planned |
+| 4 | More weapons, shooting from a car or the boat, police cars that shoot, health pickups | Not decided yet |
 | Later | The full city as its own world, with the island kept as a second place to drive | Planned |
 
 Not yet tested on a real phone.
@@ -148,4 +169,4 @@ The game stores your progress in your browser's local storage and nowhere else. 
 
 ## Content
 
-Port Meridien is planned as a mature game: the next step adds weapons. A setting will control how violence is shown.
+Port Meridien is a mature game: you can shoot cars, people and the police. VIOLENCE in the pause menu controls how it's shown, from LOW to STRONG, with STANDARD as the default. It shows no blood by default.

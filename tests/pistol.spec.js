@@ -420,4 +420,35 @@ test.describe("pistol", () => {
     expect(off.muzzle).toBe(false);
     expect(off.edge).toContain("rgba(226, 72, 61, 0)");
   });
+  // Codex's re-review of #31: the repair is checked through the whole stand-down, not by calling it
+  test("a wrecked reserve police car is stood down once out of sight and comes back repaired", async ({ game }) => {
+    await armed(game, { police: true });
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        cops = T.TRAFFIC.filter((t) => t.cop),
+        cop = cops.find((t) => !t.patrol),
+        { e, s } = window.__road,
+        q = T.edgePos(e, s + 30);
+      // a reserve car, wrecked on your road after a chase
+      Object.assign(cop, { e, s: s + 30, dir: 1, lost: false, lane: 0, v: 0, stopT: 1e6, damage: 100, chase: false, offDuty: true });
+      cop.wx = q.x;
+      cop.wz = q.z;
+      // you, far away (back in your car, which goes with you)
+      T.FOOT.on = false;
+      const far = T.EDGES.filter((x) => x.type !== "drive").sort((a, b) => {
+        const pa = T.edgePos(a, a.len / 2),
+          pb = T.edgePos(b, b.len / 2);
+        return Math.hypot(pb.x - q.x, pb.z - q.z) - Math.hypot(pa.x - q.x, pa.z - q.z);
+      })[0];
+      const f = T.edgePos(far, far.len / 2);
+      P.x = f.x;
+      P.z = f.z;
+      P.vx = P.vz = 0;
+      let n = 0;
+      while (cop.e && n++ < 60 * 5) T.driveUpdate(1 / 60);
+      return { gone: !cop.e, damage: cop.damage, stopT: cop.stopT, waiting: cop.lost, seconds: n / 60 };
+    });
+    expect(r).toMatchObject({ gone: true, damage: 0, stopT: 0, waiting: true });
+  });
 });
