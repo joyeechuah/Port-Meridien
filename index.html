@@ -6231,7 +6231,6 @@ function footEnd(){
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
 function footHud(on){
-  show("bF",save.armed&&(on||(!ev&&!testDrive)));
   show("speedo",!on);show("streak",!on);show("chFoot",!on);show("chRear",!on);show("chCam",!on);
   $("bG").textContent=on?"WALK":"GAS";$("bH").innerHTML=on?"RUN":"HAND<br>BRAKE";
   const b=$("bB");if(on){b.textContent="BACK";b.classList.remove("rev")}
@@ -6510,7 +6509,7 @@ function copOfficer(dt,ch,still){
   // not the rules)
   O.shootT=(O.shootT||0)-dt;
   if(WANTED.lvl>=3&&FOOT.on&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6)){
-    O.shootT=1.2;gunSpark(O.x+Math.sin(O.h)*.5,O.y+1.35,O.z+Math.cos(O.h)*.5);gunSound();
+    O.shootT=1.2;gunMuzzle(O.x+Math.sin(O.h)*.5,O.y+1.35,O.z+Math.cos(O.h)*.5);gunSound();
     if(Math.random()<Math.max(.08,.45-dMe*.015))hurt(10)}
   // caught: they have hold of you (on foot), or are at your door while you sit still
   const grab=FOOT.on?dMe<OFF_V.grab:still&&dMe<OFF_V.grabCar;
@@ -6528,7 +6527,7 @@ function copCarFire(dt,ch){
   for(const[t,d]of near){t.shootT=(t.shootT??.6)-dt;if(t.shootT>0)continue;t.shootT=1.5;
     // the line starts 3 m out of the police car's front, clear of its own body
     const stop=FOOT.on?.6:2.8,ux=(me.x-t.wx)/d,uz=(me.z-t.wz)/d;if(d<4||!gunClear(t.wx+ux*3,t.wz+uz*3,me.x,me.z,stop))continue;
-    gunSpark(t.wx+Math.sin(t.yaw)*2.2,1.3+footGround(t.wx,t.wz),t.wz+Math.cos(t.yaw)*2.2);gunSound();
+    gunMuzzle(t.wx+Math.sin(t.yaw)*2.2,1.3+footGround(t.wx,t.wz),t.wz+Math.cos(t.yaw)*2.2);gunSound();
     if(Math.random()<Math.max(.08,.45-d*.015)){if(FOOT.on)hurt(8);else{P.damageT=0;damageVehicle(P,4+6/1.4);HEALTH.hurtT=.35}}}
 }
 // how long out of reach it takes to lose them: longer with more stars
@@ -6611,6 +6610,9 @@ function gunPick(){
   return best;
 }
 function gunSpark(x,y,z){const s=GUN.sparks.find(s=>s.t<=0)||GUN.sparks[0];s.t=.12;s.m.position.set(x,y,z);s.m.visible=true}
+// a flash at a gun's muzzle: none with FLASHES OFF (Codex's review of #35: police and car shots still flashed).
+// Where a shot lands still shows; nothing else about the shot changes
+function gunMuzzle(x,y,z){if(save.flash)gunSpark(x,y,z)}
 function gunMark(x,z){if(save.violence<2)return;const k=GUN.marks.find(k=>k.t<=0)||GUN.marks[0];k.t=4;k.m.position.set(x,footGround(x,z)+.03,z);k.m.material.opacity=.7;k.m.visible=true}
 function gunSound(){if(!AU||!save.sound)return;const s=AC.createBufferSource();s.buffer=AU.buf;const f=AC.createBiquadFilter();f.type="bandpass";f.frequency.value=1500;f.Q.value=.6;
   const g=AC.createGain(),t=AC.currentTime;g.gain.setValueAtTime(.45,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);s.connect(f);f.connect(g);g.connect(AU.master);s.start(0,Math.random()*.5);s.stop(t+.18)}
@@ -6618,7 +6620,7 @@ function gunFire(){
   if(GUN.ammo<=0){toastOnce("gun",["OUT OF ROUNDS","Refill at your house"]);GUN.cool=.4;return false}
   GUN.ammo--;GUN.cool=.32;GUN.flashT=.06;GUN.aimT=1.2;gunSound();
   const F=gunFrom(),q=GUN.lock;
-  if(!FOOT.on)gunSpark(F.x,F.y,F.z);   // from the car: the flash at the bonnet
+  if(!FOOT.on)gunMuzzle(F.x,F.y,F.z);   // from the car: the flash at the bonnet
   if(!q){const x=F.x+Math.sin(F.h)*25,z=F.z+Math.cos(F.h)*25;gunSpark(x,footGround(x,z)+.2,z);crime("fire",F.x,F.z);return true}
   gunSpark(q.x,q.y+(q.k==="car"||q.k==="cop"?0:.1),q.z);
   // a hit counts where the police can see it happen, or see you fire (Codex's review of #31: a patrol beside you
@@ -6699,6 +6701,9 @@ function healthTick(dt){
   if(H.hurtT>0||FOOT.on)$("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(Math.max(0,save.flash?H.hurtT:0)*.9+(H.hp<30?.15:0)).toFixed(3)})`;
   GUN.hudT-=dt;if(GUN.hudT<=0){GUN.hudT=.1;
     const show1=(save.armed&&!BOAT.on)||H.hp<H.max;show("gunHud",show1);
+    // the FIRE pad: whenever the pistol can be fired, kept up to date here rather than only on getting in or out
+    // (Codex's review of #35: it was missing on the first drive after taking the pistol, and stayed in races)
+    show("bF",save.armed&&state==="DRIVE"&&!BOAT.on&&(FOOT.on||(!ev&&!testDrive)));
     if(show1){$("hpBar").style.width=Math.round(H.hp/H.max*100)+"%";$("gunHud").classList.toggle("low",H.hp<30);
       const t=save.armed?(GUN.ammo?"PISTOL "+GUN.ammo:"PISTOL EMPTY"):"";$("gunTxt").textContent=t;$("gunHud").classList.toggle("empty",save.armed&&!GUN.ammo)}}
 }
@@ -6919,7 +6924,7 @@ function boatLandSpot(){
   const x=clamp(BOAT.x,PIER.x0+2.2,PIER.x1-1),z=BOAT.z<0?PIER.z0+.75:PIER.z1-.75;
   return Math.hypot(BOAT.x-x,BOAT.z-z)<=BOAT_V.land?[x,z]:null;
 }
-function boatHud(){footHud(true);show("bF",false);$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
+function boatHud(){footHud(true);$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
 function boatBoard(){
   if(!FOOT.on||BOAT.on||!BOAT.m)return false;
   FOOT.on=false;FOOT.m.G.visible=false;BOAT.on=true;BOAT.v=0;BOAT.steer=0;BOAT.car=[P.x,P.z];BOAT.cy=BOAT.h;

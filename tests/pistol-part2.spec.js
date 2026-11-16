@@ -186,4 +186,115 @@ test.describe("step 4 part 2", () => {
     });
     expect(r).toEqual({ n: 4, open: true, full: true, healed: 80, taken: true, back: true });
   });
+  // Codex's review of #35
+  test("FLASHES OFF: no muzzle flash from your car, a police car or an officer; damage and rounds unchanged", async ({ game }) => {
+    await armedInCar(game, { police: true });
+    await place(game, 0, 18);
+    await place(game, "cop0", -14, true);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        G = T.GUN,
+        car = T.TRAFFIC[0],
+        cop = T.TRAFFIC.find((t) => t.cop && t.e),
+        lit = () => G.sparks.filter((s) => s.m.visible).length,
+        clear = () => G.sparks.forEach((s) => {
+          s.t = 0;
+          s.m.visible = false;
+        }),
+        rnd = Math.random,
+        out = {};
+      const round = () => {
+        clear();
+        T.driveUpdate(1 / 60);
+        G.cool = 0;
+        T.gunFire();
+        const mine = lit();
+        clear();
+        T.WANTED.lvl = 4;
+        cop.shootT = 0;
+        cop.v = 0;
+        Math.random = () => 0;
+        try {
+          T.copCarFire(1 / 60, [cop]);
+        } finally {
+          Math.random = rnd;
+        }
+        return { mine, police: lit(), ammo: G.ammo, carDamage: Math.round(car.damage), myDamage: Math.round(P.damage || 0) };
+      };
+      out.on = round();
+      T.save.flash = false;
+      out.off = round();
+      return out;
+    });
+    // with flashes: the muzzle and where it lands (2), and the police car's muzzle (1)
+    expect(r.on).toMatchObject({ mine: 2, police: 1, ammo: 47, carDamage: 12, myDamage: 6 });
+    // without: only where your shot lands; the same damage and rounds
+    expect(r.off).toMatchObject({ mine: 1, police: 0, ammo: 46, carDamage: 24, myDamage: 12 });
+  });
+
+  test("a car between you and a police car is cover: it doesn't fire through it", async ({ game }) => {
+    await armedInCar(game, { police: true });
+    await place(game, "cop0", 20, true);
+    await place(game, 0, 10);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        cop = T.TRAFFIC.find((t) => t.cop && t.e),
+        rnd = Math.random;
+      T.WANTED.lvl = 5;
+      Math.random = () => 0;
+      try {
+        for (let i = 0; i < 60 * 4; i++) {
+          cop.v = 0;
+          P.vx = P.vz = 0;
+          T.copCarFire(1 / 60, [cop]);
+        }
+      } finally {
+        Math.random = rnd;
+      }
+      return Math.round(P.damage || 0);
+    });
+    expect(r).toBe(0);
+  });
+});
+
+test.describe("step 4 part 2 on a phone", () => {
+  test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+
+  test("the FIRE pad is there on the first drive with the pistol, in the car and on foot; gone on the boat and in a race", async ({ game, page }) => {
+    await game.open();
+    await game.waitState("GARAGE");
+    await game.eval(() => document.getElementById("gGun").click());
+    await game.driveOut();
+    await expect(page.locator("#bF")).toBeVisible();
+    // in a race (from the car)
+    await game.eval(() => __T.openIntro(__T.EVENTS[2]));
+    await game.waitState("INTRO");
+    await page.locator("#iGo").tap();
+    await page.waitForFunction(() => __T.ev && __T.state === "DRIVE", null, { timeout: 30000 });
+    await expect(page.locator("#bF"), "in a race").toBeHidden();
+    await game.eval(() => {
+      __T.endEvent();
+      __T.driveUpdate(1 / 60);
+    });
+    await expect(page.locator("#bF"), "after the race").toBeVisible();
+    // on foot
+    await game.eval(() => {
+      __T.P.vx = __T.P.vz = 0;
+    });
+    await page.locator("#chFoot").tap();
+    await expect(page.locator("#bF"), "on foot").toBeVisible();
+    // on the boat
+    await game.eval(() => {
+      const T = __T,
+        F = T.FOOT;
+      F.x = T.BOAT.x;
+      F.z = T.PIER.z0 + 0.8;
+      F.y = T.PIER.y;
+      T.driveUpdate(1 / 60);
+      T.boatBoard();
+    });
+    await expect(page.locator("#bF"), "on the boat").toBeHidden();
+  });
 });
