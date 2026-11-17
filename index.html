@@ -4933,6 +4933,9 @@ function jobRestart(){if(!job)return false;const J=job.def;jobEnd("abandoned");r
 function jobTick(dt){
   if(!job)return;
   if(job.timing){job.left-=dt;if(job.left<=0){jobEnd("failed","Out of time: "+job.def.title);return}}
+  // Walking and sailing must keep a courier's deadline running, but the parked car is not
+  // making a delivery by itself. P stays at the car while FOOT/BOAT are elsewhere.
+  if(FOOT.on||BOAT.on){job.near=false;jobHUD();return}
   const t=jobTarget(),d=Math.hypot(P.x-t.x,P.z-t.z),kph=kphNow();
   if(d<JOB_R&&kph<JOB_KPH){
     const J=job.def;job.stop++;
