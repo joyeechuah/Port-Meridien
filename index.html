@@ -4545,13 +4545,21 @@ function songFetch(n){const S=SONGS[n];
   if(S.st)return;
   if(location.protocol==="file:"){S.st="failed";S.err="opened from disk";return}   // browsers won't fetch files from disk
   S.st="loading";S.askT=AC?AC.currentTime:null;
-  // A connection can hang without rejecting. Bound the whole fetch (including the response body), so a phone
-  // without backup music eventually retries rather than remaining silent forever.
-  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
-  fetch(S.url,{signal:controller.signal}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.arrayBuffer()})
+  // A connection can hang without failing, and a phone has no backup music to fall back on. So a download that
+  // stops moving for 12 s (no answer, or no new data) is given up and tried again later. The clock restarts with
+  // every piece that arrives, so a slow but steady download still finishes: a 2 MB song takes about 20 s at
+  // 100 KB/s, and a fixed 12 s limit cut it off every time
+  const controller=new AbortController();let timer=0;
+  const watch=()=>{clearTimeout(timer);timer=setTimeout(()=>controller.abort(),12000)};watch();
+  fetch(S.url,{signal:controller.signal}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);
+      if(!r.body||!r.body.getReader){clearTimeout(timer);return r.arrayBuffer()}   // (no stream: no stall check)
+      const rd=r.body.getReader(),parts=[];let n=0;
+      const next=()=>rd.read().then(({done,value})=>{if(done){const b=new Uint8Array(n);let o=0;for(const p of parts){b.set(p,o);o+=p.length}return b.buffer}
+        watch();parts.push(value);n+=value.length;return next()});
+      return next()})
     .then(b=>{S.bytes=b;S.st="fetched"})
-    .catch(e=>songFail(S,controller.signal.aborted?"timeout":/^HTTP/.test(e?.message||"")?e.message:"network"))
-    .finally(()=>clearTimeout(timeout))}
+    .catch(e=>songFail(S,controller.signal.aborted?"timeout":/^HTTP/.test((e&&e.message)||"")?e.message:"network"))
+    .finally(()=>clearTimeout(timer))}
 function songDecode(n){const S=SONGS[n];if(S.st!=="fetched")return;S.st="decoding";
   AC.decodeAudioData(S.bytes.slice(0),buf=>{S.buf=buf;S.st="ready";S.err=null;S.idle=AC.currentTime},()=>songFail(S,"couldn't decode"))}
 const equalPower=(up)=>{const c=new Float32Array(64);for(let i=0;i<64;i++){const t=i/63;c[i]=up?Math.sin(t*Math.PI/2):Math.cos(t*Math.PI/2)}return c};

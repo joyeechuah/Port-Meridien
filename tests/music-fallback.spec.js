@@ -107,3 +107,42 @@ test("a request that never responds times out, reports why, and can recover on r
   await expect.poll(() => game.eval(() => __T.SONGS.lounge.st), { timeout: 20_000 }).toBe("ready");
   expect(await page.evaluate(() => window.__songFetchAttempts)).toBe(2);
 });
+
+test("a song on a slow but steady connection still loads (the time limit is for stalls, not slowness)", async ({ game, page }) => {
+  test.setTimeout(120_000);
+  // about 100 KB/s, a weak phone signal: a 2 MB song takes about 20 s, longer than the 12 s stall limit
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Network.enable");
+  await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 150, downloadThroughput: 100 * 1024, uploadThroughput: 50 * 1024 });
+  await game.open();
+  await page.mouse.click(640, 200);
+  await expect.poll(() => game.eval(() => __T.SONGS.lounge.st), { timeout: 80_000, intervals: [2000] }).toBe("ready");
+  expect(await game.eval(() => __T.SONGS.lounge.tries || 0), "failed attempts").toBe(0);
+});
+
+test("a download that stops halfway is given up after 12 s without new data, and tried again", async ({ game, page }) => {
+  await page.addInitScript(() => {
+    const realFetch = window.fetch.bind(window);
+    window.__songFetchAttempts = 0;
+    window.fetch = (input, options) => {
+      if (!String(input).includes("audio/showroom.mp3")) return realFetch(input, options);
+      if (++window.__songFetchAttempts !== 1) return realFetch(input, options);
+      // the answer comes, one piece of the song arrives, then nothing more
+      const body = new ReadableStream({
+        start(c) {
+          c.enqueue(new Uint8Array(4096));
+          options.signal.addEventListener("abort", () => c.error(new DOMException("Aborted", "AbortError")), { once: true });
+        },
+      });
+      return Promise.resolve(new Response(body, { status: 200 }));
+    };
+  });
+  await game.open();
+  await expect.poll(() => game.eval(() => __T.SONGS.lounge.err), { timeout: 25_000 }).toBe("timeout");
+  await page.mouse.click(640, 200);
+  await game.eval(() => {
+    __T.SONGS.lounge.retryAt = 0;
+  });
+  await expect.poll(() => game.eval(() => __T.SONGS.lounge.st), { timeout: 20_000 }).toBe("ready");
+  expect(await page.evaluate(() => window.__songFetchAttempts)).toBe(2);
+});
