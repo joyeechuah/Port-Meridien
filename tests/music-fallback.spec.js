@@ -83,3 +83,27 @@ test("the ?perf panel says why a song failed", async ({ game, page }) => {
   await page.mouse.click(640, 200);
   await expect(page.locator("#perf")).toContainText(/lounge failed:HTTP 404( r\d\/3)?/, { timeout: 20_000 });
 });
+
+test("a request that never responds times out, reports why, and can recover on retry", async ({ game, page }) => {
+  // A permanently pending fetch used to leave S.st=loading forever, so mobile players got no music
+  // and none of the 3/10/30-second retries would ever run.
+  await page.addInitScript(() => {
+    const realFetch = window.fetch.bind(window);
+    window.__songFetchAttempts = 0;
+    window.fetch = (input, options) => {
+      if (!String(input).includes("audio/showroom.mp3")) return realFetch(input, options);
+      window.__songFetchAttempts++;
+      if (window.__songFetchAttempts !== 1) return realFetch(input, options);
+      return new Promise((resolve, reject) => {
+        options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      });
+    };
+  });
+  await game.open();
+  await expect.poll(() => game.eval(() => __T.SONGS.lounge.err), { timeout: 20_000 }).toBe("timeout");
+  expect(await game.eval(() => __T.SONGS.lounge.st)).toBe("failed");
+  await page.mouse.click(640, 200);
+  await game.eval(() => { __T.SONGS.lounge.retryAt = 0; });
+  await expect.poll(() => game.eval(() => __T.SONGS.lounge.st), { timeout: 20_000 }).toBe("ready");
+  expect(await page.evaluate(() => window.__songFetchAttempts)).toBe(2);
+});
