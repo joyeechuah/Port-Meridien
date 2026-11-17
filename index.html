@@ -4545,8 +4545,13 @@ function songFetch(n){const S=SONGS[n];
   if(S.st)return;
   if(location.protocol==="file:"){S.st="failed";S.err="opened from disk";return}   // browsers won't fetch files from disk
   S.st="loading";S.askT=AC?AC.currentTime:null;
-  fetch(S.url).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.arrayBuffer()}).then(b=>{S.bytes=b;S.st="fetched"})
-    .catch(e=>songFail(S,/^HTTP/.test(e.message)?e.message:"network"))}
+  // A connection can hang without rejecting. Bound the whole fetch (including the response body), so a phone
+  // without backup music eventually retries rather than remaining silent forever.
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
+  fetch(S.url,{signal:controller.signal}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.arrayBuffer()})
+    .then(b=>{S.bytes=b;S.st="fetched"})
+    .catch(e=>songFail(S,controller.signal.aborted?"timeout":/^HTTP/.test(e?.message||"")?e.message:"network"))
+    .finally(()=>clearTimeout(timeout))}
 function songDecode(n){const S=SONGS[n];if(S.st!=="fetched")return;S.st="decoding";
   AC.decodeAudioData(S.bytes.slice(0),buf=>{S.buf=buf;S.st="ready";S.err=null;S.idle=AC.currentTime},()=>songFail(S,"couldn't decode"))}
 const equalPower=(up)=>{const c=new Float32Array(64);for(let i=0;i<64;i++){const t=i/63;c[i]=up?Math.sin(t*Math.PI/2):Math.cos(t*Math.PI/2)}return c};
