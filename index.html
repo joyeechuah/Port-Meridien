@@ -56,6 +56,11 @@ kbd{font-family:var(--f-num);font-size:12px;border:1px solid rgba(255,255,255,.3
 #lcloud{width:280px;margin-top:4px}#lcl{font-size:12px;color:var(--mute);letter-spacing:.04em;text-align:center;max-width:320px;line-height:1.5}#lcl:empty{display:none}
 body.touch #lhint{display:none}
 
+/* Old Quay arrival, drawn over the live harbour and street cameras. */
+#arrival{position:fixed;inset:0;z-index:34;pointer-events:none;display:flex;align-items:flex-end;padding:0 max(6vw,var(--sr)) max(11vh,calc(24px + var(--sb))) max(6vw,var(--sl));background:linear-gradient(0deg,rgba(4,9,12,.74),transparent 35%),linear-gradient(#07090c 0 5%,transparent 5% 95%,#07090c 95%)}
+#arrivalPlace{margin:0;color:#fff5dc;font:800 clamp(40px,8vw,96px)/.96 var(--f-num);letter-spacing:-.025em;text-shadow:0 2px 12px #101417}
+#arrivalCity{margin:0 0 8px;color:var(--acc-hi);font-size:12px;font-weight:700;letter-spacing:.26em;text-transform:uppercase}
+#arrivalSkip{position:absolute;right:max(5vw,calc(12px + var(--sr)));top:max(8vh,calc(12px + var(--st)));min-height:44px;pointer-events:auto;background:var(--panel2);border-color:rgba(255,255,255,.4)}
 /* garage */
 #gui{position:fixed;inset:0;z-index:30;pointer-events:none}
 #gtitle{position:absolute;top:calc(18px + var(--st));left:calc(22px + var(--sl))}
@@ -446,6 +451,11 @@ body.touch #phExit kbd{display:none}
   <div id="lcl"></div>
   <div id="lhint" class="hide">or press any key to play</div>
 </div>
+
+<section id="arrival" class="hide" aria-labelledby="arrivalPlace">
+  <div><p id="arrivalCity">Port Meridien</p><h2 id="arrivalPlace">Old Quay</h2></div>
+  <button class="btn ghost" id="arrivalSkip">Skip intro</button>
+</section>
 
 <div id="gui" class="hide">
   <div id="gtitle"><div class="k">HOME · EASTBANK HILLS · <span id="gcount"></span><span id="gcups"></span></div><div class="t">MY GARAGE</div><div id="ghint">Click a car to select it, click it again to drive</div></div>
@@ -3238,7 +3248,8 @@ function pollPad(){
   if(tabIdle)return;
   if(clOverlayOpen()){if(hit(1))clEscape();return}
   const inputState=state;
-  if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on&&!BOAT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on&&!BOAT.on)footExit()}
+  if(state==="ARRIVAL"){if(hit(0)||hit(1)||hit(9))finishArrival();return}
+  else if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on&&!BOAT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on&&!BOAT.on)footExit()}
   // in the pause menu, B or Start closes a screen opened from it (passport, contracts) before the menu itself
   else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}}
   else if(state==="LOAD"){if(hit(0)&&!$("lstart").classList.contains("hide"))$("lstart").click()}
@@ -5453,12 +5464,15 @@ function goGarage(fromFade){
 }
 function gunSync(){const b=$("gGun");b.textContent=save.armed?"PISTOL: TAKING IT":"PISTOL: LEFT HERE";b.setAttribute("aria-pressed",save.armed?"true":"false")}
 $("gGun").onclick=()=>{if(state!=="GARAGE")return;save.armed=!save.armed;persist();gunSync()};
-function goDrive(){
-  if(state!=="GARAGE")return;
+function prepareDrive(){
   audioInit();audioOn(true);
   GUN.ammo=save.armed?GUN.max:0;HEALTH.hp=HEALTH.max;
   attachCar(save.owned[gSel]);persist();
-  setState("EXIT");exitT=0;show("gui",false);selRing.visible=false;selSpot.intensity=0;
+  show("gui",false);selRing.visible=false;selSpot.intensity=0;
+}
+function goDrive(){
+  if(state!=="GARAGE")return;
+  prepareDrive();setState("EXIT");exitT=0;
   const s=SPOTS[gSel];
   const way=s[1]>18?[gW(s[0],16.5),gW(0,15),gW(0,7)]:[gW(s[0]*.45,4.2)];
   exitCurve=new THREE.CatmullRomCurve3([pc.G.position.clone(),...way,gW(0,.6),gW(0,-8),gW(.5,-16)],false,"centripetal");
@@ -5484,13 +5498,45 @@ function exitSeq(dt){
     const h=pc.G.rotation.y,v=exitLen*1.65/dur;
     Object.assign(P,{x:p.x,z:p.z,h,vx:Math.sin(h)*v,vz:Math.cos(h)*v,vy:0,r:0,steer:0,steerS:0,air:false,pitch,roll:0});
     P.ty=surfH(p.x,p.z);P.y=P.ty;camYaw=h;
-    setState("DRIVE");hudOn(true);updateMoney();
-    $("keys").style.opacity=1;setTimeout(()=>$("keys").style.opacity=0,10000);
-    for(const t of TRAFFIC)if(!t.cop||t.patrol)spawnTraffic(t,60,600,false);   // police cars beyond the two patrols wait until they are called
-    toast("FREE RIDE",isTouch?"Explore Port Meridien. Tap MAP to plan a route.":"Explore Port Meridien. Press M for the map.");
-    while(jobNotices.length){const[t,s]=jobNotices.shift();toast(t,s,"bad")}
+    beginFreeRide();
   }
 }
+
+function beginFreeRide(){
+  setState("DRIVE");hudOn(true);updateMoney();
+  $("keys").style.opacity=1;setTimeout(()=>$("keys").style.opacity=0,10000);
+  for(const t of TRAFFIC)if(!t.cop||t.patrol)spawnTraffic(t,60,600,false);   // police cars beyond the two patrols wait until they are called
+  toast("FREE RIDE",isTouch?"Explore Port Meridien. Tap MAP to plan a route.":"Explore Port Meridien. Press M for the map.");
+  while(jobNotices.length){const[t,s]=jobNotices.shift();toast(t,s,"bad")}
+}
+
+// A harbour establishing shot cuts to a crane descending along the player's street.
+let arrivalTime=0;
+function arrivalCamera(t){
+  if(t<3.4){
+    const u=smooth(0,3.4,t),shore=PIER.x1-18;
+    camera.position.set(shore+135-56*u,62-24*u,92-27*u);
+    camera.lookAt(shore-14-18*u,4,0);
+  }else{
+    const u=smooth(3.4,7.6,t),back=lerp(52,9,u),side=lerp(3,1.5,u);
+    const fx=Math.sin(P.h),fz=Math.cos(P.h);
+    camera.position.set(P.x-fx*back+fz*side,P.y+lerp(28,3.1,u),P.z-fz*back-fx*side);
+    camera.lookAt(P.x+fx*4,P.y+1.1,P.z+fz*4);
+  }
+  camera.fov=56;camera.updateProjectionMatrix();
+}
+function startArrival(){
+  prepareDrive();
+  const x=680,road=nearestRoadGlobal(x,avenueZ(x),true);
+  placeOnRoad(road,road.dx>=0?1:-1);placeCarMesh(0);
+  arrivalTime=0;setState("ARRIVAL");arrivalCamera(0);show("arrival",true);
+  if(!clOverlayOpen())$("arrivalSkip").focus({preventScroll:true});
+}
+function finishArrival(){
+  if(state!=="ARRIVAL"||tabIdle||clOverlayOpen())return;
+  show("arrival",false);clearInput();snapCam();updateCam(1);beginFreeRide();
+}
+$("arrivalSkip").onclick=finishArrival;
 
 /* ================================================================ DEALERSHIP */
 let dSel=0,dAng=0,dPaint=0;
@@ -5767,6 +5813,7 @@ addEventListener("keydown",e=>{
   // a focused slider keeps its own arrow, Home, End and Page keys (they moved the photo camera and the slider stood still)
   if(tg&&tg.tagName==="INPUT"&&tg.type==="range"&&/^(arrow(up|down|left|right)|home|end|pageup|pagedown)$/.test(k))return;
   if(clOverlayOpen()){if(k==="escape"&&!e.repeat)clEscape();return}
+  if(state==="ARRIVAL"){if(!e.repeat&&["escape","enter"," "].includes(k)){e.preventDefault();finishArrival()}return}
   if(cuOpen()){if(k==="escape"&&!e.repeat)custClose(false);return}
   // Space is the handbrake while driving, focused button or not (a stray Tab mustn't turn it into a map or pause
   // key mid-race; Enter presses a Tab-focused button there). Anywhere else Space presses the focused button, as on
@@ -6042,7 +6089,7 @@ function clRow(sv,at){const m=clSummary(sv),li=t=>"<li>"+t+"</li>";
   return li("<b>"+fmtCr(m.cr)+"</b> credits")+li(m.cars+" car"+(m.cars===1?"":"s")+(m.mods?" · "+m.mods+" customised":""))+li("Driver level "+m.lvl)+li(m.found+" landmark"+(m.found===1?"":"s")+" · "+m.cups+" cup"+(m.cups===1?"":"s")+" won")+(at?li("Saved "+clAgo(at)):"")}
 function clPickShow(){if(!CL.pick)return;
   // not over a race or a drive: it waits for the pause menu or the garage, and a message says so
-  if(state!=="GARAGE"&&state!=="PAUSE"&&state!=="LOAD"){toast("CLOUD SAVE","Your account has different progress. Pause to choose which to keep");return}
+  if(state!=="GARAGE"&&state!=="PAUSE"&&state!=="LOAD"&&state!=="ARRIVAL"){toast("CLOUD SAVE","Your account has different progress. Pause to choose which to keep");return}
   // another account's progress on this device, and nothing in this account yet: use it here too, or start new
   const ot=!CL.pick.cloud,nm=CL.meta.ownerName;
   $("cpkTitle").textContent=ot?"Use this device's progress for this account?":"Which progress do you want to keep?";
@@ -7122,6 +7169,13 @@ function frame(ts){
   const wantOpen=state==="EXIT"?1:0;doorOpen+=(wantOpen-doorOpen)*Math.min(1,dt*1.6);
   if(doorMesh)doorMesh.position.y=gY+3.3+doorOpen*6.3;
   if(state==="GARAGE"||state==="LOAD")garageCam(dt);
+  else if(state==="ARRIVAL"){
+    if(!document.hidden&&!clOverlayOpen()){
+      arrivalTime+=Math.max(0,Math.min(raw,.25));
+      if(arrivalTime>=7.6||matchMedia("(prefers-reduced-motion: reduce)").matches)finishArrival();
+      else arrivalCamera(arrivalTime);
+    }
+  }
   else if(state==="EXIT")exitSeq(dt);
   else if(state==="DRIVE")driveUpdate(dt);
   else if(state==="DEALER")dealerCam(dt);
@@ -7175,18 +7229,30 @@ function boot(){
   const g=garageWant();camP.copy(g.pos).add(new V3(0,2,0));camL.copy(g.look);
   $("chCam").textContent="CAM: "+CAMS[camMode];
   requestAnimationFrame(frame);
-  // browsers only allow sound after a tap or key press, so the garage opens on one: the music starts with it
+  // Start the city sequence from a player gesture so the browser can enable sound.
   let entered=false;
-  const enter=()=>{if(entered)return;entered=true;removeEventListener("keydown",onKey,true);
-    if(!window.__autostart)firstGesture();
-    $("load").style.opacity=0;setTimeout(()=>{show("load",false);show("gui",true);setState("GARAGE")},600)};
-  const onKey=e=>{if(e.key!=="Tab"&&e.key!=="Shift"&&e.key!=="Control"&&e.key!=="Alt"&&e.key!=="Meta")enter()};
+  const enter=(openCloud=false)=>{if(entered)return;entered=true;removeEventListener("keydown",onKey,true);
+    if(window.__autostart){
+      // Existing automated gameplay fixtures begin at the car selector.
+      $("load").style.opacity=0;
+      setTimeout(()=>{show("load",false);show("gui",true);setState("GARAGE")},600);
+      return;
+    }
+    firstGesture();
+    // Change the camera before fading the cover. Defer one frame so the key that starts
+    // the game cannot also skip the arrival or activate a newly focused button.
+    requestAnimationFrame(()=>{
+      startArrival();if(openCloud===true)clOpen();
+      $("load").style.opacity=0;
+      setTimeout(()=>show("load",false),600);
+    })};
+  const onKey=e=>{if(clOverlayOpen()||e.target===$("lcloud")&&(e.key==="Enter"||e.key===" "))return;if(e.key!=="Tab"&&e.key!=="Shift"&&e.key!=="Control"&&e.key!=="Alt"&&e.key!=="Meta")enter()};
   clBoot();
   if(window.__autostart){setTimeout(enter,200);return}
   $("lmsg").textContent="Ready";$("lf").parentNode.classList.add("hide");
   show("lstart",true);show("lhint",true);$("lstart").onclick=enter;addEventListener("keydown",onKey,true);
   // signed in: PLAY carries on (the backup runs by itself); a guest can choose SAVE MY PROGRESS, which plays and opens it
-  clStartScreen(()=>{enter();setTimeout(clOpen,650)});
+  clStartScreen(()=>enter(true));
   try{$("lstart").focus({preventScroll:true})}catch(e){}
 }
 boot();
