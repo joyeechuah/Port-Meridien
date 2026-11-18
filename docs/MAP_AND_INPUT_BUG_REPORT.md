@@ -34,3 +34,13 @@ Four more scenarios failed on the previous PR head, `9065aa9`, and passed after 
 | Choose DECIDE LATER during a cloud-save conflict | The 15-second refresh reopened the dialog. | This conflict stays deferred for the session. Reopening Cloud Save still presents both choices. |
 
 The four before/after checks executed the production handlers with simulated controller, touch, timer and dialog state. All ten earlier assertions still passed. Local lint reported zero errors and zero warnings. Three additional Playwright cases cover the controller, touch and viewport scenarios. The existing cloud conflict test now advances the refresh clock and reopens the chooser. See the PR's current Actions run for full browser results.
+
+## Interface review
+
+The deployed game reached its WebGL fallback in the review browser. The loading bar still looked active and the screen offered no retry button. The revised entry screen makes the game name the heading, announces loading status, and offers Try Again after startup fails.
+
+The garage gives Drive the amber primary treatment. On portrait phones, vehicle stats sit in three columns above equally sized action buttons. Desktop car selectors have larger hit areas and expose which car is selected.
+
+At widths of 700 px or less, the previous stylesheet hid the legend and its Explorer Passport button. Map Key now reveals both. Escape collapses the key and restores keyboard focus. The desktop legend stays visible.
+
+Verification included execution of the real startup failure paths and map disclosure handlers, all fourteen existing isolated checks, and lint. Four Playwright tests cover retry plus garage and map flows at 390×844, 667×375 and 1280×800. Successful viewport cases attach garage and map screenshots to the Playwright report. Local Chromium could not start; inspect CI for rendered results.
