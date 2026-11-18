@@ -21,6 +21,8 @@ npm start        # http://127.0.0.1:4173/index.html
 
 Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an internet connection to load three.js and the fonts.
 
+Play opens with a 7.6-second harbour flyover and a street-level reveal of your saved car in Old Quay. Select **Skip intro**, press Escape, or use A, B or Start on a controller to drive immediately. Reduced-motion mode goes straight to free roam. Use the pause menu’s home action to visit the garage and customise your cars.
+
 ## Controls
 
 | | Keyboard | Touch | Controller |
