@@ -259,6 +259,7 @@ test.describe("cloud save", () => {
   });
 
   test("another device saved meanwhile: the next backup doesn't overwrite it, the player chooses (after the drive, not during it)", async ({ game, page }) => {
+    await page.clock.install();
     await page.addInitScript(FAKE_CLOUD);
     await game.open();
     await signIn(page, game);
@@ -282,6 +283,12 @@ test.describe("cloud save", () => {
     await expect(page.locator("#cloudPick")).toBeVisible();
     await expect(page.locator("#cpkAcc")).toContainText("900,000");
     await expect(page.locator("#cpkDev")).toContainText("125,000");
+    await page.locator("#cpkLater").click();
+    await page.clock.fastForward(16000);
+    await expect(page.locator("#cloudPick")).toBeHidden();
+    await page.locator("#pCloud").click();
+    await expect(page.locator("#cloudPick")).toBeVisible();
+    expect(JSON.parse((await cloud(game)).docs.u1.save).cr).toBe(900000);
   });
 
   test("steady progress doesn't put the backup off: it goes a few seconds after the first change", async ({ game, page }) => {
