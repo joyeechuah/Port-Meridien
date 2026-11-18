@@ -35,14 +35,14 @@ Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an in
 | Look behind | Hold `B` | REAR | Hold left shoulder |
 | Photo Mode | `V` | PHOTO | |
 | Back to the road | `R` | Pause menu | |
-| Fire the pistol (on foot) | `G` | FIRE | Right shoulder |
+| Fire (on foot or in free driving) | `G` | FIRE | Right shoulder |
 | Pause | `Esc` or `P` | PAUSE | Menu / Start |
 
-On foot and on the boat the same controls walk and sail: see below.
+Open the map and select **ME** to centre it on your current position. The arrow follows your position and heading while driving, walking or sailing. GPS routes follow the road network.
 
 ## On foot
 
-Stop the car and get out. Gas walks forward, brake steps back, steering turns, and `Shift` or the handbrake runs. Walk back to the car and get in. Traffic stops for you if you stand in the road. The car you got out of falls silent while you're away from it.
+Stop the car and get out. Gas walks forward, brake steps back, steering turns, and holding `Shift`, `Space`, the RUN pad or controller `A` makes you run forward. Walk back to the car and get in. Traffic stops for you if you stand in the road. The car you got out of falls silent while you're away from it.
 
 On foot you can also take any traffic car that has stopped: stand in its lane so it stops, walk to it and get in. The car you came from stays where you left it, and you can walk back and drive it again. Up to three taken cars stay where you left them. A taken car isn't yours: it is not saved, and it's gone when you go home.
 
@@ -93,7 +93,7 @@ While you're wanted, your house, the Auto Gallery, races, contracts, going home 
 
 ## The pistol and health
 
-Take the pistol from the garage with **PISTOL**, top right under MUSIC (it stays chosen until you change it). You carry it on foot only, with 48 rounds, refilled each time you leave the house.
+Take the pistol from the garage with **PISTOL**, top right under MUSIC (it stays chosen until you change it). You can use it on foot and while driving outside races and test drives. You leave the house with 48 rounds.
 
 It locks onto the nearest target in front of you, shown by a red ring: a car, a police car, someone walking, or an officer. Walls and cars are cover. Fire with `G`, the **FIRE** pad, or the controller's right shoulder. A car stops after about nine hits; someone shot is knocked down for 6 s and gets up again.
 
@@ -165,7 +165,7 @@ Run one Playwright instance at a time: the test server uses port 4173 and reads 
 
 ## Privacy
 
-The game stores your progress in your browser's local storage and nowhere else. It has no ads, no analytics and no accounts. It loads three.js from cdnjs and fonts from Google Fonts.
+The default build saves progress in this browser’s local storage. It has no ads or analytics. It loads three.js from cdnjs and fonts from Google Fonts. Deployments configured for optional Google sign-in can also back up progress to Firestore. Ghost laps stay on the device. See [cloud save setup](CLOUD_SETUP.md).
 
 ## Content
 
