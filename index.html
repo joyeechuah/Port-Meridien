@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="description" content="Explore Port Meridien in this early browser driving game. Walking, boats and a new city are planned. No install.">
+<meta name="description" content="Explore Old Quay on foot, drive its roads and sail from the harbour in Port Meridien. Play in your browser on a computer or phone.">
 <meta name="theme-color" content="#07090c">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="canonical" href="https://joyeechuah.github.io/Port-Meridien/">
@@ -11,7 +11,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Port Meridien">
 <meta property="og:title" content="Port Meridien">
-<meta property="og:description" content="Explore Port Meridien in this early browser driving game. Walking, boats and a new city are planned. No install.">
+<meta property="og:description" content="Explore Old Quay on foot, drive its roads and sail from the harbour in Port Meridien. Play in your browser on a computer or phone.">
 <meta property="og:url" content="https://joyeechuah.github.io/Port-Meridien/">
 <meta name="twitter:card" content="summary_large_image">
 <title>Port Meridien</title>
@@ -3191,12 +3191,12 @@ function clearInput(){for(const k in keys)keys[k]=false;for(const k in pad)pad[k
 let locked=false,autoHold=false;
 // a game controller (the first one connected, standard layout): left stick steers, right trigger is the gas, left
 // trigger the brake, A the handbrake; Start pauses, View/Back opens the map, Y changes camera, X is the prompt key
-const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,prev:[]};
+const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,prev:[]};
 // screens opened from the pause menu, and how each closes
 const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()]];
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
-  if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=false;GO.stick[0]=GO.stick[1]=0;return}
+  if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GO.stick[0]=GO.stick[1]=0;return}
   const ax=g.axes[0]||0,b=i=>g.buttons[i]||{pressed:false,value:0},v=i=>{const q=b(i);return typeof q.value==="number"&&q.value>0?q.value:q.pressed?1:0};
   GP.on=true;GP.steer=Math.abs(ax)<.12?0:Math.sign(ax)*(Math.abs(ax)-.12)/.88;GP.gas=v(7);GP.brake=v(6);GP.hb=b(0).pressed;GP.rear=b(4).pressed;GP.fire=b(5).pressed;
   // buttons pressed since the last frame
@@ -3263,7 +3263,7 @@ const gasAmt=()=>{const g=gasIn();return g>0?g:kG()?1:0};
    off sideways speed (less with the handbrake or off the asphalt), the yaw rate
    follows the steering angle but is capped by how much grip the tyres have. */
 const P={x:0,y:0,z:0,h:0,vx:0,vz:0,vy:0,r:0,ty:0,air:false,airT:0,steer:0,pitch:0,roll:0,nr:null,onRoad:true,hit:0,hitT:0,water:false};
-const PCAR=P;   // the car's state under a second name, for the few places that follow the walker instead (see ON FOOT)
+const activePlayer=()=>BOAT.on?BOAT:FOOT.on?FOOT:P;
 let pc=null;        // current car instance
 let shake=0;
 const fwdOf=h=>({x:Math.sin(h),z:Math.cos(h)});
@@ -4234,7 +4234,7 @@ function carArrow(c,x,z,h,scale,big){
 }
 let miniZoom=2.4;
 function drawMini(){
-  const P=BOAT.on?BOAT:FOOT.on?FOOT:PCAR;   // the map follows the walker or the boat when you're out of the car
+  const P=activePlayer();   // the map follows the walker or the boat when you're out of the car
   const S=MMS,c=mmx,R=S/2,py=R+S*.16;c.setTransform(mmD,0,0,mmD,0,0);c.clearRect(0,0,S,S);
   c.save();c.beginPath();c.arc(R,R,R-1,0,TAU);c.clip();
   c.fillStyle="#163450";c.fillRect(0,0,S,S);
@@ -4299,7 +4299,8 @@ function drawMap(){
   for(const Z of ZONES){const lx=Z.lx??Z.x,lz=Z.lz??Z.z;c.fillStyle="rgba(13,26,34,.6)";const tw=c.measureText(Z.n).width;c.fillRect(lx-tw/2-5/s,lz-26/s,tw+10/s,16/s);c.fillStyle="#fff";c.fillText(Z.n,lx,lz-18/s)}
   for(const m of mapMarkers())icon(c,m.kind,m.x,m.z,s,true);
   if(gps.t)icon(c,"flag",gps.t.x,gps.t.z,s,true);
-  carArrow(c,P.x,P.z,P.h,s,true);
+  const player=activePlayer();
+  carArrow(c,player.x,player.z,player.h,s,true);
   c.restore();
   // scale bar
   const m=MV.z<2?500:MV.z<5?200:100,px=m*s,x0=16;c.fillStyle="rgba(13,26,34,.8)";c.fillRect(x0,b.h-40,px+20,24);
@@ -4346,7 +4347,7 @@ const mapUp=e=>{const id=e.pointerId;if(!mptr.delete(id))return;
 mapc.addEventListener("wheel",e=>{e.preventDefault();mapZoomAt(Math.exp(-e.deltaY*.0015),e.clientX,e.clientY)},{passive:false});
 $("mapIn").onclick=()=>mapZoomAt(1.6,MV.ox,MV.oy);
 $("mapOut").onclick=()=>mapZoomAt(1/1.6,MV.ox,MV.oy);
-$("mapMe").onclick=()=>{MV.cx=P.x;MV.cz=P.z;if(MV.z<2.5)MV.z=2.5;clampMap()};
+$("mapMe").onclick=()=>{const player=activePlayer();MV.cx=player.x;MV.cz=player.z;if(MV.z<2.5)MV.z=2.5;clampMap()};
 
 /* ================================================================ AUDIO */
 let AC=null,AU=null;
@@ -6267,7 +6268,7 @@ function footUpdate(dt){
   if(Math.hypot(P.x-FOOT.car[0],P.z-FOOT.car[1])>.5){footEnd();return}
   updateTraffic(dt);jobTick(dt);   // a timed delivery's clock runs while you're out of the car too (it used to stop)
   if(state!=="DRIVE")return;
-  const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||pad.H||GP.hb);
+  const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||kH());
   const want=go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
   FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
   // right turns right, as in the car: the heading decreases (it was the wrong way round, on foot and on the boat)
