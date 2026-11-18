@@ -44,3 +44,9 @@ The garage gives Drive the amber primary treatment. On portrait phones, vehicle 
 At widths of 700 px or less, the previous stylesheet hid the legend and its Explorer Passport button. Map Key now reveals both. Escape collapses the key and restores keyboard focus. The desktop legend stays visible.
 
 Verification included execution of the real startup failure paths and map disclosure handlers, all fourteen existing isolated checks, and lint. Four Playwright tests cover retry plus garage and map flows at 390×844, 667×375 and 1280×800. Successful viewport cases attach garage and map screenshots to the Playwright report. Local Chromium could not start; inspect CI for rendered results.
+
+## Old Quay opening scene
+
+Play now opens over the harbour, cuts to an elevated view along the avenue, and descends to the saved car. The player takes control in free roam. The intro uses the existing game world, camera and soundtrack. Touch, keyboard and controller skip are supported. Reduced motion bypasses the camera sequence. Cloud-save choices suspend it. Going home still opens the garage.
+
+Local checks sampled the production camera with three.js at 231 points across portrait, landscape and desktop aspect ratios. The harbour and car targets stayed inside the camera frame. The handoff check verified that a cloud dialog blocks skipping and that repeated skip attempts enter driving only once. ESLint passed. Browser tests now cover automatic completion, skipping, reduced motion, cloud sign-in and returning home. The auto-start fixture still enters the garage for existing gameplay tests. Rendered playback has not been verified locally.
