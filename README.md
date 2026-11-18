@@ -38,7 +38,7 @@ Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an in
 | Fire (on foot or in free driving) | `G` | FIRE | Right shoulder |
 | Pause | `Esc` or `P` | PAUSE | Menu / Start |
 
-Open the map and select **ME** to centre it on your current position. The arrow follows your position and heading while driving, walking or sailing. GPS routes follow the road network.
+Open the map and select **ME** to centre it on your current position. The arrow follows your position and heading while driving, walking or sailing. GPS routes follow the road network. On touchscreens, you can hold RUN or HANDBRAKE while tapping FIRE with another finger.
 
 ## On foot
 
@@ -165,7 +165,7 @@ Run one Playwright instance at a time: the test server uses port 4173 and reads 
 
 ## Privacy
 
-The default build saves progress in this browser’s local storage. It has no ads or analytics. It loads three.js from cdnjs and fonts from Google Fonts. Deployments configured for optional Google sign-in can also back up progress to Firestore. Ghost laps stay on the device. See [cloud save setup](CLOUD_SETUP.md).
+The default build saves progress in this browser’s local storage. It has no ads or analytics. It loads three.js from cdnjs and fonts from Google Fonts. Deployments configured for optional Google sign-in can also back up progress to Firestore. If the game asks which save to keep, **Decide Later** postpones the choice. Reopen Cloud Save to compare the two copies. Ghost laps stay on the device. See [cloud save setup](CLOUD_SETUP.md).
 
 ## Content
 
