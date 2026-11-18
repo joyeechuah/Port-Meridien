@@ -3191,16 +3191,16 @@ function clearInput(){for(const k in keys)keys[k]=false;for(const k in pad)pad[k
 let locked=false,autoHold=false;
 // a game controller (the first one connected, standard layout): left stick steers, right trigger is the gas, left
 // trigger the brake, A the handbrake; Start pauses, View/Back opens the map, Y changes camera, X is the prompt key
-const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,prev:[]};
+const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,index:null,prev:[]};
 // screens opened from the pause menu, and how each closes
 const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()]];
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
-  if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GO.stick[0]=GO.stick[1]=0;return}
+  if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GP.index=null;GO.stick[0]=GO.stick[1]=0;return}
   const ax=g.axes[0]||0,b=i=>g.buttons[i]||{pressed:false,value:0},v=i=>{const q=b(i);return typeof q.value==="number"&&q.value>0?q.value:q.pressed?1:0};
   GP.on=true;GP.steer=Math.abs(ax)<.12?0:Math.sign(ax)*(Math.abs(ax)-.12)/.88;GP.gas=v(7);GP.brake=v(6);GP.hb=b(0).pressed;GP.rear=b(4).pressed;GP.fire=b(5).pressed;
   // buttons pressed since the last frame
-  const now=g.buttons.map(q=>!!(q&&q.pressed)),was=GP.prev,hit=i=>now[i]&&!was[i];GP.prev=now;
+  const now=g.buttons.map(q=>!!(q&&q.pressed)),was=g.index===GP.index?GP.prev:[],hit=i=>now[i]&&!was[i];GP.index=g.index;GP.prev=now;
   // the cloud save's screens sit over the garage or the pause menu: B closes them, and nothing behind them reacts
   // a stopped tab, or the cloud save's screens open: the garage view's stick stops too (it kept turning behind them)
   if(tabIdle||clOverlayOpen())GO.stick[0]=GO.stick[1]=0;
@@ -5706,9 +5706,10 @@ document.addEventListener("touchend",e=>{const now=performance.now();
 // if the page is zoomed in anyway, a button at the top left of what's on screen zooms back out, and pinching works too.
 // A page can't set the browser's zoom directly: writing the viewport tag again with its scale fixed at 1 makes Safari
 // go back to 1, and the tag is then put back as it was
-function zoomReset(){const m=document.querySelector('meta[name="viewport"]'),was=m.content;
+let resettingZoom=false;
+function zoomReset(){if(resettingZoom)return;resettingZoom=true;const m=document.querySelector('meta[name="viewport"]'),was=m.content;
   m.content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover";
-  setTimeout(()=>{m.content=was},300)}
+  setTimeout(()=>{m.content=was;resettingZoom=false},300)}
 if(window.visualViewport){const vv=visualViewport,z=$("zoomed"),fit=()=>{const on=vv.scale>1.05,was=pageZoomed;pageZoomed=on;
     document.documentElement.classList.toggle("zoomed",on);show("zoomed",on);
     if(on){z.style.transform=`translate(${vv.offsetLeft}px,${vv.offsetTop}px) scale(${1/vv.scale})`;if(!was)zoomReset()}};
@@ -5767,7 +5768,7 @@ addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false});
 // to right) without lifting, and with two fingers down the one that landed or moved there last counts. Before, a
 // press stayed with the button it started on, and BRAKE held by one finger beat GAS pressed by another, so pulling
 // away after braking could do nothing, or reverse
-for(const grp of [[["bL","L"],["bR","R"]],[["bG","G"],["bB","B"]],[["bH","H"],["bF","F"]]]){
+for(const grp of [[["bL","L"],["bR","R"]],[["bG","G"],["bB","B"]],[["bH","H"]],[["bF","F"]]]){
   const els=grp.map(([id,k])=>({el:$(id),k})),own=new Map();PAD_OWN.push(own);
   const keyAt=(x,y)=>{let best=null,bd=1e9;for(const o of els){const r=o.el.getBoundingClientRect(),d=Math.hypot(Math.max(r.left-x,0,x-r.right),Math.max(r.top-y,0,y-r.bottom));if(d<bd){bd=d;best=o.k}}return best};
   const sync=()=>{let top=null;for(const v of own.values())if(!top||v.t>top.t)top=v;for(const o of els){const on=!!top&&top.k===o.k;pad[o.k]=on;o.el.classList.toggle("on",on)}};
@@ -6028,7 +6029,8 @@ function clOpen(){if(CL.pick){clPickShow();return}show("cloud",true);
   if(CL.ad&&!CL.user&&CL.ad.init&&!CL.ad.loaded&&CL.st!=="connecting"){CL.st="connecting";CL.ad.init().then(()=>{if(CL.st==="connecting")clSet(CL.meta.uid?"signedout":"guest")},e=>clSet(clOff(e)?"offline":"error",clErr(e)))}
   clRender();try{$(CL.user?"clClose":"clIn").focus({preventScroll:true})}catch(e){}}
 const clOverlayOpen=()=>!$("cloud").classList.contains("hide")||!$("cloudPick").classList.contains("hide");
-function clEscape(){if(!$("cloudPick").classList.contains("hide"))show("cloudPick",false);else show("cloud",false)}
+function clDeferPick(){if(CL.pick)CL.pick.deferred=true;show("cloudPick",false);clRender()}
+function clEscape(){if(!$("cloudPick").classList.contains("hide"))clDeferPick();else show("cloud",false)}
 function clLine(){const m=CL.meta;
   if(!CL.ad)return "";
   if(CL.st==="conflict")return "Choose which progress to keep";
@@ -6050,9 +6052,9 @@ function clRender(){if(!CL)return;const on=!!CL.user,line=clLine(),bad=CL.st==="
   st.textContent=txt;st.classList.toggle("bad",bad||!CL.ad)}
 $("gCloud").onclick=$("pCloud").onclick=clOpen;$("clClose").onclick=()=>show("cloud",false);$("clIn").onclick=clSignIn;$("clOut").onclick=clSignOut;
 $("clNow").onclick=()=>{if(CL.user){CL.meta.full="";clSync()}};
-$("cpkKeepDev").onclick=()=>clKeep("dev");$("cpkKeepAcc").onclick=()=>clKeep("acc");$("cpkLater").onclick=()=>{show("cloudPick",false);clRender()};
+$("cpkKeepDev").onclick=()=>clKeep("dev");$("cpkKeepAcc").onclick=()=>clKeep("acc");$("cpkLater").onclick=clDeferPick;
 // a choice that waited (it came up during a drive) shows when the game is paused or back in the garage
-const clWaiting=()=>{if(CL.pick&&(state==="PAUSE"||state==="GARAGE")&&!clOverlayOpen())clPickShow()};
+const clWaiting=()=>{if(CL.pick&&!CL.pick.deferred&&(state==="PAUSE"||state==="GARAGE")&&!clOverlayOpen())clPickShow()};
 setInterval(()=>{clRender();clWaiting()},15000);
 
 /* ================================================================ HUD + MAIN LOOP */
