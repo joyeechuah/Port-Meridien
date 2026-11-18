@@ -21,3 +21,16 @@ Three Playwright regressions cover the map marker and recentering in all movemen
 PR #43 handles unattended contract completion, #41 handles music loading and retry, and #37 handles stopped junction traffic. PRs #40 and #42 cover the mobile performance investigation and diagnostic switches. This patch targets main independently of those branches. Real-device frame pacing and audio remain unverified here.
 
 The README now describes the map's ME control, supported sprint inputs, in-game equipment availability and optional cloud saves. The page description and social preview now identify walking and sailing as playable.
+
+## Follow-up review
+
+Four more scenarios failed on the previous PR head, `9065aa9`, and passed after the follow-up fixes.
+
+| Scenario | Previous behavior | Corrected behavior |
+| --- | --- | --- |
+| Disconnect the active controller while another is already connected | The replacement inherited held-button history and could lose its first menu input. | The selected controller slot owns its button history. Holding the button across subsequent polls still produces one press. |
+| Hold the touch handbrake or RUN pad and tap FIRE with another finger | The second finger cancelled the first action. | Each button tracks its own pointers. The gas/brake and steering strips retain their sliding controls. |
+| Trigger zoom recovery twice before the 300 ms restore | The second timer could leave the temporary viewport in place. | Concurrent requests share the original restore. |
+| Choose DECIDE LATER during a cloud-save conflict | The 15-second refresh reopened the dialog. | This conflict stays deferred for the session. Reopening Cloud Save still presents both choices. |
+
+The four before/after checks executed the production handlers with simulated controller, touch, timer and dialog state. All ten earlier assertions still passed. Local lint reported zero errors and zero warnings. Three additional Playwright cases cover the controller, touch and viewport scenarios. The existing cloud conflict test now advances the refresh clock and reopens the chooser. See the PR's current Actions run for full browser results.
