@@ -553,7 +553,7 @@ test.describe("cloud save", () => {
     expect(look.bg[1]).toBe(look.bg[0]);
     await expect(page.locator("#lcl")).toContainText("Sign in with Google");
     await page.locator("#lcloud").click();
-    await game.waitState("GARAGE");
+    await game.waitState("ARRIVAL");
     await expect(page.locator("#cloud")).toBeVisible();
     await page.locator("#clIn").click();
     await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
