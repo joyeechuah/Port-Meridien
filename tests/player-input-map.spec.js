@@ -61,3 +61,58 @@ test("disconnect releases controller fire and a new controller can use the same 
   expect(result.fire).toBe(false);
   expect(result.second).not.toBe(result.first);
 });
+
+test("switching directly between connected controllers starts fresh button history", async ({ game }) => {
+  await game.open();
+  const selections = await game.eval(() => {
+    const buttons = Array.from({ length: 16 }, (_, i) => ({ pressed: i === 15 }));
+    const controller = index => ({ index, connected: true, buttons, axes: [] });
+    let pads = [controller(0), controller(1)];
+    Object.defineProperty(navigator, "getGamepads", { configurable: true, value: () => pads });
+    try {
+      __T.pollPad();
+      const first = __T.gSel;
+      pads[0] = null;
+      __T.pollPad();
+      const second = __T.gSel;
+      __T.pollPad();
+      return [first, second, __T.gSel];
+    } finally {
+      delete navigator.getGamepads;
+    }
+  });
+  expect(selections[1]).not.toBe(selections[0]);
+  expect(selections[2]).toBe(selections[1]);
+});
+
+test("handbrake and fire can be held and released independently", async ({ game }) => {
+  await game.open();
+  const states = await game.eval(() => {
+    const snapshot = () => [!!__T.pad.H, !!__T.pad.F];
+    const send = (id, type, pointerId) => document.getElementById(id).dispatchEvent(
+      new PointerEvent(type, { pointerId, pointerType: "touch", bubbles: true, cancelable: true })
+    );
+    send("bH", "pointerdown", 11);
+    send("bF", "pointerdown", 12);
+    const both = snapshot();
+    send("bH", "pointercancel", 11);
+    const onlyFire = snapshot();
+    send("bF", "pointerup", 12);
+    return [both, onlyFire, snapshot()];
+  });
+  expect(states).toEqual([[true, true], [false, true], [false, false]]);
+});
+
+test("overlapping zoom resets restore the original viewport", async ({ game, page }) => {
+  await game.open();
+  const viewport = page.locator('meta[name="viewport"]');
+  const original = await viewport.getAttribute("content");
+  const locked = await game.eval(() => {
+    const reset = document.getElementById("zoomed");
+    reset.click();
+    reset.click();
+    return document.querySelector('meta[name="viewport"]').content;
+  });
+  expect(locked).toContain("minimum-scale=1");
+  await expect(viewport).toHaveAttribute("content", original);
+});
