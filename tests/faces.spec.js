@@ -46,3 +46,17 @@ test("the people in town and the officer have painted faces of their own; the te
   expect(r.officer).toBe(true);
   expect(r.textures, "face textures made").toBeLessThanOrEqual(12);
 });
+
+test("Photo Mode opens every face's eyes (it stops the clocks, and eyes caught shut stayed shut in every photo)", async ({ game }) => {
+  await game.open();
+  await game.driveOut();
+  const r = await game.eval(() => {
+    const T = __T, all = [T.FOOT.m.face, T.OFFICER.m.face, ...T.PEDS.map((p) => p.m.face)];
+    for (const F of all) { F.shut = true; F.m.map = F.tex.closed; F.t = 0.1; }
+    T.photoEnter();
+    const open = all.every((F) => F.m.map === F.tex.open && !F.shut);
+    T.photoExit();
+    return open;
+  });
+  expect(r).toBe(true);
+});

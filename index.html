@@ -4742,6 +4742,8 @@ function photoReset(){if(!pc)return;PH.yaw=P.h+Math.PI*.82;PH.pitch=.22;PH.dist=
 function photoEnter(){
   if(PH.on||!pc||(state!=="DRIVE"&&state!=="PAUSE"))return false;
   PH.prev=state;
+  // Photo Mode stops every clock, blinking included: eyes caught shut would stay shut in every photo
+  for(const F of [FOOT.m&&FOOT.m.face,OFFICER.m&&OFFICER.m.face,...PEDS.map(p=>p.m.face)])if(F){F.shut=false;F.m.map=F.tex.open;F.t=Math.max(F.t,1)}
   PH.saved={pos:camera.position.clone(),q:camera.quaternion.clone(),fov:camera.fov,
     inside:pc.inside.visible,glass:pc.glass.visible,shell:pc.shell.visible,
     head:headLight?headLight.intensity:0,fill:fillLight?fillLight.intensity:0,tail:pc.tailM.color.clone()};
@@ -6352,7 +6354,9 @@ function footModel(){
   const part=(par,g,m,x,y,z,sx=1,sy=sx,sz=sx)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;par.add(o);return o};
   const pivot=(par,x,y,z)=>{const p=new THREE.Group();p.position.set(x,y,z);par.add(p);return p};
   // trunk: hips, a chest wider than the waist and flatter front to back, shoulders, neck
-  part(G,ball,trousers,0,.911,0,.16,.115,.108);
+  // (kept slimmer front to back than the thighs: it used to bulge in front of them and catch the light, a pale
+  // wedge at the crotch)
+  part(G,ball,trousers,0,.92,0,.16,.1,.088);
   // Sewn shirt silhouette with a hem, a waist and sloping shoulders. The lathe UVs carry the print.
   const chest=new THREE.LatheGeometry([[0,.898],[.193,.898],[.198,.91],[.199,.956],[.159,1.085],[.177,1.25],[.204,1.39],[.19,1.435],[.067,1.49]]
     .map(([r,y])=>new THREE.Vector2(r,y)),24);
