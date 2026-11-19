@@ -4624,14 +4624,39 @@ const SONGS={
 let MUSIC=null,songOut=null;
 function musicInit(){if(MUSIC||!AC)return;try{
   // mixed to sit just under the engine on the road; the garage music a little fuller, with no engine to compete with
-  const g=AC.createGain();g.gain.value=.32;g.connect(AC.destination);MUSIC=makeMusic(AC,g);
+  // On a phone the composed backup isn't built at all: playing it live overloaded an Android phone's audio thread
+  // (over a thousand underruns a minute, heard as the whole sound breaking up) whenever the songs failed to load.
+  // There, music is simply silent until a song loads; the engine and effects carry on
+  const g=AC.createGain();g.gain.value=.32;g.connect(AC.destination);MUSIC=isTouch?{set(){},tone(){},tick(){}}:makeMusic(AC,g);
   songOut=AC.createGain();songOut.connect(AC.destination);songFetch("lounge")}catch(e){MUSIC=null}}
-function songFetch(n){const S=SONGS[n];if(S.st)return;
-  if(location.protocol==="file:"){S.st="failed";return}   // opened from disk: browsers won't fetch files, use the backup music
+// a song that fails to load (or to decode) is tried again 3, 10 and 30 s later; S.err says why it failed
+const SONG_RETRY=[3,10,30];
+function songFail(S,why){S.st="failed";S.err=why;S.bytes=null;S.tries=(S.tries||0)+1;
+  S.retryAt=S.tries<=SONG_RETRY.length?performance.now()+SONG_RETRY[S.tries-1]*1000:null}
+// for the ?perf panel: each song's state, and why it failed
+function musicState(){return Object.keys(SONGS).map(n=>{const S=SONGS[n];return n+" "+(S.st||"-")+(S.st==="failed"&&S.err?":"+S.err+(S.retryAt!=null?" r"+S.tries+"/"+SONG_RETRY.length:""):"")}).join("\n      ")}   // one song a line: three on one line were wider than a phone
+function songFetch(n){const S=SONGS[n];
+  if(S.st==="failed"&&S.retryAt!=null&&performance.now()>=S.retryAt){S.st=null;S.retryAt=null}   // time to try again
+  if(S.st)return;
+  if(location.protocol==="file:"){S.st="failed";S.err="opened from disk";return}   // browsers won't fetch files from disk
   S.st="loading";S.askT=AC?AC.currentTime:null;
-  fetch(S.url).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer()}).then(b=>{S.bytes=b;S.st="fetched"}).catch(()=>{S.st="failed"})}
+  // A connection can hang without failing, and a phone has no backup music to fall back on. So a download that
+  // stops moving for 12 s (no answer, or no new data) is given up and tried again later. The clock restarts with
+  // every piece that arrives, so a slow but steady download still finishes: a 2 MB song takes about 20 s at
+  // 100 KB/s, and a fixed 12 s limit cut it off every time
+  const controller=new AbortController();let timer=0;
+  const watch=()=>{clearTimeout(timer);timer=setTimeout(()=>controller.abort(),12000)};watch();
+  fetch(S.url,{signal:controller.signal}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);
+      if(!r.body||!r.body.getReader){clearTimeout(timer);return r.arrayBuffer()}   // (no stream: no stall check)
+      const rd=r.body.getReader(),parts=[];let n=0;
+      const next=()=>rd.read().then(({done,value})=>{if(done){const b=new Uint8Array(n);let o=0;for(const p of parts){b.set(p,o);o+=p.length}return b.buffer}
+        watch();parts.push(value);n+=value.length;return next()});
+      return next()})
+    .then(b=>{S.bytes=b;S.st="fetched"})
+    .catch(e=>songFail(S,controller.signal.aborted?"timeout":/^HTTP/.test((e&&e.message)||"")?e.message:"network"))
+    .finally(()=>clearTimeout(timer))}
 function songDecode(n){const S=SONGS[n];if(S.st!=="fetched")return;S.st="decoding";
-  AC.decodeAudioData(S.bytes.slice(0),buf=>{S.buf=buf;S.st="ready";S.idle=AC.currentTime},()=>{S.st="failed"})}
+  AC.decodeAudioData(S.bytes.slice(0),buf=>{S.buf=buf;S.st="ready";S.err=null;S.idle=AC.currentTime},()=>songFail(S,"couldn't decode"))}
 const equalPower=(up)=>{const c=new Float32Array(64);for(let i=0;i<64;i++){const t=i/63;c[i]=up?Math.sin(t*Math.PI/2):Math.cos(t*Math.PI/2)}return c};
 const FADE_IN=equalPower(true),FADE_OUT=equalPower(false);
 function songStart(n,now){const S=SONGS[n],P={bus:AC.createGain(),tone:AC.createBiquadFilter(),srcs:[],want:-1};
@@ -6276,9 +6301,10 @@ function updateHUD(dt){
   $("mblur").style.opacity=clamp((kph-110)/170,0,1);
   $("vig").style.opacity=.35+Math.min(.4,kph/700);
   const vS=P.vx*-Math.cos(P.h)+P.vz*Math.sin(P.h),slip=Math.abs(vS)+(kB()&&vF>12?4:0)+(kH()&&Math.abs(vF)>8?5:0);
-  // a brief red edge only for a real crash
+  // a brief red edge only for a real crash; none with FLASHES OFF, which promises no red flash when you're hit (it
+  // used to cover only gunshots, and a crash still flashed the screen red)
   P.flashT=Math.max(0,(P.flashT||0)-dt);P.scrape=(P.scrape||0)*Math.exp(-dt*7);
-  $("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(P.flashT*.4).toFixed(3)})`;
+  $("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(save.flash?P.flashT*.4:0).toFixed(3)})`;
   const surf=P.onRoad?0:P.nr&&P.nr.d<P.nr.e.half+2.2?1:2;
   audioUpd(gi.rpm,gi.n,kG()?1:0,slip,surf,Math.abs(vF),P.scrape);
 }
@@ -7371,7 +7397,7 @@ function perfEnd(t0,tR,raw){if(!PERF.on)return;const now=performance.now();
       "underruns "+(ps&&ps.underrunEvents!==undefined?ps.underrunEvents+" ("+Math.round((ps.underrunDuration||0)*1000)+" ms)":"n/a")+"\n"+
       "clocks behind, "+am.toFixed(1)+" min: audio "+Math.round(behind)+" ms, output "+outB+"\n"+
       "sources active "+PERF.src+" (most "+PERF.srcMax+"; created in all "+PERF.made+")\n"+
-      "fx "+(save.sound?"on":"off")+"  music "+(save.music?(SONGS.coast.st||"-"):"off")}
+      "fx "+(save.sound?"on":"off")+"\nmusic "+(save.music?musicState():"off")}
   PERF.el.textContent=os+" "+br+"  "+innerWidth+"x"+innerHeight+" @"+(devicePixelRatio||1).toFixed(2)+"  "+sha+"  "+mins+" min\n"+
     fps.toFixed(0)+" fps  frame p50 "+q(.5)+" p95 "+q(.95)+" p99 "+q(.99)+" ms (10 s)\n"+
     "slowest "+Math.round(PERF.worst)+" ms  over 33/50/100 ms: "+PERF.over.join("/")+" of "+PERF.frames+"\n"+
