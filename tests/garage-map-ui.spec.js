@@ -21,6 +21,11 @@ for (const [layout, width, height] of [
       await page.locator("#gnext").click();
       expect(await selected.getAttribute("aria-label")).not.toBe(initial);
       await expect(page.locator("#gprev")).toBeInViewport({ ratio: 1 });
+      if (height < 400) {
+        const next = await page.locator("#gnext").boundingBox();
+        const equipment = await page.locator("#gGun").boundingBox();
+        expect(equipment.y + equipment.height, "equipment clears the next-car touch target").toBeLessThanOrEqual(next.y);
+      }
       await testInfo.attach(`garage-${layout}`, { body: await page.screenshot(), contentType: "image/png" });
 
       await game.noRender();
