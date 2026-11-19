@@ -6176,9 +6176,10 @@ function updateHUD(dt){
   $("mblur").style.opacity=clamp((kph-110)/170,0,1);
   $("vig").style.opacity=.35+Math.min(.4,kph/700);
   const vS=P.vx*-Math.cos(P.h)+P.vz*Math.sin(P.h),slip=Math.abs(vS)+(kB()&&vF>12?4:0)+(kH()&&Math.abs(vF)>8?5:0);
-  // a brief red edge only for a real crash
+  // a brief red edge only for a real crash; none with FLASHES OFF, which promises no red flash when you're hit (it
+  // used to cover only gunshots, and a crash still flashed the screen red)
   P.flashT=Math.max(0,(P.flashT||0)-dt);P.scrape=(P.scrape||0)*Math.exp(-dt*7);
-  $("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(P.flashT*.4).toFixed(3)})`;
+  $("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(save.flash?P.flashT*.4:0).toFixed(3)})`;
   const surf=P.onRoad?0:P.nr&&P.nr.d<P.nr.e.half+2.2?1:2;
   audioUpd(gi.rpm,gi.n,kG()?1:0,slip,surf,Math.abs(vF),P.scrape);
 }
