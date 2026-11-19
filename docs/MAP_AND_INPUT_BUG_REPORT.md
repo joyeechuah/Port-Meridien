@@ -50,3 +50,9 @@ Verification included execution of the real startup failure paths and map disclo
 Play now opens over the harbour, cuts to an elevated view along the avenue, and descends to the saved car. The player takes control in free roam. The intro uses the existing game world, camera and soundtrack. Touch, keyboard and controller skip are supported. Reduced motion bypasses the camera sequence. Cloud-save choices suspend it. Going home still opens the garage.
 
 Local checks sampled the production camera with three.js at 231 points across portrait, landscape and desktop aspect ratios. The harbour and car targets stayed inside the camera frame. The handoff check verified that a cloud dialog blocks skipping and that repeated skip attempts enter driving only once. ESLint passed. Browser tests now cover automatic completion, skipping, reduced motion, cloud sign-in and returning home. The auto-start fixture still enters the garage for existing gameplay tests. Rendered playback has not been verified locally.
+
+## Browser verification of the Old Quay opening and UI
+
+[Actions run 131](https://github.com/joyeechuah/Port-Meridien/actions/runs/44352872998) exercised revision `135e040` in Chromium and WebGL. It passed 328 of 330 tests, including the shipping opening, skip and automatic handoff, reduced-motion spawn and home access, cloud sign-in, and garage/map controls at phone, short landscape and desktop sizes.
+
+Two assertions referred to the previous UI. The branding check now verifies the heading, build label and current gameplay descriptions. The garage pinch test now takes touch coordinates from an unselected paint button while preserving its pinch, no-accidental-press and single-tap checks. All three branding tests passed locally after the change. Real-device performance remains outside this run.
