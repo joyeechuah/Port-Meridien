@@ -363,6 +363,11 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   #gdots{display:none}
   #gpick .gnav{pointer-events:auto;width:44px;height:44px;background:var(--panel);border:1px solid var(--line)}
 }
+/* Short landscape screens put the equipment row above the car-selection arrows. */
+@media (min-width:561px) and (max-height:520px){
+  #garageOptions{position:absolute;top:calc(60px + var(--st));right:calc(22px + var(--sr));display:flex;align-items:center;gap:8px}
+  #garageOptions .pill{position:static;min-height:36px}
+}
 /* photo mode: a gesture layer over the whole screen, the controls along the top and bottom edges */
 #photo{position:fixed;inset:0;z-index:58;pointer-events:none}
 #phPad{position:absolute;inset:0;pointer-events:auto;touch-action:none;cursor:grab}
@@ -460,9 +465,11 @@ body.touch #phExit kbd{display:none}
 <div id="gui" class="hide">
   <div id="gtitle"><div class="k">HOME · EASTBANK HILLS · <span id="gcount"></span><span id="gcups"></span></div><div class="t">MY GARAGE</div><div id="ghint">Click a car to select it, click it again to drive</div></div>
   <div id="gcr" class="pill">Credits<b class="num" id="gcrv">0</b></div>
-  <button id="gMus" class="pill">MUSIC: ON</button>
-  <button id="gCloud" class="pill">SAVE MY PROGRESS</button>
-  <button id="gGun" class="pill" aria-pressed="false">PISTOL: LEFT HERE</button>
+  <div id="garageOptions">
+    <button id="gMus" class="pill">MUSIC: ON</button>
+    <button id="gCloud" class="pill">SAVE MY PROGRESS</button>
+    <button id="gGun" class="pill" aria-pressed="false">PISTOL: LEFT HERE</button>
+  </div>
   <div id="gpick"><button class="gnav" id="gprev" aria-label="Previous car">&#10094;</button><div id="gdots" role="group" aria-label="Choose a car"></div><button class="gnav" id="gnext" aria-label="Next car">&#10095;</button></div>
   <div id="gbar">
     <div class="cname"><div class="mk" id="gmk"></div><div class="md" id="gmd"></div><div class="yr" id="gyr"></div><div class="sw" id="gSw" role="group" aria-label="Paint colour"></div></div>
