@@ -4596,7 +4596,7 @@ const SONG_RETRY=[3,10,30];
 function songFail(S,why){S.st="failed";S.err=why;S.bytes=null;S.tries=(S.tries||0)+1;
   S.retryAt=S.tries<=SONG_RETRY.length?performance.now()+SONG_RETRY[S.tries-1]*1000:null}
 // for the ?perf panel: each song's state, and why it failed
-function musicState(){return Object.keys(SONGS).map(n=>{const S=SONGS[n];return n+" "+(S.st||"-")+(S.st==="failed"&&S.err?":"+S.err+(S.retryAt!=null?" r"+S.tries+"/"+SONG_RETRY.length:""):"")}).join(", ")}
+function musicState(){return Object.keys(SONGS).map(n=>{const S=SONGS[n];return n+" "+(S.st||"-")+(S.st==="failed"&&S.err?":"+S.err+(S.retryAt!=null?" r"+S.tries+"/"+SONG_RETRY.length:""):"")}).join("\n      ")}   // one song a line: three on one line were wider than a phone
 function songFetch(n){const S=SONGS[n];
   if(S.st==="failed"&&S.retryAt!=null&&performance.now()>=S.retryAt){S.st=null;S.retryAt=null}   // time to try again
   if(S.st)return;
