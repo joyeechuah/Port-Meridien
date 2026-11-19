@@ -187,11 +187,18 @@ test.describe("garage view on a phone held upright", () => {
   test("pinching out works with a finger on the car's name and figures, or on a button there, and presses nothing", async ({ game, page }) => {
     await game.open();
     const cdp = await page.context().newCDPSession(page);
-    // two fingers one above the other, d apart around the middle of the view: 420 apart, the lower one is on the bar
-    // at the bottom (on a paint colour), which is where a pinch out starts and a pinch in ends
+    // Anchor the wide gesture to a visible, unselected paint swatch. The layout can move
+    // between releases, but the test must still start one touch on the car and one on paint.
+    const swatch = page.locator('#gSw button[aria-pressed="false"]').first();
+    const point = await swatch.evaluate((button) => {
+      const r = button.getBoundingClientRect();
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      return { x, y, onButton: document.elementFromPoint(x, y) === button };
+    });
+    expect(point.onButton).toBe(true);
     const pts = (d) => [
-      { id: 1, x: 206, y: 420 - d / 2 },
-      { id: 2, x: 206, y: 420 + d / 2 },
+      { id: 1, x: point.x, y: point.y - 210 - d / 2 },
+      { id: 2, x: point.x, y: point.y - 210 + d / 2 },
     ];
     const pinch = async (d0, d1) => {
       await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [pts(d0)[0]] });
@@ -205,8 +212,6 @@ test.describe("garage view on a phone held upright", () => {
       await page.waitForTimeout(350);
     };
     const now = () => game.eval(() => ({ zoom: +__T.GO.zoom.toFixed(2), held: __T.GO.ptr.size, state: __T.state, cur: __T.save.cur, paint: JSON.stringify(__T.save.paint) }));
-    const under = await game.eval(() => !!document.elementFromPoint(206, 630).closest("#gbar button"));
-    expect(under, "the lower finger starts on a button in the bar").toBe(true);
     const a = await now();
     await pinch(80, 420);
     expect((await now()).zoom).toBe(0.55);
@@ -216,7 +221,7 @@ test.describe("garage view on a phone held upright", () => {
     expect(b.zoom).toBe(1.6);
     expect([b.held, b.state, b.cur, b.paint]).toEqual([0, "GARAGE", a.cur, a.paint]);
     // one finger on a paint colour still picks it
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ id: 1, x: 206, y: 630 }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ id: 1, x: point.x, y: point.y }] });
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect.poll(() => now().then((n) => n.paint)).not.toBe(a.paint);
     expect((await now()).state).toBe("GARAGE");

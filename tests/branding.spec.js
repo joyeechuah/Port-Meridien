@@ -5,11 +5,17 @@ const path = require('path');
 const vm = require('vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
-test('Port Meridien screens and descriptions distinguish the early build from planned features', () => {
+test('Port Meridien screens and descriptions identify the early build and its playable features', () => {
   const markup = html.slice(0, html.indexOf('<script src='));
   expect(markup).not.toMatch(/IBIZA|EIVISSA|ISLAND PASSPORT|ISLAND OF/);
-  expect(markup).toContain('<div class="t">EARLY BUILD</div>');
-  expect(markup).toContain('Walking, boats and a new city are planned.');
+  const loader = markup.slice(markup.indexOf('<div id="load"'), markup.indexOf('<section id="arrival"'));
+  expect(loader).toMatch(/>EARLY BUILD</);
+  expect(loader).toMatch(/<h1\b[^>]*>PORT MERIDIEN<\/h1>/);
+  for (const attribute of ['name="description"', 'property="og:description"']) {
+    const description = markup.match(new RegExp('<meta ' + attribute + ' content="([^"]+)"'))?.[1];
+    expect(description).toMatch(/Old Quay on foot/);
+    expect(description).toMatch(/drive.*sail/);
+  }
   expect(html).toContain('Explore Port Meridien. Tap MAP to plan a route.');
   expect(html).toContain('Explore Port Meridien. Press M for the map.');
   expect(html).not.toContain('ISLAND PASSPORT COMPLETE');
