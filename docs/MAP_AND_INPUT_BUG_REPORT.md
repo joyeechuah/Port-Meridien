@@ -56,3 +56,5 @@ Local checks sampled the production camera with three.js at 231 points across po
 [Actions run 131](https://github.com/joyeechuah/Port-Meridien/actions/runs/44352872998) exercised revision `135e040` in Chromium and WebGL. It passed 328 of 330 tests, including the shipping opening, skip and automatic handoff, reduced-motion spawn and home access, cloud sign-in, and garage/map controls at phone, short landscape and desktop sizes.
 
 Two assertions referred to the previous UI. The branding check now verifies the heading, build label and current gameplay descriptions. The garage pinch test now takes touch coordinates from an unselected paint button while preserving its pinch, no-accidental-press and single-tap checks. All three branding tests passed locally after the change. Real-device performance remains outside this run.
+
+The 667×375 garage screenshot from run 131 showed the equipment toggle covering part of the next-car arrow. In short landscape layouts the options now share a row beneath credits. The rendered garage test checks a gap between the equipment and navigation hit areas.
