@@ -876,13 +876,19 @@ let W=innerWidth,H=innerHeight;
 // GRAPHICS setting: AUTO starts sharp and can lower the render scale even on a 1x display when frames stay slow;
 // SHARP always renders at the screen's full sharpness; SMOOTH renders at 1 for weak phones and long battery
 let PR_DEV=Math.min(devicePixelRatio||1,2),PR_MAX=PR_DEV,PR_MIN=PR_DEV;
-function gfxLimits(){const g=save.gfx;PR_MAX=g===2?Math.min(PR_DEV,1):PR_DEV;PR_MIN=g===0?Math.min(PR_MAX,.75):PR_MAX}
+// Diagnostic switches, for measuring on a phone what the picture costs (nothing changes without them):
+// ?scale=N holds the render scale at N (up to the screen's), whatever the GRAPHICS setting; ?shadows=off draws no
+// shadows; ?far=near draws trees and rocks out to about 400 m instead of up to 1.7 km
+const DIAG=(()=>{const q=location.search,sc=/[?&]scale=([\d.]+)/.exec(q);
+  return{scale:sc?Math.max(.5,Math.min(2,+sc[1]||1)):null,shadows:!/[?&]shadows=off/.test(q),near:/[?&]far=near/.test(q)}})();
+function gfxLimits(){const g=save.gfx;PR_MAX=g===2?Math.min(PR_DEV,1):PR_DEV;PR_MIN=g===0?Math.min(PR_MAX,.75):PR_MAX;
+  if(DIAG.scale)PR_MAX=PR_MIN=Math.min(PR_DEV,DIAG.scale)}
 gfxLimits();
 let prNow=PR_MAX;
 const renderer=new THREE.WebGLRenderer({canvas:$("c"),antialias:true,powerPreference:"high-performance"});
 renderer.setPixelRatio(prNow);
 renderer.setSize(W,H,false);
-renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=DIAG.shadows;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 // Light in linear space, filmic tone mapping, sRGB on screen. Colours in this
 // code are written as ordinary sRGB hex values, so they are converted to
 // linear as they are set; canvas textures are marked as sRGB images.
@@ -2209,6 +2215,7 @@ function buildVegetation(){
 }
 // show each layer only within its useful range of the camera
 const VRANGE={trunk:1700,crown:260,crownFar:1700,rock:900,shrub:isTouch?420:650,grass:isTouch?120:200};
+if(DIAG.near)Object.assign(VRANGE,{trunk:400,crownFar:400,rock:400});
 let vegTick=0;
 // near crowns are the rounder ones; beyond about 400 m the cheaper ones take over
 function updateVegetation(dt){
@@ -7155,6 +7162,9 @@ function perfEnd(t0,tR,raw){if(!PERF.on)return;const now=performance.now();
     "long tasks "+(PERF.ltOk?PERF.lt+" (max "+Math.round(PERF.ltMax)+" ms)":"n/a")+"  heap "+mem+"\n"+
     "draws "+ri.render.calls+"  tris "+Math.round(ri.render.triangles/1000)+"k  textures "+ri.memory.textures+"  geometries "+ri.memory.geometries+"\n"+
     "scale "+prNow.toFixed(2)+" of "+PR_DEV.toFixed(2)+" "+cv.width+"x"+cv.height+" "+["AUTO","SHARP","SMOOTH"][save.gfx]+"\nscale history "+PERF.res.map(x=>x.toFixed(2)).join(" > ")+"\n"+au;
+  // the diagnostic switches in use, last
+  const sw=[DIAG.scale?"scale held "+DIAG.scale:"",DIAG.shadows?"":"shadows off",DIAG.near?"far near":""].filter(Boolean).join(", ");
+  if(sw)PERF.el.textContent+="\nswitches: "+sw;
   PERF.n=PERF.sim=PERF.ren=PERF.simMax=PERF.renMax=0;PERF.t0=now}
 // An immediate Photo Mode capture needs the same sky and shadow placement as a frame from the main loop.
 function syncRenderView(){
