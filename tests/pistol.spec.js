@@ -421,6 +421,21 @@ test.describe("pistol", () => {
     expect(off.muzzle).toBe(false);
     expect(off.edge).toContain("rgba(226, 72, 61, 0)");
   });
+  // the crash flash too: FLASHES OFF promises no red flash when you're hit, and a crash used to still flash red
+  test("FLASHES: OFF also hides the red flash from a crash", async ({ game }) => {
+    await game.open();
+    await game.driveOut();
+    const edge = (flash) =>
+      game.eval((flash) => {
+        const T = __T;
+        T.save.flash = flash;
+        T.P.flashT = 0.7; // what a hard crash sets (impact / 30, at most 0.7)
+        T.driveUpdate(1 / 60);
+        return document.getElementById("edge").style.boxShadow;
+      }, flash);
+    expect(await edge(true)).not.toContain("61, 0)");
+    expect(await edge(false)).toContain("rgba(226, 72, 61, 0)");
+  });
   // Codex's re-review of #31: the repair is checked through the whole stand-down, not by calling it
   test("a wrecked reserve police car is stood down once out of sight and comes back repaired", async ({ game }) => {
     await armed(game, { police: true });
