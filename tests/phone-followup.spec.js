@@ -44,7 +44,7 @@ test.describe("traffic", () => {
         T.driveUpdate(1 / 60);
         for(const car of T.TRAFFIC)if(car.e&&Math.hypot(car.wx-560,car.wz-40)<12)seenAtStopLine.add(car);
         if(i%1800===900){
-          const x=560,z=40,y=T.surfH(x,z),cam=T.camera.clone();
+          const x=560,z=40,y=T.footGround(x,z),cam=T.camera.clone();
           cam.position.set(x+17,y+14,z+19);cam.lookAt(x,y,z);
           T.renderer.__draw(T.scene,cam);
           const frame=frames.length,col=(frame%4)*260,row=Math.floor(frame/4)*156;
