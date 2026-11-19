@@ -197,6 +197,8 @@ body.touch #lhint{display:none}
 #damageHud{align-self:flex-start;pointer-events:auto;cursor:pointer;min-height:42px;background:rgba(10,22,31,.88);color:#f2b33d;border:1px solid rgba(242,179,61,.55);border-radius:4px;padding:7px 12px;font-size:11px;font-weight:800;letter-spacing:.08em;white-space:nowrap;text-align:left;touch-action:manipulation}
 body.outsideCar :is(#damageHud,#mblur){display:none}
 body.outsideCar #keys{opacity:1!important}
+/* On foot the speedometer's upper-right slot is free; leave the centre clear for the walker. */
+body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px + var(--st));bottom:auto;transform:none;width:max-content;max-width:min(32vw,210px);min-height:44px;padding:7px 10px;white-space:normal;overflow-wrap:anywhere}
 #damageHud.high{color:#f2b33d}
 #damageHud.critical{color:#ff8f82;border-color:#e2483d}
 #repair{z-index:72}
@@ -822,7 +824,7 @@ const SAVE_KEY="port-meridien-v1";
 const OUTFITS=[
   {id:"palms",name:"Harbour palms",detail:"Palm-print shirt · sand chinos",shirt:0x327e76,pants:0xc3aa88,trim:0xf1e0b4},
   {id:"stripe",name:"Boardwalk stripe",detail:"Coral striped tee · dark denim",shirt:0xaf5a53,pants:0x394c59,trim:0xffcfaa},
-  {id:"club",name:"Midnight club",detail:"Ink jacket · ivory trousers",shirt:0x323958,pants:0xd9ccae,trim:0xcaa57f}
+  {id:"club",name:"Night shift",detail:"Ink jacket · ivory trousers",shirt:0x323958,pants:0xd9ccae,trim:0xcaa57f}
 ];
 const save={v:2,outfit:"palms",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",mods:{}};
 let loadedV=0;
@@ -6294,9 +6296,9 @@ function footModel(){
   const part=(par,g,m,x,y,z,sx=1,sy=sx,sz=sx)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;par.add(o);return o};
   const pivot=(par,x,y,z)=>{const p=new THREE.Group();p.position.set(x,y,z);par.add(p);return p};
   // trunk: hips, a chest wider than the waist and flatter front to back, shoulders, neck
-  part(G,ball,trousers,0,.93,0,.185,.13,.125);
+  part(G,ball,trousers,0,.911,0,.16,.115,.108);
   // Sewn shirt silhouette with a hem, a waist and sloping shoulders. The lathe UVs carry the print.
-  const chest=new THREE.LatheGeometry([[.157,.945],[.166,.957],[.152,1.085],[.177,1.25],[.204,1.39],[.19,1.435],[.067,1.49]]
+  const chest=new THREE.LatheGeometry([[0,.898],[.193,.898],[.198,.91],[.199,.956],[.159,1.085],[.177,1.25],[.204,1.39],[.19,1.435],[.067,1.49]]
     .map(([r,y])=>new THREE.Vector2(r,y)),24);
   const torso=part(G,chest,jacket,0,0,0,1,1,.69);
 
@@ -6313,6 +6315,7 @@ function footModel(){
     part(G,ball,brow,side*.042,1.674,.1,.014,.006,.005);
     part(G,ball,hair,side*.042,1.687,.097,.024,.005,.006).rotation.z=side*.08;
   }
+  part(G,ball,hair,0,1.658,-.072,.089,.077,.045);
   part(G,ball,hair,-.027,1.744,.036,.084,.039,.082).rotation.z=.16;
   const collars=[-1,1].map(side=>{
     const flap=part(G,ball,trim,side*.053,1.46,.086,.035,.065,.018);
@@ -6330,29 +6333,38 @@ function footModel(){
     if(o.id==="stripe"){
       for(let y=12;y<128;y+=16)ctx.fillRect(0,y,256,3);
     }else if(o.id==="palms"){
-      for(let row=0;row<4;row++)for(let col=0;col<8;col++){
-        ctx.save();ctx.translate(col*32+(row%2)*16,row*32+8);ctx.rotate((col%3-1)*.48);
-        ctx.fillRect(-1,0,2,13);
-        for(let j=0;j<4;j++)for(const side of [-1,1]){
-          ctx.beginPath();ctx.ellipse(side*3,j*2,4,1,side*.48,0,Math.PI*2);ctx.fill();
+      // Two staggered bands of broad, curved fronds leave clear space between motifs on small screens.
+      ctx.fillStyle="#8cb6a1";
+      for(let row=0;row<2;row++)for(let col=-1;col<4;col++){
+        ctx.save();ctx.translate(22+col*72+row*35,22+row*66);ctx.rotate(row?.22:-.25);
+        ctx.beginPath();ctx.moveTo(-2,17);ctx.quadraticCurveTo(1,2,1,-5);
+        ctx.lineTo(3,-6);ctx.quadraticCurveTo(4,6,1,18);ctx.fill();
+        for(const side of [-1,1])for(let tier=0;tier<2;tier++){
+          const w=side*(tier?16:12),y=tier?4:-7;
+          ctx.beginPath();ctx.moveTo(2,-5);ctx.quadraticCurveTo(w*.65,y-15,w,y);
+          ctx.quadraticCurveTo(w*.6,y-6,2,-5);ctx.fill();
         }
         ctx.restore();
       }
-    }else{ctx.fillRect(126,0,4,128);ctx.fillRect(0,116,256,6)}
+    }else{ctx.fillRect(0,0,2,128);ctx.fillRect(254,0,2,128);ctx.fillRect(0,116,256,6)}
     weave.needsUpdate=true;
     collars.forEach(o2=>o2.visible=o.id!=="stripe");
     longSleeves.forEach(mesh=>mesh.material=o.id==="club"?jacket:skin);
   }
   for(const s of[-1,1]){
     // leg: thigh from the hip, shin from the knee, a shoe
-    const hip=pivot(G,s*.1,.92,0);part(hip,tube(.095,.072,.44),trousers,0,0,0);part(hip,ball,trousers,0,-.44,0,.072);
+    const hip=pivot(G,s*.093,.92,0);part(hip,tube(.095,.072,.44),trousers,0,0,0);part(hip,ball,trousers,0,-.44,0,.072);
     const knee=pivot(hip,0,-.44,0);part(knee,tube(.07,.052,.4),trousers,0,0,0);
     part(knee,ball,shoe,0,-.425,.05,.058,.048,.135);
     legs.push(hip);knees.push(knee);
     // arm: upper arm from the shoulder, forearm from the elbow, a hand
     const sh=pivot(G,s*.225,1.425,0);sh.rotation.z=s*.07;part(sh,ball,jacket,0,0,0,.062);part(sh,tube(.058,.048,.29),jacket,0,0,0);
     const el=pivot(sh,0,-.29,0);longSleeves.push(part(el,ball,skin,0,0,0,.044),part(el,tube(.046,.038,.25),skin,0,0,0));
-    part(el,ball,skin,0,-.285,.005,.036,.048,.03);
+    // A tapered palm with a distinct knuckle line and thumb, visible alongside the trousers.
+    part(el,ball,skin,s*.006,-.286,.009,.035,.05,.028);
+    const fingers=part(el,ball,skin,s*.01,-.337,.018,.031,.044,.022);
+    fingers.rotation.x=-.23;
+    part(el,ball,skin,-s*.019,-.309,.031,.016,.034,.014).rotation.z=-s*.32;
     arms.push(sh);elbows.push(el);
   }
   G.visible=false;scene.add(G);
@@ -6475,6 +6487,7 @@ const driveKeys=$("keys").innerHTML;
 function footHud(on){
   $("keys").innerHTML=on?"<kbd>W</kbd><kbd>S</kbd> walk / back &nbsp; <kbd>A</kbd><kbd>D</kbd> turn &nbsp; <kbd>Shift</kbd> run &nbsp; <kbd>E</kbd> interact":driveKeys;
   document.body.classList.toggle("outsideCar",on);
+  document.body.classList.toggle("walking",on&&FOOT.on);
   show("speedo",!on);show("streak",!on);show("chFoot",!on);show("chRear",!on);show("chCam",!on);
   $("bG").textContent=on?"WALK":"GAS";$("bH").innerHTML=on?"RUN":"HAND<br>BRAKE";
   const b=$("bB");if(on){b.textContent="BACK";b.classList.remove("rev")}
@@ -6500,7 +6513,7 @@ function footCam(dt,snap){
   const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),back=boomClear(FOOT.x,FOOT.z,fx,fz,3.9),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
   const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,camFloor(px,pz,p));
   const k=snap?1:1-Math.exp(-dt*10);
-  FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*2.3,FOOT.y+1.1,FOOT.z+fz*2.3),k);   // aimed low, so the walker stands clear of the prompt at the bottom
+  FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*2.3,FOOT.y+1.1,FOOT.z+fz*2.3),k);
   camera.position.copy(FOOT.cp);camera.lookAt(FOOT.cl);
   camera.fov+=(60-camera.fov)*(snap?1:1-Math.exp(-dt*5));camera.updateProjectionMatrix();
 }
