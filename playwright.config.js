@@ -52,3 +52,8 @@ module.exports = defineConfig({
     timeout: 30_000,
   },
 });
+
+// Isolated QA branch, run the diagnostic drives without concurrent GPU workloads.
+module.exports.testMatch = "**/phone-followup.spec.js";
+module.exports.workers = 1;
+module.exports.retries = 0;
