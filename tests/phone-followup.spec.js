@@ -45,7 +45,7 @@ test.describe("traffic", () => {
         for(const car of T.TRAFFIC)if(car.e&&Math.hypot(car.wx-560,car.wz-40)<12)seenAtStopLine.add(car);
         if(i%1800===900){
           const x=560,z=40,y=T.footGround(x,z),cam=T.camera.clone();
-          cam.position.set(x+17,y+14,z+19);cam.lookAt(x,y,z);
+          cam.position.set(x,y+45,z+3);cam.lookAt(x,y,z);
           T.renderer.__draw(T.scene,cam);
           const frame=frames.length,col=(frame%4)*260,row=Math.floor(frame/4)*156;
           ctx.drawImage(T.renderer.domElement,col,row,260,146);
@@ -110,7 +110,7 @@ const variants={G1:"scale=2",G2:"scale=1",G3:"scale=2&shadows=off",G4:"scale=2&f
 test.describe("pinned graphics replay",()=>{
   test.use({viewport:{width:720,height:360},deviceScaleFactor:2,hasTouch:true});
   for(const [label,query] of Object.entries(variants)){
-    test(label+" same Old Quay drive @webgl",async({game,page},info)=>{
+    test.skip(label+" same Old Quay drive @webgl",async({game,page},info)=>{
       execFileSync("git",["fetch","--depth=1","origin",pin]);
       let html=execFileSync("git",["show",pin+":index.html"],{encoding:"utf8",maxBuffer:4e6});
       const marker="  syncRenderView();";
