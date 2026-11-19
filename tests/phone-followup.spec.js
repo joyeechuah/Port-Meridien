@@ -37,8 +37,22 @@ test.describe("traffic", () => {
           heldBy: jn.res ? T.TRAFFIC.indexOf(jn.res) : null,
         };
       };
+      const frames=[], seenAtStopLine=new Set();
+      const canvas=document.createElement("canvas");canvas.width=4*260;canvas.height=3*156;
+      const ctx=canvas.getContext("2d");
       for (let i = 0; i < 21600; i++) {
         T.driveUpdate(1 / 60);
+        for(const car of T.TRAFFIC)if(car.e&&Math.hypot(car.wx-560,car.wz-40)<12)seenAtStopLine.add(car);
+        if(i%1800===900){
+          const x=560,z=40,y=T.surfH(x,z),cam=T.camera.clone();
+          cam.position.set(x+17,y+14,z+19);cam.lookAt(x,y,z);
+          T.renderer.__draw(T.scene,cam);
+          const frame=frames.length,col=(frame%4)*260,row=Math.floor(frame/4)*156;
+          ctx.drawImage(T.renderer.domElement,col,row,260,146);
+          ctx.fillStyle="#172027";ctx.fillRect(col,row+137,260,19);
+          ctx.fillStyle="white";ctx.font="14px sans-serif";ctx.fillText((i/60)+" s",col+6,row+151);
+          frames.push(i/60);
+        }
         for (const t of T.TRAFFIC) {
           if (!t.e || Math.hypot(t.wx-560,t.wz-40)>35) {stop.delete(t);continue}
           const s = t.v < 0.5 ? (stop.get(t) || 0) + 1 / 60 : 0;
@@ -77,9 +91,11 @@ test.describe("traffic", () => {
           }
       }
       out.longestStop = Math.round(out.longestStop);
-      return out;
+      return {...out,frames,nearby:seenAtStopLine.size,sheet:canvas.toDataURL("image/png").split(",")[1]};
     });
+    await test.info().attach("junction-six-minutes.png",{body:Buffer.from(r.sheet,"base64"),contentType:"image/png"}); delete r.sheet;
     console.log("JUNCTION_RESULT", JSON.stringify(r));
+    expect(r.nearby).toBeGreaterThan(0);
     test.info().annotations.push({ type: "6 minutes of traffic", description: JSON.stringify(r) });
     expect(r.overlaps, "times two traffic cars stayed inside each other for half a second or more" + (r.seen.length ? ": " + JSON.stringify(r.seen) : "")).toBe(0);
     // turn-taking at junctions must not leave cars stuck, and the queue behind a parked car clears
