@@ -43,6 +43,14 @@ const footMove = (game, n, held = {}) =>
   );
 
 test.describe("on foot", () => {
+  test("Space runs while held and returns to walking when released", async ({ game }) => {
+    await parked(game);
+    await game.key("f");
+    const distance = ({ before, after }) => Math.hypot(after.x - before.x, after.z - before.z);
+    expect(distance(await footMove(game, 120, { w: true, " ": true }))).toBeGreaterThan(8.5);
+    expect(distance(await footMove(game, 120, { w: true }))).toBeLessThan(4.5);
+  });
+
   test("F gets out beside the car; the car stays put while you walk, run, turn and step back", async ({ game, page }) => {
     await parked(game);
     await game.key("f");

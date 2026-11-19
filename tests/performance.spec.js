@@ -25,19 +25,19 @@ const stats = (a) => {
 const note = (type, v) => test.info().annotations.push({ type, description: typeof v === "string" ? v : JSON.stringify(v) });
 
 test.describe("performance", () => {
-  test("load time: from opening the page to the START button and to the garage @webgl", async ({ game, page }) => {
+  test("load time: from opening the page to the START button and to the Old Quay arrival @webgl", async ({ game, page }) => {
     const t0 = Date.now();
     await game.open({ instrument: false, autostart: false });
     await expect(page.locator("#lstart")).toBeVisible({ timeout: 180_000 });
     const tStart = Date.now() - t0;
     await page.locator("#lstart").click();
-    await expect(page.locator("#gui")).toBeVisible({ timeout: 15_000 });
-    const tGarage = Date.now() - t0;
+    await expect(page.locator("#arrival")).toBeVisible({ timeout: 15_000 });
+    const tArrival = Date.now() - t0;
     const nav = await page.evaluate(() => {
       const n = performance.getEntriesByType("navigation")[0];
       return { domContentLoaded: Math.round(n.domContentLoadedEventEnd), load: Math.round(n.loadEventEnd), bytes: n.transferSize };
     });
-    note("load (ms)", { ...nav, startButton: tStart, garage: tGarage });
+    note("load (ms)", { ...nav, startButton: tStart, arrival: tArrival });
     expect(tStart, "ms to the START button on a software GPU").toBeLessThan(120_000);
   });
 
