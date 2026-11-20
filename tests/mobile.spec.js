@@ -332,6 +332,28 @@ test.describe("brake and reverse button", () => {
   });
 });
 
+test.describe("portrait free ride", () => {
+  test.use({ viewport: { width: 360, height: 672 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+
+  test("all six actions fit and driving notices clear the instruments", async ({ game, page }) => {
+    await game.open();
+    await game.driveOut();
+    const buttons = page.locator("#chips button:visible");
+    await expect(buttons).toHaveCount(6);
+    for (const button of await buttons.all()) {
+      await expect(button).toBeInViewport({ ratio: 1 });
+    }
+    const bounds = await page.evaluate(() => {
+      const rect = id => document.getElementById(id).getBoundingClientRect();
+      return { noticeLeft: rect("toasts").left, mapRight: rect("mini").right,
+        noticeTop: rect("toasts").top, dialBottom: rect("speedo").bottom };
+    });
+    expect(bounds.noticeLeft).toBeGreaterThan(bounds.mapRight);
+    expect(bounds.noticeTop).toBeGreaterThan(bounds.dialBottom);
+    await expect(page.locator("#streak .pts")).toContainText("PTS");
+  });
+});
+
 for (const size of SIZES) {
   test.describe(`layout: ${size.name} ${size.width}x${size.height}`, () => {
     test.use({ viewport: { width: size.width, height: size.height }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
