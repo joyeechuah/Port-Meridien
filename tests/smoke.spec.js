@@ -16,6 +16,9 @@ test.describe("smoke", () => {
     await page.locator("#lstart").click();
     await expect(page.locator("#arrivalPlace")).toHaveText("Old Quay");
     await page.locator("#arrivalSkip").click();
+    await page.getByRole("button", { name: /Boardwalk stripe/ }).click();
+    await page.getByRole("button", { name: "Turn around" }).click();
+    await page.locator("#wardWear").click();
     await expect(page.locator("#hud")).toBeVisible();
     await expect(page.locator("#gui")).toBeHidden();
     expect(await page.evaluate(() => window.__csp)).toEqual([]);
@@ -27,7 +30,10 @@ test.describe("smoke", () => {
     await expect(page.locator("#lstart")).toBeVisible({ timeout: 180_000 });
     await page.keyboard.press("Enter");
     await expect(page.locator("#arrival")).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator("#hud")).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator("#wardrobe")).toBeVisible({ timeout: 120_000 });
+    await page.locator("#wardWear").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#hud")).toBeVisible();
     await expect(page.locator("#arrival")).toBeHidden();
   });
 
@@ -35,7 +41,17 @@ test.describe("smoke", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await game.open({ autostart: false });
     await page.locator("#lstart").click({ timeout: 180000 });
+    await game.waitState("WARDROBE");
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("button", {name:/Boardwalk stripe/})).toHaveAttribute("aria-pressed","true");
+    await page.locator("#wardWear").click();
     await game.waitState("DRIVE");
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem(__T.SAVE_KEY)).outfit)).toBe("stripe");
+    await game.key("f");
+    await expect(page.locator("#keys")).toContainText("walk / back");
+    expect(await game.eval(() => __T.FOOT.m.G.visible && __T.FOOT.m.G.parent === __T.scene)).toBe(true);
+    await game.key("e");
+    await expect(page.locator("#keys")).toContainText("gas / brake");
     const spawn = await game.eval(() => {
       const { P, save, curId, nearestRoadGlobal } = __T;
       const road = nearestRoadGlobal(P.x, P.z, true);

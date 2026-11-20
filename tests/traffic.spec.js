@@ -85,6 +85,96 @@ test.describe("traffic", () => {
     expect(r.longestStop, "seconds the longest-stopped traffic car waited" + (r.stuck ? ": " + r.stuck : "")).toBeLessThan(60);
   });
 
+  test("a fast car off the highway slows for a junction so it can stop if another takes it first, and nobody drives through it", async ({ game }) => {
+    await game.open();
+    await game.driveOut();
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        side = T.save.side === "R" ? 1 : -1;
+      // where it was seen: the highway's west end, the town avenue and the x = 560 street
+      const jn = T.NODES.find((n) => Math.hypot(n.x - 560, n.z - 40) < 3 && n.adj.length > 2),
+        A = jn.adj.find((a) => a.e.type === "highway"),
+        B = jn.adj.find((a) => a.e.type === "town"),
+        put = (t, a, fromJn, v) => {
+          t.e = a.e;
+          t.dir = a.end === "a" ? -1 : 1;
+          t.s = a.end === "a" ? fromJn : a.e.len - fromJn;
+          t.lane = 0;
+          t.off = t.offCur = T.RT[a.e.type].lanes[0] * side;
+          t.base = t.v = v;
+          t.passT = t.waitT = t.stopT = 0;
+          t.lost = false;
+          t.c.G.visible = true;
+          const q = T.edgePos(t.e, t.s);
+          t.wx = q.x;
+          t.wz = q.z;
+        };
+      for (const c of T.TRAFFIC) {
+        c.e = null;
+        c.lost = false;
+        c.wx = c.wz = 1e6;
+      }
+      jn.res = null;
+      // the highway car at 78 km/h, 60 m out with the junction free; the town car timed to reach 12 m out (where a car
+      // takes its turn) as the highway car would be about 13 m out at that speed, as in the failure seen
+      const a = T.TRAFFIC[0],
+        b = T.TRAFFIC[1],
+        toJn = (c) => (c.dir > 0 ? c.e.len - c.s : c.s);
+      put(a, A, 60, 21.6);
+      put(b, B, 30, 8.5);
+      let apart = 99,
+        stoodIn = null,
+        bCrossed = false,
+        aCrossed = false;
+      for (let i = 0; i < 480; i++) {
+        P.x = jn.x + 400;
+        P.z = jn.z + 400;
+        P.vx = P.vz = 0;
+        T.updateTraffic(1 / 60);
+        if (a.e === A.e && toJn(a) < 7 && a.v < 1) stoodIn = +toJn(a).toFixed(1);
+        if (b.e && b.e !== B.e) bCrossed = true;
+        if (a.e && a.e !== A.e) aCrossed = true;
+        if (a.e && b.e) apart = Math.min(apart, Math.hypot(a.wx - b.wx, a.wz - b.wz));
+      }
+      return { stoodIn, bCrossed, aCrossed, apart: +apart.toFixed(1) };
+    });
+    test.info().annotations.push({ type: "fast car at a junction", description: JSON.stringify(r) });
+    // (it used to find the junction taken 13 m out, overshoot the stop line and stand 2 m from the middle, and the town
+    // car crossing drove through it)
+    expect(r.stoodIn, "metres from the middle where the highway car stood inside the junction").toBeNull();
+    expect(r.bCrossed, "the town car crosses").toBe(true);
+    expect(r.aCrossed, "and so does the highway car").toBe(true);
+    expect(r.apart, "metres between the two cars at the closest").toBeGreaterThan(2.4);
+  });
+
+  test("a car that reappears is never put where it couldn't slow for the junction ahead, nor just past one", async ({ game }) => {
+    await game.open();
+    await game.driveOut();
+    const r = await game.eval(() => {
+      const T = __T,
+        t = T.TRAFFIC[0],
+        bad = [];
+      let placed = 0;
+      for (let k = 0; k < 3000 && bad.length < 3; k++) {
+        if (!T.spawnTraffic(t, 0, 5000, false)) continue;
+        placed++;
+        const ahead = t.dir > 0 ? t.e.b : t.e.a,
+          behind = t.dir > 0 ? t.e.a : t.e.b,
+          toAhead = t.dir > 0 ? t.e.len - t.s : t.s,
+          fromBehind = t.e.len - toAhead;
+        // it brakes at about 7 m/s2 from 11.5 + v * v / 14 m out to stop 7.5 m short (updateTraffic)
+        if (ahead.adj.length > 2 && toAhead < 11.5 + (t.v * t.v) / 14) bad.push({ road: t.e.type, v: +t.v.toFixed(1), toJunction: +toAhead.toFixed(1) });
+        if (behind.adj.length > 2 && fromBehind < 12) bad.push({ road: t.e.type, pastJunction: +fromBehind.toFixed(1) });
+      }
+      return { placed, bad };
+    });
+    // (a car put on the highway 25 m before a junction at 87 km/h couldn't stop when another car took its turn there,
+    // stood in the junction, and the car crossing drove through it: about once in 15 six-minute runs)
+    expect(r.bad, "cars placed too close to a junction").toEqual([]);
+    expect(r.placed).toBeGreaterThan(1000);
+  });
+
   test("in town, the streets around you don't fill up with cars; a car waits at a junction for you", async ({ game }) => {
     test.setTimeout(300_000);
     await game.open();
