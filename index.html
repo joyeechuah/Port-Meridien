@@ -7136,13 +7136,13 @@ let prevTs=0,fishT=0,doorOpen=1;
 // again, step back up. Steps are small and spaced out so the picture never pumps.
 // A level that turned out too slow right after stepping up to it is not retried for 30 s, so a phone on the
 // edge doesn't flip back and forth.
-const RES={frames:[],elapsed:0,baseline:0,previous:0,retry:0,raiseWait:0};
+const RES={frames:[],elapsed:0,baseline:0,previous:0,retry:0,raiseWait:0,sinceRaise:Infinity};
 function resetResolutionSample(){
-  RES.frames.length=0;RES.elapsed=0;RES.baseline=0;RES.retry=0;RES.raiseWait=0;
+  RES.frames.length=0;RES.elapsed=0;RES.baseline=0;RES.retry=0;RES.raiseWait=0;RES.sinceRaise=Infinity;
 }
 function adaptRes(dt){
   if(document.hidden||PR_MIN>=PR_MAX||!(dt>0))return;
-  RES.retry=Math.max(0,RES.retry-dt);RES.raiseWait=Math.max(0,RES.raiseWait-dt);
+  RES.retry=Math.max(0,RES.retry-dt);RES.raiseWait=Math.max(0,RES.raiseWait-dt);RES.sinceRaise+=dt;
   RES.frames.push(dt);RES.elapsed+=Math.min(dt,.25);
   if(RES.elapsed<3||RES.frames.length<8)return;
   RES.frames.sort((a,b)=>a-b);
@@ -7157,9 +7157,9 @@ function adaptRes(dt){
   if(next===prNow){
     if(median>1/36&&prNow>PR_MIN&&RES.retry===0){
       RES.previous=prNow;RES.baseline=median;next=Math.max(PR_MIN,prNow-.25);
-      RES.raiseWait=6;
+      RES.raiseWait=RES.sinceRaise<8?30:6;
     }else if(median<1/50&&prNow<PR_MAX&&RES.raiseWait===0){
-      next=Math.min(PR_MAX,prNow+.25);
+      next=Math.min(PR_MAX,prNow+.25);RES.sinceRaise=0;
     }
   }
   if(next!==prNow){prNow=next;renderer.setPixelRatio(next);renderer.setSize(W,H,false)}
