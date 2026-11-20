@@ -6206,7 +6206,7 @@ function updateHUD(dt){
   // a brief red edge only for a real crash; none with FLASHES OFF, which promises no red flash when you're hit (it
   // used to cover only gunshots, and a crash still flashed the screen red)
   P.flashT=Math.max(0,(P.flashT||0)-dt);P.scrape=(P.scrape||0)*Math.exp(-dt*7);
-  $("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(save.flash?P.flashT*.4:0).toFixed(3)})`;
+  drawDamageEdge(P.flashT*.4);
   const surf=P.onRoad?0:P.nr&&P.nr.d<P.nr.e.half+2.2?1:2;
   audioUpd(gi.rpm,gi.n,kG()?1:0,slip,surf,Math.abs(vF),P.scrape);
 }
@@ -6823,6 +6823,11 @@ function gunArrest(fine){
   fadeThen(420,()=>{const nr=nearestRoadGlobal(QUAY.hall[0],QUAY.hall[1]+QUAY.hall[3]+14,true);if(nr){placeOnRoad(nr,1);snapCam()}});
   toast("ARRESTED",(fine?"Fined "+fmtCr(fine)+" CR. ":"")+"Your pistol is back in the garage","bad");
 }
+function drawDamageEdge(crash){
+  const hit=save.flash?Math.max(crash,HEALTH.hurtT*.9,0):0;
+  const opacity=hit+(HEALTH.hp<30?.15:0);
+  $("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${opacity.toFixed(3)})`;
+}
 function healthTick(dt){
   const H=HEALTH;H.calm+=dt;H.hurtT-=dt;kitTick(dt);
   // the pistol and the lock ring go on the boat and whenever you aren't playing (the ring stayed over the target)
@@ -6830,7 +6835,7 @@ function healthTick(dt){
   if(H.calm>6&&H.hp<50&&H.hp>0)H.hp=Math.min(50,H.hp+4*dt);
   for(const s of GUN.sparks)if(s.t>0){s.t-=dt;if(s.t<=0)s.m.visible=false}
   for(const k of GUN.marks)if(k.t>0){k.t-=dt;k.m.material.opacity=Math.min(.7,k.t*.35);if(k.t<=0)k.m.visible=false}
-  if(H.hurtT>0||FOOT.on)$("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(Math.max(0,save.flash?H.hurtT:0)*.9+(H.hp<30?.15:0)).toFixed(3)})`;
+  if(FOOT.on||BOAT.on)drawDamageEdge(0);
   GUN.hudT-=dt;if(GUN.hudT<=0){GUN.hudT=.1;
     const show1=(save.armed&&!BOAT.on)||H.hp<H.max;show("gunHud",show1);
     // the FIRE pad: whenever the pistol can be fired, kept up to date here rather than only on getting in or out
