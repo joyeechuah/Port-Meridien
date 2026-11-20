@@ -436,6 +436,23 @@ test.describe("pistol", () => {
     expect(await edge(true)).not.toContain("61, 0)");
     expect(await edge(false)).toContain("rgba(226, 72, 61, 0)");
   });
+  test("a hit in the driving seat survives the car HUD update and fades", async ({ game }) => {
+    await game.open();
+    await game.driveOut();
+    await game.park();
+    const result = await game.eval(() => {
+      const T = __T;
+      T.P.flashT = 0;
+      T.hurt(1);
+      const edge = () => document.getElementById("edge").style.boxShadow;
+      T.driveUpdate(1 / 60);
+      const hit = edge();
+      for (let i = 0; i < 40; i++) T.driveUpdate(1 / 60);
+      return {hit, faded:edge()};
+    });
+    expect(result.hit).not.toContain("61, 0)");
+    expect(result.faded).toContain("rgba(226, 72, 61, 0)");
+  });
   // Codex's re-review of #31: the repair is checked through the whole stand-down, not by calling it
   test("a wrecked reserve police car is stood down once out of sight and comes back repaired", async ({ game }) => {
     await armed(game, { police: true });
