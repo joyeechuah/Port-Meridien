@@ -21,7 +21,7 @@ npm start        # http://127.0.0.1:4173/index.html
 
 Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an internet connection to load three.js and the fonts.
 
-Play opens with a 7.6-second harbour flyover and a street-level reveal of your saved car in Old Quay. Select **Skip intro**, press Escape, or use A, B or Start on a controller to drive immediately. Reduced-motion mode goes straight to free roam. Use the pause menu’s home action to visit the garage and customise your cars.
+Play opens with a 7.6-second harbour flyover and a street-level reveal of your saved car in Old Quay. The flyover ends at the Old Quay wardrobe. **Skip intro**, Escape, controller A/B/Start and reduced motion all go straight to outfit selection. Preview Harbour palms, Boardwalk stripe or Night shift on your character, select **Turn around** to see the back, then **Wear outfit & drive** to start free roam. Arrow keys or the controller D-pad change outfits. On a controller, Y turns the preview and A confirms. Your outfit is saved and appears whenever you leave the car. Use the pause menu’s home action to visit the garage and customise your cars.
 
 ## Controls
 

@@ -56,6 +56,20 @@ kbd{font-family:var(--f-num);font-size:12px;border:1px solid rgba(255,255,255,.3
 #lcloud{width:280px;margin-top:4px}#lcl{font-size:12px;color:var(--mute);letter-spacing:.04em;text-align:center;max-width:320px;line-height:1.5}#lcl:empty{display:none}
 body.touch #lhint{display:none}
 
+#wardrobe{position:fixed;inset:0;z-index:34;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);color:#fff6ec}
+#fitting{display:flex;align-items:flex-end;justify-content:center;padding:12px;min-height:0}
+#wardPanel{align-self:center;margin:10px max(5vw,var(--sr)) 10px 0;padding:clamp(16px,3vw,38px);background:#14282dee;border-top:3px solid #f5a995;max-height:94vh;overflow:auto;box-shadow:0 14px 48px #10202755}
+#wardPanel small{font:700 12px var(--f-num);letter-spacing:.16em;color:#acd9d0}
+#wardPanel h2{font:italic 500 clamp(28px,4vw,52px)/1.04 Georgia,serif;margin:7px 0 16px}
+#wardLooks{display:grid;gap:5px}
+#wardLooks button{display:flex;gap:12px;align-items:center;text-align:left;background:#20383c;color:#fff;border:1px solid #546b69;padding:8px 12px;min-height:44px;font:inherit;cursor:pointer}
+#wardLooks button[aria-pressed=true]{border-color:#ffb29c;background:#374442}
+#wardLooks i{width:14px;height:26px;border-radius:7px;background:var(--sw);flex:none}
+#wardLooks span{display:grid;gap:2px}#wardLooks em{font-size:12px;color:#d2dbd6;font-style:normal}
+#wardWear{margin-top:14px;width:100%;background:#ffc1aa;color:#202e2d;min-height:44px}
+#wardTurn{background:#193034;color:#fff;border:1px solid #9db6ac;min-height:44px}
+@media(max-aspect-ratio:4/5){#wardrobe{grid-template-columns:1fr;grid-template-rows:minmax(145px,1fr) auto}#wardPanel{margin:0;padding:12px max(18px,var(--sl)) max(12px,var(--sb));max-height:56vh}#wardPanel h2{font-size:29px;margin:4px 0 8px}}
+@media(max-height:440px) and (min-aspect-ratio:4/5){#wardPanel{padding:12px 16px;margin:4px max(12px,var(--sr)) 4px 0}#wardPanel h2{font-size:26px;margin:4px 0 7px}#wardWear{margin-top:7px}}
 /* Old Quay arrival, drawn over the live harbour and street cameras. */
 #arrival{position:fixed;inset:0;z-index:34;pointer-events:none;display:flex;align-items:flex-end;padding:0 max(6vw,var(--sr)) max(11vh,calc(24px + var(--sb))) max(6vw,var(--sl));background:linear-gradient(0deg,rgba(4,9,12,.74),transparent 35%),linear-gradient(#07090c 0 5%,transparent 5% 95%,#07090c 95%)}
 #arrivalPlace{margin:0;color:#fff5dc;font:800 clamp(40px,8vw,96px)/.96 var(--f-num);letter-spacing:-.025em;text-shadow:0 2px 12px #101417}
@@ -181,6 +195,10 @@ body.touch #lhint{display:none}
 .chip:hover{border-color:#fff}
 #chRear[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}
 #damageHud{align-self:flex-start;pointer-events:auto;cursor:pointer;min-height:42px;background:rgba(10,22,31,.88);color:#f2b33d;border:1px solid rgba(242,179,61,.55);border-radius:4px;padding:7px 12px;font-size:11px;font-weight:800;letter-spacing:.08em;white-space:nowrap;text-align:left;touch-action:manipulation}
+body.outsideCar :is(#damageHud,#mblur){display:none}
+body.outsideCar #keys{opacity:1!important}
+/* On foot the speedometer's upper-right slot is free; leave the centre clear for the walker. */
+body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px + var(--st));bottom:auto;transform:none;width:max-content;max-width:min(32vw,210px);min-height:44px;padding:7px 10px;white-space:normal;overflow-wrap:anywhere}
 #damageHud.high{color:#f2b33d}
 #damageHud.critical{color:#ff8f82;border-color:#e2483d}
 #repair{z-index:72}
@@ -457,6 +475,13 @@ body.touch #phExit kbd{display:none}
   <div id="lhint" class="hide">or press any key to play</div>
 </div>
 
+<section id="wardrobe" class="hide" aria-labelledby="wardTitle">
+  <div id="fitting"><button class="btn ghost" id="wardTurn">Turn around</button></div>
+  <div id="wardPanel"><small>OLD QUAY</small><h2 id="wardTitle">Choose your outfit</h2>
+    <div id="wardLooks" role="group" aria-label="Outfits"></div>
+    <button class="btn" id="wardWear">Wear outfit &amp; drive</button>
+  </div>
+</section>
 <section id="arrival" class="hide" aria-labelledby="arrivalPlace">
   <div><p id="arrivalCity">Port Meridien</p><h2 id="arrivalPlace">Old Quay</h2></div>
   <button class="btn ghost" id="arrivalSkip">Skip intro</button>
@@ -796,7 +821,12 @@ const GARAGE_CAP=12;
 
 /* ================================================================ SAVE */
 const SAVE_KEY="port-meridien-v1";
-const save={v:2,cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",mods:{}};
+const OUTFITS=[
+  {id:"palms",name:"Harbour palms",detail:"Palm-print shirt · sand chinos",shirt:0x327e76,pants:0xc3aa88,trim:0xf1e0b4},
+  {id:"stripe",name:"Boardwalk stripe",detail:"Coral striped tee · dark denim",shirt:0xaf5a53,pants:0x394c59,trim:0xffcfaa},
+  {id:"club",name:"Night shift",detail:"Ink jacket · ivory trousers",shirt:0x323958,pants:0xd9ccae,trim:0xcaa57f}
+];
+const save={v:2,outfit:"palms",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",mods:{}};
 let loadedV=0;
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
@@ -811,6 +841,7 @@ try{
   const num=(v,d,lo,hi)=>typeof v==="number"&&Number.isFinite(v)?clamp(v,lo,hi):d;
   const dict=(v,ok)=>{const o={};if(v&&typeof v==="object"&&!Array.isArray(v))for(const k of Object.keys(v))if(ok(v[k]))o[k]=v[k];return o};
   save.v=3;
+  if(!OUTFITS.some(o=>o.id===save.outfit))save.outfit=OUTFITS[0].id;
   save.cr=num(save.cr,120000,0,1e12);save.xp=num(save.xp,0,0,1e12);
   save.todMode=Math.round(num(save.todMode,0,0,4));save.tod=num(save.tod,16.6,0,23.99);
   save.paint=dict(save.paint,c=>Number.isInteger(c)&&c>=0&&c<=0xffffff);
@@ -3263,6 +3294,13 @@ function pollPad(){
   if(clOverlayOpen()){if(hit(1))clEscape();return}
   const inputState=state;
   if(state==="ARRIVAL"){if(hit(0)||hit(1)||hit(9))finishArrival();return}
+  else if(state==="WARDROBE"){
+    if(hit(14)||hit(12))selectLook(lookIndex-1);
+    else if(hit(15)||hit(13))selectLook(lookIndex+1);
+    else if(hit(3))backView=!backView;
+    else if(hit(0)||hit(9))wearOutfit();
+    return;
+  }
   else if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on&&!BOAT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on&&!BOAT.on)footExit()}
   // in the pause menu, B or Start closes a screen opened from it (passport, contracts) before the menu itself
   else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}}
@@ -4739,6 +4777,8 @@ function photoReset(){if(!pc)return;PH.yaw=P.h+Math.PI*.82;PH.pitch=.22;PH.dist=
 function photoEnter(){
   if(PH.on||!pc||(state!=="DRIVE"&&state!=="PAUSE"))return false;
   PH.prev=state;
+  // Photo Mode stops every clock, blinking included: eyes caught shut would stay shut in every photo
+  for(const F of [FOOT.m&&FOOT.m.face,OFFICER.m&&OFFICER.m.face,...PEDS.map(p=>p.m.face)])if(F){F.shut=false;F.m.map=F.tex.open;F.t=Math.max(F.t,1)}
   PH.saved={pos:camera.position.clone(),q:camera.quaternion.clone(),fov:camera.fov,
     inside:pc.inside.visible,glass:pc.glass.visible,shell:pc.shell.visible,
     head:headLight?headLight.intensity:0,fill:fillLight?fillLight.intensity:0,tail:pc.tailM.color.clone()};
@@ -5586,9 +5626,62 @@ function startArrival(){
 }
 function finishArrival(){
   if(state!=="ARRIVAL"||tabIdle||clOverlayOpen())return;
-  show("arrival",false);clearInput();snapCam();updateCam(1);beginFreeRide();
+  show("arrival",false);clearInput();setState("WARDROBE");show("wardrobe",true);
+  openFitting();
+}
+let fittingScene,fittingCamera,lookIndex=0,backView=false;
+function openFitting(){
+  const m=footModel();
+  fittingScene=new THREE.Scene();fittingScene.background=new THREE.Color(0xb2c9bd);
+  fittingCamera=new THREE.OrthographicCamera(-2,2,2,-2,.1,30);
+  fittingScene.add(new THREE.HemisphereLight(0xfff4df,0xb99d97,1.15));
+  const key=new THREE.DirectionalLight(0xffe1ca,1.15);key.position.set(-3,5,4);fittingScene.add(key);
+  const floor=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.08,48),new THREE.MeshStandardMaterial({color:0x738f89}));
+  floor.position.y=-.045;fittingScene.add(floor);
+  // Sunset disc with horizontal bands behind the fitting platform.
+  const sunDisc=new THREE.Mesh(new THREE.CircleGeometry(1.48,64),new THREE.MeshBasicMaterial({color:0xffccaa}));
+  sunDisc.position.set(-.32,1.42,-2.5);fittingScene.add(sunDisc);
+  for(let i=0;i<5;i++){
+    const slat=new THREE.Mesh(new THREE.BoxGeometry(4,.016+i*.014,.02),new THREE.MeshBasicMaterial({color:0xb2c9bd}));
+    slat.position.set(-.32,.82-i*.13,-2.47);fittingScene.add(slat);
+  }
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(1,32),new THREE.MeshBasicMaterial({color:0x586e68}));
+  shadow.rotation.x=-Math.PI/2;shadow.scale.set(.28,.15,1);shadow.position.y=.001;fittingScene.add(shadow);
+  fittingScene.add(m.G);m.G.position.set(0,0,0);m.G.visible=true;backView=false;
+  const list=$("wardLooks");list.replaceChildren();
+  OUTFITS.forEach((o,i)=>{
+    const b=document.createElement("button");
+    b.innerHTML='<i aria-hidden="true"></i><span><strong></strong><em></em></span>';
+    b.style.setProperty("--sw","#"+o.shirt.toString(16).padStart(6,"0"));
+    b.querySelector("strong").textContent=o.name;b.querySelector("em").textContent=o.detail;
+    b.onclick=()=>selectLook(i);list.appendChild(b);
+  });
+  selectLook(OUTFITS.findIndex(o=>o.id===save.outfit));
+  list.children[lookIndex].focus({preventScroll:true});
+}
+function selectLook(i){
+  lookIndex=(i+OUTFITS.length)%OUTFITS.length;
+  Array.from($("wardLooks").children).forEach((b,j)=>b.setAttribute("aria-pressed",String(j===lookIndex)));
+  FOOT.m.dress(OUTFITS[lookIndex]);
+}
+function drawFitting(dt){
+  if(FOOT.m.face)faceBlink(FOOT.m.face,dt);
+  const r=$("fitting").getBoundingClientRect(),button=$("wardTurn").getBoundingClientRect();
+  const h=Math.max(80,button.top-r.top),unit=2.04/h,x=r.left+r.width/2,y=r.top+h/2;
+  const c=fittingCamera;c.left=-x*unit;c.right=(innerWidth-x)*unit;c.top=y*unit;c.bottom=-(innerHeight-y)*unit;
+  c.position.set(.25,1.15,4);c.lookAt(0,.87,0);c.updateProjectionMatrix();
+  FOOT.m.G.rotation.y=backView?Math.PI+.24:.24;renderer.render(fittingScene,c);
+}
+function wearOutfit(){
+  if(state!=="WARDROBE"||tabIdle||clOverlayOpen())return;
+  save.outfit=OUTFITS[lookIndex].id;persist();
+  const m=FOOT.m;m.G.visible=false;scene.add(m.G);
+  fittingScene.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose()}});
+  fittingScene=fittingCamera=null;show("wardrobe",false);clearInput();snapCam();updateCam(1);beginFreeRide();
 }
 $("arrivalSkip").onclick=finishArrival;
+$("wardTurn").onclick=()=>{backView=!backView};
+$("wardWear").onclick=wearOutfit;
 
 /* ================================================================ DEALERSHIP */
 let dSel=0,dAng=0,dPaint=0;
@@ -5866,6 +5959,13 @@ addEventListener("keydown",e=>{
   if(tg&&tg.tagName==="INPUT"&&tg.type==="range"&&/^(arrow(up|down|left|right)|home|end|pageup|pagedown)$/.test(k))return;
   if(clOverlayOpen()){if(k==="escape"&&!e.repeat)clEscape();return}
   if(state==="ARRIVAL"){if(!e.repeat&&["escape","enter"," "].includes(k)){e.preventDefault();finishArrival()}return}
+  if(state==="WARDROBE"){
+    if(e.repeat&&(k==="enter"||k===" ")){e.preventDefault();return}
+    if(k==="arrowleft"||k==="arrowright"){
+      e.preventDefault();selectLook(lookIndex+(k==="arrowright"?1:-1));$("wardLooks").children[lookIndex].focus();
+    }
+    return;
+  }
   if(cuOpen()){if(k==="escape"&&!e.repeat)custClose(false);return}
   // Space is the handbrake while driving, focused button or not (a stray Tab mustn't turn it into a map or pause
   // key mid-race; Enter presses a Tab-focused button there). Anywhere else Space presses the focused button, as on
@@ -5983,7 +6083,7 @@ const CLOUD_HOSTS=["joyeechuah.github.io"];
 const FB_VER="10.12.2",CLOUD_KEY="port-meridien-cloud";
 // what isn't progress: settings, the car picked, a note about a contract under way. They're backed up too, but don't
 // count as a difference worth asking about. Ghost laps stay on each device (they can pass Firestore's 1 MB limit)
-const CL_PREFS=["auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn"];
+const CL_PREFS=["outfit","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 const clProg=sv=>{const o={};for(const k in sv)if(!CL_PREFS.includes(k))o[k]=sv[k];return clHash(clCanon(o))};
@@ -6225,6 +6325,61 @@ function updateHUD(dt){
 const FOOT={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,m:null,cy:0,car:[0,0],hudT:0,cp:new THREE.Vector3(),cl:new THREE.Vector3()};
 const FOOT_V={walk:1.9,run:5.4,back:1.2,turn:2.5,r:.35,reach:3.4,exitMax:6};
 // a simple figure, 1.76 m tall, standing on the group's origin and facing +z; legs and arms swing from hip and shoulder
+/* Faces: painted onto the front of the head, the eyes with whites, a coloured iris, a pupil and a catchlight, so a
+   face reads as a person at phone size (built from tiny shapes it read as a mannequin: Jo Yee, 19 Nov). Stylized:
+   eyes a little larger than life. Each face has an open and a closed (blinking) texture; they are made once per look
+   and shared. The canvas is the head sphere's own UV layout (equirectangular), with the front of the face at u = 0.25 */
+const FACES=new Map(),FACE_IRIS=[0x5a3a22,0x3b2616,0x7a6233,0x5f7f93];
+function faceTex(skin,hair,iris,big){
+  const key=[skin,hair,iris,big].join(",");if(FACES.has(key))return FACES.get(key);
+  const W=big?512:256,H=W/2,k=W/512,hex=n=>"#"+n.toString(16).padStart(6,"0");
+  const mix=(a,b,t)=>{const c=i=>Math.round(((a>>i)&255)*(1-t)+((b>>i)&255)*t);return(c(16)<<16)|(c(8)<<8)|c(0)};
+  const draw=closed=>{
+    const cv=document.createElement("canvas");cv.width=W;cv.height=H;const c=cv.getContext("2d");
+    c.fillStyle=hex(skin);c.fillRect(0,0,W,H);
+    const cx=W*.25,ey=H*.462,dx=W*.062,E=16*k;
+    // soft shading: under the brow, down the sides of the nose and under the jaw; a warm blush on the cheeks
+    const glow=(x,y,r,col,a)=>{const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,col.replace("A",a));g.addColorStop(1,col.replace("A",0));c.fillStyle=g;c.fillRect(x-r,y-r,2*r,2*r)};
+    const shade="rgba(70,35,20,A)";
+    for(const s of[-1,1]){glow(cx+s*dx,ey-5*k,20*k,shade,.16);glow(cx+s*W*.095,H*.56,22*k,"rgba(215,95,85,A)",.2)}
+    glow(cx,H*.7,26*k,shade,.05);glow(cx+7*k,H*.53,9*k,shade,.22);glow(cx-7*k,H*.53,9*k,shade,.22);
+    // the nose: a soft shadow under the tip and two faint nostrils, no outline
+    glow(cx,H*.555,11*k,shade,.25);c.fillStyle="rgba(60,28,18,.35)";
+    for(const s of[-1,1]){c.beginPath();c.ellipse(cx+s*4*k,H*.555,2.6*k,1.6*k,0,0,7);c.fill()}
+    // eyebrows: an arch, thicker inside, in the hair's colour
+    c.strokeStyle=hex(mix(hair,skin,.15));c.lineCap="round";
+    for(const s of[-1,1]){c.lineWidth=4.2*k;c.beginPath();c.moveTo(cx+s*(dx-E*.9),H*.405);c.quadraticCurveTo(cx+s*dx,H*.37,cx+s*(dx+E*1.05),H*.4);c.stroke()}
+    for(const s of[-1,1]){const x=cx+s*dx;
+      if(closed){c.strokeStyle=hex(mix(skin,0x2a1810,.6));c.lineWidth=2.6*k;c.beginPath();c.moveTo(x-E,ey);c.quadraticCurveTo(x,ey+E*.45,x+E,ey);c.stroke();continue}
+      // the white, the iris, the pupil and a catchlight
+      c.save();c.beginPath();c.ellipse(x,ey,E,E*.62,0,0,7);c.clip();
+      c.fillStyle="#f3eee8";c.fillRect(x-E,ey-E,2*E,2*E);
+      c.fillStyle=hex(iris);c.beginPath();c.arc(x,ey+E*.05,E*.47,0,7);c.fill();
+      c.strokeStyle=hex(mix(iris,0,.45));c.lineWidth=1.4*k;c.stroke();
+      c.fillStyle="#120c0a";c.beginPath();c.arc(x,ey+E*.05,E*.22,0,7);c.fill();
+      c.fillStyle="#fff";c.beginPath();c.arc(x+s*E*.18,ey-E*.16,E*.13,0,7);c.fill();
+      // the upper lid's shadow on the eyeball
+      const g=c.createLinearGradient(0,ey-E*.62,0,ey);g.addColorStop(0,"rgba(60,30,20,.35)");g.addColorStop(1,"rgba(60,30,20,0)");c.fillStyle=g;c.fillRect(x-E,ey-E,2*E,E);
+      c.restore();
+      // the upper lid, heavier than the lower, with a lash flick at the outer corner
+      c.strokeStyle="#2a1810";c.lineWidth=2.6*k;c.beginPath();c.ellipse(x,ey,E,E*.62,0,Math.PI*1.05,Math.PI*1.95);c.stroke();
+      c.beginPath();c.moveTo(x+s*E*.95,ey-E*.12);c.lineTo(x+s*E*1.2,ey-E*.32);c.stroke();
+      c.strokeStyle="rgba(80,40,30,.45)";c.lineWidth=1.2*k;c.beginPath();c.ellipse(x,ey,E*.95,E*.6,0,Math.PI*.1,Math.PI*.9);c.stroke()}
+    // lips: a darker upper lip, a fuller lighter lower one, a shadow between them
+    const ly=H*.618,lw=18*k,lip=mix(skin,0x9a4a44,.55);
+    c.fillStyle=hex(mix(lip,0x3a1a14,.25));c.beginPath();c.moveTo(cx-lw,ly);c.quadraticCurveTo(cx-lw*.4,ly-5*k,cx,ly-2.5*k);c.quadraticCurveTo(cx+lw*.4,ly-5*k,cx+lw,ly);c.closePath();c.fill();
+    c.fillStyle=hex(lip);c.beginPath();c.moveTo(cx-lw*.9,ly);c.quadraticCurveTo(cx,ly+7*k,cx+lw*.9,ly);c.closePath();c.fill();
+    c.strokeStyle="rgba(60,22,18,.55)";c.lineWidth=1.3*k;c.beginPath();c.moveTo(cx-lw,ly);c.quadraticCurveTo(cx,ly+1.5*k,cx+lw,ly);c.stroke();
+    const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t};
+  const f={open:draw(false),closed:draw(true)};FACES.set(key,f);return f;
+}
+// a head that blinks every 3 to 6 s, for about an eighth of a second
+function faceBlink(F,dt){
+  F.t-=dt;
+  if(F.shut){if(F.t<=0){F.shut=false;F.m.map=F.tex.open;F.t=3+Math.random()*3}}
+  else if(F.t<=0){F.shut=true;F.m.map=F.tex.closed;F.t=.12}
+}
+const faceHeadGeo=new THREE.SphereGeometry(1,32,20);
 function footModel(){
   if(FOOT.m)return FOOT.m;
   // Rounded parts in human proportions, with knees and elbows that bend as it walks (it was a figure of boxes with
@@ -6235,28 +6390,78 @@ function footModel(){
   const part=(par,g,m,x,y,z,sx=1,sy=sx,sz=sx)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;par.add(o);return o};
   const pivot=(par,x,y,z)=>{const p=new THREE.Group();p.position.set(x,y,z);par.add(p);return p};
   // trunk: hips, a chest wider than the waist and flatter front to back, shoulders, neck
-  part(G,ball,trousers,0,.93,0,.185,.13,.125);
-  const chest=new THREE.CylinderGeometry(.2,.15,.5,14);part(G,chest,jacket,0,1.2,0,1,1,.62);
-  part(G,ball,jacket,0,1.44,0,.2,.07,.12);
+  // (kept slimmer front to back than the thighs: it used to bulge in front of them and catch the light, a pale
+  // wedge at the crotch)
+  part(G,ball,trousers,0,.92,0,.16,.1,.088);
+  // Sewn shirt silhouette with a hem, a waist and sloping shoulders. The lathe UVs carry the print.
+  const chest=new THREE.LatheGeometry([[0,.898],[.193,.898],[.198,.91],[.199,.956],[.159,1.085],[.177,1.25],[.204,1.39],[.19,1.435],[.067,1.49]]
+    .map(([r,y])=>new THREE.Vector2(r,y)),24);
+  const torso=part(G,chest,jacket,0,0,0,1,1,.69);
+
   part(G,new THREE.CylinderGeometry(.048,.055,.1,10),skin,0,1.52,0);
   // head, a little taller than wide, with hair over the top and back
-  part(G,ball,skin,0,1.655,.005,.098,.118,.108);
-  part(G,new THREE.SphereGeometry(1,14,10,0,Math.PI*2,0,Math.PI*.55),hair,0,1.668,-.012,.106,.118,.116);
-  const legs=[],knees=[],arms=[],elbows=[];
+  // the face is painted on the head (see faceTex): eyes, brows, nose shading, lips. Ears, and the hair tipped back
+  // off the forehead so the whole face shows
+  const faceT=faceTex(0xc49a7a,0x2a1d16,FACE_IRIS[0],true),faceM=new THREE.MeshStandardMaterial({map:faceT.open,roughness:.7,metalness:0});
+  part(G,faceHeadGeo,faceM,0,1.655,.005,.098,.118,.108);
+  const trim=mat(0xf1e0b4);
+  for(const side of [-1,1])part(G,ball,skin,side*.096,1.65,-.004,.018,.032,.021);
+  part(G,new THREE.SphereGeometry(1,20,12,0,Math.PI*2,0,Math.PI*.55),hair,0,1.672,-.018,.106,.118,.116).rotation.x=-.42;
+  part(G,ball,hair,0,1.658,-.072,.089,.077,.045);
+  part(G,ball,hair,-.027,1.748,.03,.084,.036,.08).rotation.z=.16;
+  const collars=[-1,1].map(side=>{
+    const flap=part(G,ball,trim,side*.053,1.46,.086,.035,.065,.018);
+    flap.rotation.z=-side*.5;return flap;
+  });
+  const legs=[],knees=[],arms=[],elbows=[],longSleeves=[];
+  const cloth=document.createElement("canvas");cloth.width=256;cloth.height=128;
+  const weave=new THREE.CanvasTexture(cloth);weave.encoding=THREE.sRGBEncoding;
+  const fabric=mat(0xffffff);fabric.map=weave;
+  torso.material=fabric;
+  function dress(o){
+    jacket.color.setHex(o.shirt);trousers.color.setHex(o.pants);trim.color.setHex(o.trim);
+    const ctx=cloth.getContext("2d"),hex=n=>"#"+n.toString(16).padStart(6,"0");
+    ctx.fillStyle=hex(o.shirt);ctx.fillRect(0,0,256,128);ctx.fillStyle=hex(o.trim);
+    if(o.id==="stripe"){
+      for(let y=12;y<128;y+=16)ctx.fillRect(0,y,256,3);
+    }else if(o.id==="palms"){
+      // Two staggered bands of broad, curved fronds leave clear space between motifs on small screens.
+      ctx.fillStyle="#8cb6a1";
+      for(let row=0;row<2;row++)for(let col=-1;col<4;col++){
+        ctx.save();ctx.translate(22+col*72+row*35,22+row*66);ctx.rotate(row?.22:-.25);
+        ctx.beginPath();ctx.moveTo(-2,17);ctx.quadraticCurveTo(1,2,1,-5);
+        ctx.lineTo(3,-6);ctx.quadraticCurveTo(4,6,1,18);ctx.fill();
+        for(const side of [-1,1])for(let tier=0;tier<2;tier++){
+          const w=side*(tier?16:12),y=tier?4:-7;
+          ctx.beginPath();ctx.moveTo(2,-5);ctx.quadraticCurveTo(w*.65,y-15,w,y);
+          ctx.quadraticCurveTo(w*.6,y-6,2,-5);ctx.fill();
+        }
+        ctx.restore();
+      }
+    }else{ctx.fillRect(0,0,2,128);ctx.fillRect(254,0,2,128);ctx.fillRect(0,116,256,6)}
+    weave.needsUpdate=true;
+    collars.forEach(o2=>o2.visible=o.id!=="stripe");
+    longSleeves.forEach(mesh=>mesh.material=o.id==="club"?jacket:skin);
+  }
   for(const s of[-1,1]){
     // leg: thigh from the hip, shin from the knee, a shoe
-    const hip=pivot(G,s*.1,.92,0);part(hip,tube(.095,.072,.44),trousers,0,0,0);part(hip,ball,trousers,0,-.44,0,.072);
+    const hip=pivot(G,s*.093,.92,0);part(hip,tube(.095,.072,.44),trousers,0,0,0);part(hip,ball,trousers,0,-.44,0,.072);
     const knee=pivot(hip,0,-.44,0);part(knee,tube(.07,.052,.4),trousers,0,0,0);
     part(knee,ball,shoe,0,-.425,.05,.058,.048,.135);
     legs.push(hip);knees.push(knee);
     // arm: upper arm from the shoulder, forearm from the elbow, a hand
     const sh=pivot(G,s*.225,1.425,0);sh.rotation.z=s*.07;part(sh,ball,jacket,0,0,0,.062);part(sh,tube(.058,.048,.29),jacket,0,0,0);
-    const el=pivot(sh,0,-.29,0);part(el,ball,jacket,0,0,0,.044);part(el,tube(.046,.038,.25),jacket,0,0,0);
-    part(el,ball,skin,0,-.285,.005,.036,.048,.03);
+    const el=pivot(sh,0,-.29,0);longSleeves.push(part(el,ball,skin,0,0,0,.044),part(el,tube(.046,.038,.25),skin,0,0,0));
+    // A tapered palm with a distinct knuckle line and thumb, visible alongside the trousers.
+    part(el,ball,skin,s*.006,-.286,.009,.035,.05,.028);
+    const fingers=part(el,ball,skin,s*.01,-.337,.018,.031,.044,.022);
+    fingers.rotation.x=-.23;
+    part(el,ball,skin,-s*.019,-.309,.031,.016,.034,.014).rotation.z=-s*.32;
     arms.push(sh);elbows.push(el);
   }
   G.visible=false;scene.add(G);
-  return FOOT.m={G,legs,arms,knees,elbows};
+  dress(OUTFITS.find(o=>o.id===save.outfit));
+  return FOOT.m={G,legs,arms,knees,elbows,dress,face:{m:faceM,tex:faceT,t:2+Math.random()*3,shut:false}};
 }
 const footGround=(x,z)=>onPier(x,z)?PIER.y:Math.max(meshH(x,z),surfH(x,z));   // the pier's deck stands over the water
 // pushes a point clear of buildings, walls and trees, of traffic, and of your own car; returns the cleared point
@@ -6370,7 +6575,11 @@ function footEnd(){
   promptAct=null;show("prompt",false);footHud(false);autoHold=true;if(pc)snapCam();
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
+const driveKeys=$("keys").innerHTML;
 function footHud(on){
+  $("keys").innerHTML=on?"<kbd>W</kbd><kbd>S</kbd> walk / back &nbsp; <kbd>A</kbd><kbd>D</kbd> turn &nbsp; <kbd>Shift</kbd> run &nbsp; <kbd>E</kbd> interact":driveKeys;
+  document.body.classList.toggle("outsideCar",on);
+  document.body.classList.toggle("walking",on&&FOOT.on);
   show("speedo",!on);show("streak",!on);show("chFoot",!on);show("chRear",!on);show("chCam",!on);
   $("bG").textContent=on?"WALK":"GAS";$("bH").innerHTML=on?"RUN":"HAND<br>BRAKE";
   const b=$("bB");if(on){b.textContent="BACK";b.classList.remove("rev")}
@@ -6386,15 +6595,17 @@ function footPlace(dt){
   m.knees[0].rotation.x=.06+Math.max(0,-c)*amp*1.15;m.knees[1].rotation.x=.06+Math.max(0,c)*amp*1.15;
   m.elbows[0].rotation.x=m.elbows[1].rotation.x=-(.18+amp*.75);
   // a slight bob with each step
+  m.G.rotation.z=Math.sin(FOOT.ph)*amp*.028;
+  m.G.rotation.x=amp*.06;
   m.G.position.y+=Math.abs(Math.cos(FOOT.ph))*Math.min(.05,Math.abs(FOOT.v)*.012);
 }
 // behind and above the walker, coming in closer when a wall or tree is in the way
 function footCam(dt,snap){
   FOOT.cy+=wrapA(FOOT.h-FOOT.cy)*(snap?1:1-Math.exp(-dt*5));
-  const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),back=boomClear(FOOT.x,FOOT.z,fx,fz,4.6),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
-  const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.5+(4.6-back)*.2,camFloor(px,pz,p));
+  const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),back=boomClear(FOOT.x,FOOT.z,fx,fz,3.9),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
+  const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,camFloor(px,pz,p));
   const k=snap?1:1-Math.exp(-dt*10);
-  FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*5,FOOT.y+.75,FOOT.z+fz*5),k);   // aimed low, so the walker stands clear of the prompt at the bottom
+  FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*2.3,FOOT.y+1.1,FOOT.z+fz*2.3),k);
   camera.position.copy(FOOT.cp);camera.lookAt(FOOT.cl);
   camera.fov+=(60-camera.fov)*(snap?1:1-Math.exp(-dt*5));camera.updateProjectionMatrix();
 }
@@ -6402,6 +6613,7 @@ function footUpdate(dt){
   // the car went somewhere without you (map travel, back to road): you're in it
   if(Math.hypot(P.x-FOOT.car[0],P.z-FOOT.car[1])>.5){footEnd();return}
   updateTraffic(dt);jobTick(dt);   // a timed delivery's clock runs while you're out of the car too (it used to stop)
+  if(FOOT.m&&FOOT.m.face)faceBlink(FOOT.m.face,dt);
   if(state!=="DRIVE")return;
   const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||kH());
   const want=go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
@@ -6603,6 +6815,7 @@ function copUpdate(dt){
 // more than 48 m away, keep away for 25 s, or leave them going round walls for 15 s without getting nearer, and they go back to the car, which then carries on.
 // One officer at a time
 function copOfficer(dt,ch,still){
+  if(OFFICER.m&&OFFICER.m.face)faceBlink(OFFICER.m.face,dt);
   const O=OFFICER,me=copMe(),car=O.car;
   if(!O.on){
     if(BOAT.on||!(FOOT.on||still)||!WANTED.seen)return false;
@@ -6869,19 +7082,22 @@ function figureLook(top,legs,skin,hair,cap){
   const shoe=0x2a2320;
   const ball=new THREE.SphereGeometry(1,10,8),dome=new THREE.SphereGeometry(1,10,8,0,TAU,0,Math.PI*.55),cyl=(a,b,l)=>new THREE.CylinderGeometry(a,b,l,8);
   const body=merge([{g:ball,m:mat(0,.93,0,0,.185,.13,.125),c:legs},{g:new THREE.CylinderGeometry(.2,.15,.5,10),m:mat(0,1.2,0,0,1,1,.62),c:top},
-    {g:ball,m:mat(0,1.44,0,0,.2,.07,.12),c:top},{g:cyl(.048,.055,.1),m:mat(0,1.52,0),c:skin},{g:ball,m:mat(0,1.655,.005,0,.098,.118,.108),c:skin},
-    {g:dome,m:mat(0,1.668,-.012,0,.106,.118,.116),c:hair},...(cap?[{g:new THREE.CylinderGeometry(.118,.118,.05,12),m:mat(0,1.745,0),c:hair},{g:GEO.box,m:mat(0,1.725,.1,0,.2,.02,.1),c:0x0b0f18}]:[])]);
+    {g:ball,m:mat(0,1.44,0,0,.2,.07,.12),c:top},{g:cyl(.048,.055,.1),m:mat(0,1.52,0),c:skin},
+    {g:dome,m:mat(0,1.672,-.018,0,.106,.118,.116,-.42),c:hair},...(cap?[{g:new THREE.CylinderGeometry(.118,.118,.05,12),m:mat(0,1.745,0),c:hair},{g:GEO.box,m:mat(0,1.725,.1,0,.2,.02,.1),c:0x0b0f18}]:[])]);
   // a leg and an arm, each hanging from its joint at the origin
   const leg=merge([{g:cyl(.095,.072,.44),m:mat(0,-.22,0),c:legs},{g:cyl(.07,.052,.42),m:mat(0,-.64,0),c:legs},{g:ball,m:mat(0,-.865,.05,0,.058,.048,.135),c:shoe}]);
   const arm=merge([{g:cyl(.058,.048,.29),m:mat(0,-.145,0),c:top},{g:cyl(.046,.038,.25),m:mat(0,-.415,0),c:top},{g:ball,m:mat(0,-.575,.005,0,.036,.048,.03),c:skin}]);
-  return{body,leg,arm};
+  // the head is its own mesh, with a painted face (faceTex); the eyes' colour follows the clothes, for variety
+  return{body,leg,arm,face:faceTex(skin,hair,FACE_IRIS[(top^legs)%FACE_IRIS.length],false)};
 }
 function pedModel(k,h,look){
   const L=look||pedLook(k),G=new THREE.Group(),legs=[],arms=[];
   const b=new THREE.Mesh(L.body,PED_MAT);b.castShadow=true;G.add(b);
+  const fm=new THREE.MeshLambertMaterial({map:L.face.open}),hd=new THREE.Mesh(faceHeadGeo,fm);
+  hd.position.set(0,1.655,.005);hd.scale.set(.098,.118,.108);hd.castShadow=true;G.add(hd);
   for(const s of[-1,1]){const l=new THREE.Mesh(L.leg,PED_MAT);l.position.set(s*.1,.92,0);G.add(l);legs.push(l);
     const a=new THREE.Mesh(L.arm,PED_MAT);a.position.set(s*.225,1.425,0);a.rotation.z=s*.07;G.add(a);arms.push(a)}
-  G.scale.setScalar(h);G.visible=false;scene.add(G);return{G,legs,arms};
+  G.scale.setScalar(h);G.visible=false;scene.add(G);return{G,legs,arms,face:{m:fm,tex:L.face,t:1+Math.random()*5,shut:false}};
 }
 function buildPeds(){
   const xs=[560,620,690,760],o=PED_V.line,B=[];
@@ -6957,6 +7173,7 @@ function pedUpdate(dt){
   if(!on)return;
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of PEDS){
+    if(p.m.G.visible)faceBlink(p.m.face,dt);
     const e=p.e;let want=0,hurry=false;
     // a car coming at them (yours, or traffic): step in towards the buildings, or hurry off the crossing
     let danger=driving&&psp>2.5&&Math.hypot(P.x-p.x,P.z-p.z)<4+psp*.9&&((p.x-P.x)*P.vx+(p.z-P.z)*P.vz)/psp>0&&Math.abs((p.x-P.x)*-P.vz+(p.z-P.z)*P.vx)/psp<2.2;
@@ -7064,7 +7281,7 @@ function boatLandSpot(){
   const x=clamp(BOAT.x,PIER.x0+2.2,PIER.x1-1),z=BOAT.z<0?PIER.z0+.75:PIER.z1-.75;
   return Math.hypot(BOAT.x-x,BOAT.z-z)<=BOAT_V.land?[x,z]:null;
 }
-function boatHud(){footHud(true);$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
+function boatHud(){footHud(true);$("keys").innerHTML="<kbd>W</kbd><kbd>S</kbd> power / reverse &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>E</kbd> land";$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
 function boatBoard(){
   if(!FOOT.on||BOAT.on||!BOAT.m)return false;
   FOOT.on=false;FOOT.m.G.visible=false;BOAT.on=true;BOAT.v=0;BOAT.steer=0;BOAT.car=[P.x,P.z];BOAT.cy=BOAT.h;
@@ -7212,7 +7429,7 @@ function frame(ts){
   requestAnimationFrame(frame);
   if(tabIdle){prevTs=ts;return}
   pollPad();
-  const raw=(ts-prevTs)/1000||.016,dt=Math.min(.05,raw);prevTs=ts;adaptRes(raw);const pt0=perfStart();
+  const raw=(ts-prevTs)/1000||.016,dt=Math.min(.05,raw);prevTs=ts;if(state==="WARDROBE"&&fittingScene){drawFitting(dt);return}adaptRes(raw);const pt0=perfStart();
   // automatic time: an hour every 30 s by day, and the night passes about twice as fast
   if(save.todMode===0&&(state==="DRIVE"||state==="GARAGE"||state==="EXIT"))save.tod=(save.tod+dt/30*(1+1.4*night))%24;
   // photo mode stops the scenery's clocks too (sea, foam, boats, grass, fish, clouds); they carry on from the same
