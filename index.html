@@ -4920,7 +4920,7 @@ function buildLandmarks(){
   // first visits only count from the next drive on, so a landmark next to wherever the car starts isn't found by standing still
   PZ.driven=0;PZ.lx=null;
 }
-const foundCount=()=>LANDMARKS.filter(L=>save.found[L.id]).length;
+const foundCount=(found=save.found)=>LANDMARKS.filter(L=>found&&(found[L.id]===1||found[L.id]===true)).length;
 function discoverLandmark(L){
   if(!L||save.found[L.id])return false;
   save.found[L.id]=1;
@@ -6094,7 +6094,7 @@ const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
   return(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&!sv.passBonus&&
     (!sv.jobs||!Object.values(sv.jobs).some(v=>typeof v==="number"?v>0:!e(v)))}
-function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:Object.keys(sv.found||{}).length,
+function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:foundCount(sv.found||{}),
   cups:Object.values(champ).filter(c=>c&&c.won).length,mods:Object.keys(sv.mods||{}).length}}
 function clAdapter(){if(window.__cloudAdapter)return window.__cloudAdapter;
   if(!FIREBASE_CONFIG.apiKey||!FIREBASE_CONFIG.projectId||!CLOUD_HOSTS.includes(location.hostname)||window.__cloudOff)return null;return fbAdapter()}
