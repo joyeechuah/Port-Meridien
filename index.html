@@ -464,7 +464,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 /* on a phone held upright the contract panel goes in the column under the speedometer too (a contract never runs
    alongside a race or a streak): under the minimap it covered the map's lower half once the damage pill or the stars
    pushed the minimap down. It starts right of the money / level / place column, which can reach this far down */
-@media (max-width:560px){#jobhud{top:calc(192px + var(--st));left:calc(190px + var(--sl));right:calc(14px + var(--sr));transform:none;min-width:0;max-width:none;padding:6px 10px}}
+@media (max-width:560px){#jobhud{top:calc(192px + var(--st));left:max(calc(190px + var(--sl)),var(--hud-left-clear,0px));right:calc(14px + var(--sr));transform:none;min-width:0;max-width:none;padding:6px 10px}}
 #phShot{position:absolute;inset:0;pointer-events:auto;background:rgba(5,6,8,.78);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}
 #phImg{max-width:min(860px,100%);max-height:calc(100% - 130px);border:1px solid var(--line);border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.6);-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
 #phShot .acts{justify-content:center}
@@ -4300,6 +4300,8 @@ function hudStack(){
   const r=document.documentElement;r.style.setProperty("--tlx","0px");
   if(!isTouch)return;
   const tl=$("tl").getBoundingClientRect(),mw=$("minWrap").getBoundingClientRect();if(!tl.height||!mw.height)return;
+  // The district clock stretches to the width of the damage label in this column.
+  r.style.setProperty("--hud-left-clear",Math.ceil(tl.right+6)+"px");
   r.style.setProperty("--tlx",Math.max(0,Math.ceil(tl.bottom+6-mw.top))+"px");toastFit();
 }
 if(window.ResizeObserver)new ResizeObserver(hudStack).observe($("tl"));addEventListener("resize",hudStack);
