@@ -22,7 +22,7 @@ const NAMES = (
   "adaptRes applyDayNight attachCar camMode camera carById closeDealer closeMap curCar curId cycleCam dPick dSel " +
   "discoverLandmark drawMap driveUpdate collidePlayer showDamageSmoke spawnTraffic earn edgePos endTestDrive ev fastTravel finishEvent parkAll phTarget edgeY PIER BOAT BOAT_V onPier boatBoard boatLand boatEnd boatFree OGRID meshH obstaclesNear paintOf LEFT STREET takeTraffic takeLeft streetReset footTarget FOOT FOOT_V footExit footEnter footEnd footGround footPlace updateEvent endEvent fishT fitZoom " +
   "foam foundCount gPick gSel gW goDrive goGarage gps grassT groundH hudOn job jobEnd jobRestart jobStart " +
-  "DIAG VRANGE jobTarget jobsClose jobsOpen keys mapToWorld mapZoomAt nearestRoad nearestRoadGlobal openDealer openIntro " +
+  "DIAG VRANGE resetResolutionSample jobTarget jobsClose jobsOpen keys mapToWorld mapZoomAt nearestRoad nearestRoadGlobal openDealer openIntro " +
   "openMap openMapPopup pad passportClose passportOpen pauseOff pauseOn pc persist photoCapture photoEnter " +
   "photoExit photoLook photoLookSet photoReset prNow promptAct renderer resetToRoad routeBetween save scene " +
   "seaT setGPS clearGPS setState skyClock skyU startEvent startTestDrive state streakReset testDrive " +

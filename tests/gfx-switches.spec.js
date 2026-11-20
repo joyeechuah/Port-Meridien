@@ -3,8 +3,10 @@
 const { test, expect } = require("./support/game");
 
 const density2 = () => Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 2 });
+// slow frames that get faster with fewer pixels (where they don't, AUTO now keeps full sharpness: #49)
 const slowFrames = () => {
-  for (let i = 0; i < 24 * 18; i++) __T.adaptRes(1 / 24);
+  __T.resetResolutionSample(); // from a clean start: the page's own frames have already been measured
+  for (let t = 0; t < 30; ) { const dt = 1 / 60 + 0.05 * (__T.renderer.getPixelRatio() / 2) ** 2; __T.adaptRes(dt); t += dt; }
 };
 
 test("without switches: shadows on, trees out to 1.7 km, and AUTO free to lower the scale", async ({ game, page }) => {
