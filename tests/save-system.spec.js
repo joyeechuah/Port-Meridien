@@ -29,6 +29,9 @@ test.describe("save system", () => {
       s.todMode = 4;
       s.assist = false;
       s.music = false;
+      s.armed = true;
+      s.flash = false;
+      s.violence = 0;
       s.gfx = 2;
       T.persist();
     });

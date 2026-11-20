@@ -23,6 +23,18 @@ Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an in
 
 Play opens with a 7.6-second harbour flyover and a street-level reveal of your saved car in Old Quay. The flyover ends at the Old Quay wardrobe. **Skip intro**, Escape, controller A/B/Start and reduced motion all go straight to outfit selection. Preview Harbour palms, Boardwalk stripe or Night shift on your character, select **Turn around** to see the back, then **Wear outfit & drive** to start free roam. Arrow keys or the controller D-pad change outfits. On a controller, Y turns the preview and A confirms. Your outfit is saved and appears whenever you leave the car. Use the pause menu’s home action to visit the garage and customise your cars.
 
+### Graphics and saved settings
+
+In the pause menu, select **GRAPHICS** to cycle through the three modes.
+
+| Mode | What it does |
+| --- | --- |
+| AUTO | Tries a lower resolution when frames stay slow. If the typical frame time barely changes, it restores the previous resolution. |
+| SHARP | Keeps the game at its highest supported resolution for this display. |
+| SMOOTH | Caps rendering at one game pixel per CSS pixel to reduce the graphics workload on high-density screens. |
+
+The browser remembers your graphics mode, FLASHES setting, VIOLENCE level and pistol selection when you reload.
+
 ## Controls
 
 | | Keyboard | Touch | Controller |
@@ -130,7 +142,7 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 | 4 | More weapons, shooting from a car or the boat, police cars that shoot, health pickups | Not decided yet |
 | Later | The full city as its own world, with the island kept as a second place to drive | Planned |
 
-Not yet tested on a real phone.
+The opening sequence and audio have been tested on an Android phone. The AUTO resolution change and Old Quay junction traffic still need a driving check on a physical phone.
 
 ## Development
 

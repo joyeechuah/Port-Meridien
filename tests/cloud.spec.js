@@ -451,6 +451,23 @@ test.describe("cloud save", () => {
     expect(await game.eval(() => __T.save.paint.golf)).toBe(0x1d4aa8);
   });
 
+  test("the save chooser counts discoveries in the current passport on each side", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await progress(game, 300000);
+    await game.eval(() => {
+      __T.save.found = { talaia_summit: 1, retired_lookout: 1 };
+      __T.persist();
+    });
+    await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.cr=500000;
+      sv.found={talaia_summit:true,sea_level_road:1,retired_pier:1,north_cape:false};
+      s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()};`);
+    await signIn(page, game);
+    await expect(page.locator("#cpkDev")).toContainText("1 landmark ·");
+    await expect(page.locator("#cpkAcc")).toContainText("2 landmarks ·");
+    expect(await game.eval(() => __T.save.found.retired_lookout)).toBe(1);
+  });
+
   test("the ghost car switch is a setting, not progress", async ({ game }) => {
     await game.open();
     const r = await game.eval(() => {

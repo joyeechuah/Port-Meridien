@@ -28,6 +28,22 @@ test.describe("customise", () => {
     await game.open();
   });
 
+  test("a repainted Sora 2 keeps its factory colour in the garage and dealership palettes", async ({ game, page }) => {
+    const sora = page.locator("#gdots").getByRole("button", { name: "Aokira Sora 2" });
+    await sora.click();
+    await page.locator("#gSw").getByRole("button", { name: "White paint", exact: true }).click();
+    await page.locator("#gdots button").first().click();
+    await sora.click();
+    const original = { name: "Original paint #B3121A", exact: true };
+    await expect(page.locator("#gSw").getByRole("button", original)).toHaveAttribute("aria-pressed", "false");
+
+    await game.eval(() => __T.openDealer("mx5"));
+    const factoryPaint = page.locator("#dSw").getByRole("button", original);
+    await factoryPaint.click();
+    await expect(factoryPaint).toHaveAttribute("aria-pressed", "true");
+    expect(await game.eval(() => __T.save.paint.mx5)).toBe(0xb3121a);
+  });
+
   test("options show on the car as you pick them; APPLY pays the total once and keeps them; they're on the car you drive", async ({ game, page }) => {
     await game.eval(() => (__T.save.cr = 100000));
     const before = await game.eval(model);

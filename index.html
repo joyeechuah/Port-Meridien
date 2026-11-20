@@ -838,7 +838,7 @@ const OUTFITS=[
   {id:"stripe",name:"Boardwalk stripe",detail:"Coral striped tee · dark denim",shirt:0xaf5a53,pants:0x394c59,trim:0xffcfaa},
   {id:"club",name:"Night shift",detail:"Ink jacket · ivory trousers",shirt:0x323958,pants:0xd9ccae,trim:0xcaa57f}
 ];
-const save={v:2,outfit:"palms",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",mods:{}};
+const save={v:2,outfit:"palms",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{}};
 let loadedV=0;
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
@@ -948,6 +948,8 @@ addEventListener("resize",()=>{
   W=innerWidth;H=innerHeight;
   // Browser zoom and moving the window between screens can change the pixel density during play.
   const density=Math.min(devicePixelRatio||1,2);
+  if(RES.baseline){prNow=RES.previous;renderer.setPixelRatio(prNow)}
+  resetResolutionSample();
   if(density!==PR_DEV){const atMax=prNow===PR_MAX;PR_DEV=density;gfxLimits();
     prNow=atMax?PR_MAX:clamp(prNow,PR_MIN,PR_MAX);renderer.setPixelRatio(prNow)}
   renderer.setSize(W,H,false);camera.aspect=W/H;fitZoom();camera.updateProjectionMatrix();layoutHUD()
@@ -4746,7 +4748,7 @@ function musicTick(){
       if(W.askT==null)W.askT=now;
       if(cur&&W.st!=="failed")file=cur;
       // give a first load up to 4 s of silence rather than starting the composed track only to swap it out
-      else if(W.st==="failed"||now-(W.askT||now)>4)comp=want==="race"?"coast":want}
+      else if(W.st==="failed"||now-W.askT>4)comp=want==="race"?"coast":want}
   }
   for(const n in SONGS){const S=SONGS[n];
     if(n===file){if(!S.p||S.p.end){if(S.p)songTick(n,now+99);songStart(n,now)}
@@ -4953,7 +4955,7 @@ function buildLandmarks(){
   // first visits only count from the next drive on, so a landmark next to wherever the car starts isn't found by standing still
   PZ.driven=0;PZ.lx=null;
 }
-const foundCount=()=>LANDMARKS.filter(L=>save.found[L.id]).length;
+const foundCount=(found=save.found)=>LANDMARKS.filter(L=>found&&(found[L.id]===1||found[L.id]===true)).length;
 function discoverLandmark(L){
   if(!L||save.found[L.id])return false;
   save.found[L.id]=1;
@@ -5426,13 +5428,13 @@ function cycleCam(){camMode=(camMode+1)%4;save.cam=camMode;persist();$("chCam").
 /* ---------- paint swatches ---------- */
 // each swatch is named for screen readers, and says whether it's the paint on the car
 const PAINT_NAMES={0xf1f1ef:"White",0x141518:"Black",0xa9aeb4:"Silver",0x5a6168:"Grey",0xc0141a:"Red",0xe8761a:"Orange",0xf0c419:"Yellow",0x1d4aa8:"Blue",0x2c8ad8:"Light blue",0x0d6b3c:"Green"};
-function paintName(col,first){const hex="#"+col.toString(16).padStart(6,"0").toUpperCase();return (PAINT_NAMES[col]||(first?"Original":"Custom"))+" paint"+(PAINT_NAMES[col]?"":" "+hex)}
-function swatches(box,current,onPick){
+function paintName(col,original){const hex="#"+col.toString(16).padStart(6,"0").toUpperCase();return (PAINT_NAMES[col]||(original?"Original":"Custom"))+" paint"+(PAINT_NAMES[col]?"":" "+hex)}
+function swatches(box,current,original,onPick){
   box.innerHTML="";
-  const list=[...new Set([current,...PAINTS])];
-  list.forEach((col,i)=>{
+  const list=[...new Set([current,original,...PAINTS])];
+  list.forEach(col=>{
     const b=document.createElement("button"),on=col===current;b.className="swb"+(on?" on":"");
-    b.style.background="#"+col.toString(16).padStart(6,"0");b.setAttribute("aria-label",paintName(col,i===0&&!PAINTS.includes(col)));b.setAttribute("aria-pressed",on?"true":"false");
+    b.style.background="#"+col.toString(16).padStart(6,"0");b.setAttribute("aria-label",paintName(col,col===original));b.setAttribute("aria-pressed",on?"true":"false");
     b.onclick=()=>{[...box.children].forEach(x=>{x.classList.remove("on");x.setAttribute("aria-pressed","false")});b.classList.add("on");b.setAttribute("aria-pressed","true");onPick(col)};
     box.appendChild(b);
   });
@@ -5483,7 +5485,7 @@ function gPick(i){
   carText(c,"g");
   $("v1").textContent=c.top+" km/h";$("v2").textContent=Math.round(c.acc*10)+" / 10";$("v3").textContent=Math.round(c.grip*10)+" / 10";
   statBars(c,"f");
-  swatches($("gSw"),paintOf(id),col=>{save.paint[id]=col;getCar(id).paint(col);if(showMeshes[id])showMeshes[id].paint(col);persist()});
+  swatches($("gSw"),paintOf(id),c.body,col=>{save.paint[id]=col;getCar(id).paint(col);if(showMeshes[id])showMeshes[id].paint(col);persist()});
   [...dots.children].forEach((d,k)=>{d.classList.toggle("on",k===gSel);d.setAttribute("aria-pressed",String(k===gSel))});
   const s=SPOTS[gSel],p=gW(s[0],s[1]);selRing.position.set(p.x,gY+.03,p.z);
   selSpot.position.copy(gW(s[0],s[1]+1,8.8));selSpot.target.position.copy(p);
@@ -5736,7 +5738,7 @@ function dPick(i){
   const m=getShowCar(c.id);m.G.visible=true;dPaint=paintOf(c.id);m.paint(dPaint);
   carText(c,"d");
   $("dv1").textContent=c.top+" km/h";$("dv2").textContent=Math.round(c.acc*10)+" / 10";$("dv3").textContent=Math.round(c.grip*10)+" / 10";statBars(c,"df");
-  swatches($("dSw"),dPaint,col=>{dPaint=col;m.paint(col);if(own){save.paint[c.id]=col;getCar(c.id).paint(col);persist()}});
+  swatches($("dSw"),dPaint,c.body,col=>{dPaint=col;m.paint(col);if(own){save.paint[c.id]=col;getCar(c.id).paint(col);persist()}});
   const sellPrice=Math.round(c.price*.6/100)*100;
   $("dPrice").textContent=own?"In your garage":fmtCr(c.price)+" CR";
   $("dNote").textContent=own?(c.id===curId?"You are driving this car":"Sells for "+fmtCr(sellPrice)+" CR"):(save.cr>=c.price?(full?"Your garage is full":"Delivered to your house after purchase"):"You need "+fmtCr(c.price-save.cr)+" more CR");
@@ -5897,7 +5899,7 @@ $("pHome").onclick=()=>{if(WANTED.lvl){wantedBlock();return}show("pause",false);
 $("pTime").onclick=()=>{save.todMode=(save.todMode+1)%TODS.length;CAR_ENV.dirty=true;if(TODS[save.todMode][1]!==null)save.tod=TODS[save.todMode][1];syncPause();persist()};
 $("pAuto").onclick=()=>{save.auto=!save.auto;syncPause();persist()};
 const GFX=["AUTO","SHARP","SMOOTH"];
-function applyGfx(){gfxLimits();const p=clamp(save.gfx===0?Math.max(prNow,PR_MIN):PR_MAX,PR_MIN,PR_MAX);RES.bad=99;RES.wait=3;RES.t=0;
+function applyGfx(){gfxLimits();const p=clamp(save.gfx===0?Math.max(prNow,PR_MIN):PR_MAX,PR_MIN,PR_MAX);resetResolutionSample();
   if(p!==prNow){prNow=p;renderer.setPixelRatio(p);renderer.setSize(W,H,false)}}
 $("pGfx").onclick=()=>{save.gfx=(save.gfx+1)%3;applyGfx();rebuildCarModels();syncPause();persist();toast("GRAPHICS: "+GFX[save.gfx],["Sharp, eases off a little if frames slow down","Always full sharpness","Lighter on weak phones and battery"][save.gfx])};
 $("pAssist").onclick=()=>{save.assist=!save.assist;syncPause();persist()};
@@ -6127,7 +6129,7 @@ const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
   return(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&!sv.passBonus&&
     (!sv.jobs||!Object.values(sv.jobs).some(v=>typeof v==="number"?v>0:!e(v)))}
-function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:Object.keys(sv.found||{}).length,
+function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:foundCount(sv.found||{}),
   cups:Object.values(champ).filter(c=>c&&c.won).length,mods:Object.keys(sv.mods||{}).length}}
 function clAdapter(){if(window.__cloudAdapter)return window.__cloudAdapter;
   if(!FIREBASE_CONFIG.apiKey||!FIREBASE_CONFIG.projectId||!CLOUD_HOSTS.includes(location.hostname)||window.__cloudOff)return null;return fbAdapter()}
@@ -6349,7 +6351,7 @@ function updateHUD(dt){
   // a brief red edge only for a real crash; none with FLASHES OFF, which promises no red flash when you're hit (it
   // used to cover only gunshots, and a crash still flashed the screen red)
   P.flashT=Math.max(0,(P.flashT||0)-dt);P.scrape=(P.scrape||0)*Math.exp(-dt*7);
-  $("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(save.flash?P.flashT*.4:0).toFixed(3)})`;
+  drawDamageEdge(P.flashT*.4);
   const surf=P.onRoad?0:P.nr&&P.nr.d<P.nr.e.half+2.2?1:2;
   audioUpd(gi.rpm,gi.n,kG()?1:0,slip,surf,Math.abs(vF),P.scrape);
 }
@@ -7079,6 +7081,11 @@ function gunArrest(fine){
   fadeThen(420,()=>{const nr=nearestRoadGlobal(QUAY.hall[0],QUAY.hall[1]+QUAY.hall[3]+14,true);if(nr){placeOnRoad(nr,1);snapCam()}});
   toast("ARRESTED",(fine?"Fined "+fmtCr(fine)+" CR. ":"")+"Your pistol is back in the garage","bad");
 }
+function drawDamageEdge(crash){
+  const hit=save.flash?Math.max(crash,HEALTH.hurtT*.9,0):0;
+  const opacity=hit+(HEALTH.hp<30?.15:0);
+  $("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${opacity.toFixed(3)})`;
+}
 function healthTick(dt){
   const H=HEALTH;H.calm+=dt;H.hurtT-=dt;kitTick(dt);
   // the pistol and the lock ring go on the boat and whenever you aren't playing (the ring stayed over the target)
@@ -7086,7 +7093,7 @@ function healthTick(dt){
   if(H.calm>6&&H.hp<50&&H.hp>0)H.hp=Math.min(50,H.hp+4*dt);
   for(const s of GUN.sparks)if(s.t>0){s.t-=dt;if(s.t<=0)s.m.visible=false}
   for(const k of GUN.marks)if(k.t>0){k.t-=dt;k.m.material.opacity=Math.min(.7,k.t*.35);if(k.t<=0)k.m.visible=false}
-  if(H.hurtT>0||FOOT.on)$("edge").style.boxShadow=`inset 0 0 140px rgba(226,72,61,${(Math.max(0,save.flash?H.hurtT:0)*.9+(H.hp<30?.15:0)).toFixed(3)})`;
+  if(FOOT.on||BOAT.on)drawDamageEdge(0);
   GUN.hudT-=dt;if(GUN.hudT<=0){GUN.hudT=.1;
     const show1=(save.armed&&!BOAT.on)||H.hp<H.max;show("gunHud",show1);
     // the FIRE pad: whenever the pistol can be fired, kept up to date here rather than only on getting in or out
@@ -7367,7 +7374,7 @@ function boatUpdate(dt){
 }
 // a hint shown at most once every 6 s per kind
 const TOAST_AT={};
-function toastOnce(k,[t,m]){const now=performance.now();if(now-(TOAST_AT[k]||0)<6000)return;TOAST_AT[k]=now;toast(t,m,"bad")}
+function toastOnce(k,[t,m]){const now=performance.now();if(TOAST_AT[k]!==undefined&&now-TOAST_AT[k]<6000)return;TOAST_AT[k]=now;toast(t,m,"bad")}
 function driveUpdate(dt){
   if(BOAT.on){boatUpdate(dt);return}
   if(FOOT.on){footUpdate(dt);return}
@@ -7391,15 +7398,33 @@ let prevTs=0,fishT=0,doorOpen=1;
 // again, step back up. Steps are small and spaced out so the picture never pumps.
 // A level that turned out too slow right after stepping up to it is not retried for 30 s, so a phone on the
 // edge doesn't flip back and forth.
-const RES={avg:1/60,t:0,wait:3,bad:99,badT:0,upT:99};
+const RES={frames:[],elapsed:0,baseline:0,previous:0,retry:0,raiseWait:0,sinceRaise:Infinity};
+function resetResolutionSample(){
+  RES.frames.length=0;RES.elapsed=0;RES.baseline=0;RES.retry=0;RES.raiseWait=0;RES.sinceRaise=Infinity;
+}
 function adaptRes(dt){
-  if(document.hidden)return;dt=Math.min(dt,.25);RES.avg+=(Math.min(dt,.1)-RES.avg)*.05;RES.t+=dt;RES.badT+=dt;RES.upT+=dt;if(RES.t<RES.wait)return;
-  if(RES.badT>30)RES.bad=99;
-  if(PR_MIN>=PR_MAX)return;
-  let p=prNow;if(RES.avg>1/36){p=Math.max(PR_MIN,p-.25);if(p!==prNow&&RES.upT<8){RES.bad=prNow;RES.badT=0}}
-  else if(RES.avg<1/50){const next=Math.min(PR_MAX,p+.25);if(next>p&&next<RES.bad){p=next;RES.upT=0}}
-  RES.t=0;RES.wait=.5;
-  if(p!==prNow){prNow=p;renderer.setPixelRatio(p);renderer.setSize(W,H,false);RES.wait=3}
+  if(document.hidden||PR_MIN>=PR_MAX||!(dt>0))return;
+  RES.retry=Math.max(0,RES.retry-dt);RES.raiseWait=Math.max(0,RES.raiseWait-dt);RES.sinceRaise+=dt;
+  RES.frames.push(dt);RES.elapsed+=Math.min(dt,.25);
+  if(RES.elapsed<3||RES.frames.length<8)return;
+  RES.frames.sort((a,b)=>a-b);
+  const median=RES.frames[Math.floor(RES.frames.length/2)];
+  RES.frames.length=0;RES.elapsed=0;
+  let next=prNow;
+  if(RES.baseline){
+    // A cheaper picture should earn its loss of detail. Roll back a fruitless trial.
+    if(median>RES.baseline*.95){next=RES.previous;RES.retry=60}
+    RES.baseline=0;
+  }
+  if(next===prNow){
+    if(median>1/36&&prNow>PR_MIN&&RES.retry===0){
+      RES.previous=prNow;RES.baseline=median;next=Math.max(PR_MIN,prNow-.25);
+      RES.raiseWait=RES.sinceRaise<8?30:6;
+    }else if(median<1/50&&prNow<PR_MAX&&RES.raiseWait===0){
+      next=Math.min(PR_MAX,prNow+.25);RES.sinceRaise=0;
+    }
+  }
+  if(next!==prNow){prNow=next;renderer.setPixelRatio(next);renderer.setSize(W,H,false)}
 }
 // Measurement panel, shown only with ?perf in the address, for finding what makes a phone slow or its sound break
 // up before anything is changed. Frame times (p50/p95/p99 over the last 10 s, the slowest, and how many went over
