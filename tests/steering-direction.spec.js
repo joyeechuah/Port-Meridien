@@ -102,12 +102,19 @@ test.describe("phone, portrait", () => {
   test("the minimap moves down when the damage pill appears, and never covers the place and the clock", async ({ game, page }) => {
     await game.open();
     await game.driveOut();
+    // the test drive time sits under the minimap (shown here just to measure it); the streak score sits in the column
+    // under the speedometer, clear of the minimap wherever that goes
     const gap = () =>
       game.eval(() => {
+        const td = document.getElementById("tdPill"), was = td.classList.contains("hide");
+        td.classList.remove("hide");
         const loc = document.querySelector("#tl .loc").getBoundingClientRect(),
           mm = document.getElementById("mini").getBoundingClientRect(),   // the round map itself, not its wrapper (ChatGPT's review)
+          tp = td.getBoundingClientRect(),
           st = document.getElementById("streak").getBoundingClientRect();
-        return { gap: Math.round(mm.top - loc.bottom), below: Math.round(st.top - mm.bottom) };
+        td.classList.toggle("hide", was);
+        const clear = st.left >= mm.right || st.top >= mm.bottom || st.bottom <= mm.top;
+        return { gap: Math.round(mm.top - loc.bottom), below: Math.round(tp.top - mm.bottom), clear };
       });
     const before = await gap();
     expect(before.gap).toBeGreaterThanOrEqual(0);
@@ -118,8 +125,9 @@ test.describe("phone, portrait", () => {
     await game.frames(3);
     const after = await gap();
     expect(after.gap, "minimap below the place and clock").toBeGreaterThanOrEqual(0);
-    // and what sits under the minimap moved with it
+    // and what sits under the minimap moved with it, and the streak score stayed clear of it
     expect(after.below).toBe(before.below);
+    expect(before.clear && after.clear, "the streak score clear of the minimap").toBe(true);
     await page.screenshot({ path: test.info().outputPath("portrait-damage.png") });
   });
 });
