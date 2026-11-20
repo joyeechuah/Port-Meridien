@@ -166,6 +166,7 @@ body.touch #lhint{display:none}
 #streak.off{opacity:0}
 #streak .lab{font-size:11px;font-weight:700;letter-spacing:.35em;color:var(--acc);text-shadow:0 1px 2px #000,0 2px 8px #000}
 #streak .pts{font-family:var(--f-num);font-size:40px;font-weight:800;line-height:1;text-shadow:0 1px 3px rgba(0,0,0,.9),0 2px 14px #000}
+#streak .pts small{font-size:12px;letter-spacing:.08em}
 #streak .pts span{font-size:20px;color:var(--acc);margin-left:8px}
 #streak .bar{width:160px;height:3px;margin:6px auto 0;background:rgba(255,255,255,.18);border-radius:2px;overflow:hidden}
 #streak .bar i{display:block;height:100%;background:var(--acc)}
@@ -215,8 +216,8 @@ body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px +
 /* touch pads */
 #pads{position:fixed;left:0;right:0;bottom:0;z-index:25;padding:0 calc(16px + var(--sr)) calc(16px + var(--sb)) calc(16px + var(--sl));display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none}
 .pz{display:flex;gap:12px;align-items:flex-end;pointer-events:auto}
-.pb{border-radius:50%;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7);font-weight:700;font-size:11px;letter-spacing:.06em;touch-action:none;backdrop-filter:blur(6px)}
-.pb.on{background:rgba(255,255,255,.3);border-color:#fff;color:#fff;transform:scale(.94)}
+.pb{border-radius:50%;background:rgba(18,25,31,.68);border:2px solid rgba(255,255,255,.64);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;letter-spacing:.06em;touch-action:none;backdrop-filter:blur(6px)}
+.pb.on{background:rgba(21,68,79,.9);border-color:#fff;color:#fff;transform:scale(.94)}
 #bL,#bR{width:76px;height:76px;font-size:24px}
 #bG{width:84px;height:84px} #bB{width:66px;height:66px} #bB.rev{font-size:10px;letter-spacing:.02em} #bH{width:58px;height:58px;font-size:10px}
 
@@ -307,6 +308,8 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 /* narrow portrait phones: the top bar takes two rows (chips, then money / level / place),
    and centre messages move into the clear band under the minimap */
 @media (max-width:560px){
+  #chips{top:calc(6px + var(--st));left:calc(8px + var(--sl));right:calc(8px + var(--sr));gap:4px}
+  #chips .chip{flex:1;min-width:0;padding:4px 1px;min-height:44px;letter-spacing:.08em}
   #tl{top:calc(56px + var(--st))}
   body.touch #speedo{top:calc(56px + var(--st))}
   body.touch #minWrap{top:calc(164px + var(--st) + var(--tlx,0px))}
@@ -318,6 +321,12 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   #evhud span{font-size:8px;letter-spacing:.16em}
   #evhud b{font-size:17px}
   #toasts,body.touch #toasts{top:auto;bottom:calc(300px + var(--sb));right:auto;left:50%;transform:translateX(-50%);align-items:center;width:min(300px,calc(100% - 32px))}
+  /* In free roam the column below the speedometer stays clear of the minimap and the car. */
+  body.touch #hud:has(>#evhud.hide):has(>#jobhud.hide) #toasts{
+    top:calc(192px + var(--st));bottom:auto;left:calc(max(50%,190px) + var(--sl));right:calc(10px + var(--sr));
+    width:auto;transform:none;align-items:stretch
+  }
+  body.touch #toasts .toast{padding:6px 8px}
   #count{top:58%;font-size:96px}
   #wrong{top:48%}
   #prompt,body.touch #prompt{bottom:calc(250px + var(--sb));white-space:normal;text-align:center;width:max-content;max-width:calc(100% - 32px)}
@@ -530,7 +539,7 @@ body.touch #phExit kbd{display:none}
     <div id="gunHud" class="hide"><span class="hp"><i id="hpBar"></i></span><span id="gunTxt">PISTOL 48</span></div>
   </div>
   <div id="tdPill" class="pill hide">TEST DRIVE <b class="num" id="tdT">1:30</b></div>
-  <div id="streak" class="off"><div class="lab" id="frLab">STREAK</div><div class="pts"><b id="frPts">0</b><span id="frMul">x1.0</span></div><div class="bar"><i id="frBar"></i></div></div>
+  <div id="streak" class="off"><div class="lab" id="frLab">STREAK</div><div class="pts"><b id="frPts">0</b> <small>PTS</small><span id="frMul">x1.0</span></div><div class="bar"><i id="frBar"></i></div></div>
   <div id="evhud" class="hide">
     <div><span id="evL1">POSITION</span><b id="evPos">1/4</b></div>
     <div><span>TIME</span><b id="evTime">0:00.00</b></div>
@@ -6394,7 +6403,7 @@ function footModel(){
   // trunk: hips, a chest wider than the waist and flatter front to back, shoulders, neck
   // (kept slimmer front to back than the thighs: it used to bulge in front of them and catch the light, a pale
   // wedge at the crotch)
-  part(G,ball,trousers,0,.92,0,.16,.1,.088);
+  part(G,ball,trousers,0,.951,0,.16,.05,.088);
   // Sewn shirt silhouette with a hem, a waist and sloping shoulders. The lathe UVs carry the print.
   const chest=new THREE.LatheGeometry([[0,.898],[.193,.898],[.198,.91],[.199,.956],[.159,1.085],[.177,1.25],[.204,1.39],[.19,1.435],[.067,1.49]]
     .map(([r,y])=>new THREE.Vector2(r,y)),24);
@@ -6452,7 +6461,7 @@ function footModel(){
     part(knee,ball,shoe,0,-.425,.05,.058,.048,.135);
     legs.push(hip);knees.push(knee);
     // arm: upper arm from the shoulder, forearm from the elbow, a hand
-    const sh=pivot(G,s*.225,1.425,0);sh.rotation.z=s*.07;part(sh,ball,jacket,0,0,0,.062);part(sh,tube(.058,.048,.29),jacket,0,0,0);
+    const sh=pivot(G,s*.200,1.416,0);sh.rotation.z=s*.07;part(sh,ball,jacket,0,0,0,.060,.040,.058);part(sh,tube(.058,.048,.29),jacket,0,0,0);
     const el=pivot(sh,0,-.29,0);longSleeves.push(part(el,ball,skin,0,0,0,.044),part(el,tube(.046,.038,.25),skin,0,0,0));
     // A tapered palm with a distinct knuckle line and thumb, visible alongside the trousers.
     part(el,ball,skin,s*.006,-.286,.009,.035,.05,.028);
