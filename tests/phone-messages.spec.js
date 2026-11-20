@@ -3,7 +3,8 @@
 // damage pill and the stars pushed the minimap down (seen in a phone recording on the live site). Now the score, the
 // race panel and the contract panel sit in the column under the speedometer, and the messages go under whichever is
 // showing, only as many as fit above the car (the newest always). Free ride, a race and a contract, on three phone
-// sizes (392 x 731 is the phone in the recording), plus a sideways phone, where nothing moved.
+// sizes (392 x 731 is the phone in the recording), once more with a wider font (as on CI, without the game's fonts),
+// plus a sideways phone, where nothing moved.
 const { test, expect } = require("./support/game");
 
 const overlap = (a, b) => !!(a && b && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1);
@@ -53,26 +54,30 @@ const msgs = () => {
 };
 
 function checkPortrait(r, what) {
+  const at = (b) => b && `${Math.round(b.left)}-${Math.round(b.right)} x ${Math.round(b.top)}-${Math.round(b.bottom)}`;
   expect(r.count, `${what}: messages are up`).toBeGreaterThan(0);
   expect(r.newest, `${what}: the newest message shows`).toBe(true);
   const panels = [r.streak, r.evhud, r.jobhud].filter(Boolean);
   for (const t of r.toasts) {
     for (const p of panels) expect(overlap(t, p), `${what}: a message covers the score / race / contract panel`).toBe(false);
-    for (const b of [...r.tl, r.mini, r.gps, r.speedo]) expect(overlap(t, b), `${what}: a message covers the top-left column, the minimap, the GPS line or the speedometer`).toBe(false);
+    for (const b of [...r.tl, r.mini, r.gps, r.speedo]) expect(overlap(t, b), `${what}: a message (${at(t)}) covers the top-left column, the minimap, the GPS line or the speedometer (${at(b)})`).toBe(false);
     expect(t.bottom, `${what}: a message sits on the car`).toBeLessThanOrEqual(r.carTop);
   }
   for (const p of panels) {
-    for (const b of [...r.tl, r.mini, r.gps, r.speedo]) expect(overlap(p, b), `${what}: the score / race / contract panel covers the left column, the minimap or the speedometer`).toBe(false);
+    for (const b of [...r.tl, r.mini, r.gps, r.speedo]) expect(overlap(p, b), `${what}: the score / race / contract panel (${at(p)}) covers the left column, the minimap or the speedometer (${at(b)})`).toBe(false);
     expect(p.bottom, `${what}: the score / race / contract panel sits on the car`).toBeLessThanOrEqual(r.carTop);
   }
 }
 
-for (const [w, h] of [[392, 731], [375, 667], [390, 844]])
-  test.describe(`portrait ${w}x${h}`, () => {
+for (const [w, h, wide] of [[392, 731], [375, 667], [390, 844], [392, 731, true]])
+  test.describe(`portrait ${w}x${h}${wide ? ", wide font" : ""}`, () => {
     test.use({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
 
-    test(`${w}x${h}: messages stay clear of the score, the panels, the minimap and the car`, async ({ game, page }) => {
+    test(`${w}x${h}${wide ? ", wide font" : ""}: messages stay clear of the score, the panels, the minimap and the car`, async ({ game, page }) => {
       await game.open({ police: true });
+      // the money / level / place column is as wide as its widest pill (the damage pill), and a wider font makes it
+      // wider still: on CI (DejaVu Sans, not the game's Barlow) it reached past the contract panel's fixed 190 px
+      if (wide) await page.addStyleTag({ content: ':root{--f-body:"DejaVu Sans",sans-serif!important;--f-num:"DejaVu Sans",sans-serif!important}' });
       await game.driveOut();
 
       // free ride with a streak going, a damaged car and the stars showing (the left column at its tallest)
