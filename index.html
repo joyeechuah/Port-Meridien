@@ -5391,13 +5391,13 @@ function cycleCam(){camMode=(camMode+1)%4;save.cam=camMode;persist();$("chCam").
 /* ---------- paint swatches ---------- */
 // each swatch is named for screen readers, and says whether it's the paint on the car
 const PAINT_NAMES={0xf1f1ef:"White",0x141518:"Black",0xa9aeb4:"Silver",0x5a6168:"Grey",0xc0141a:"Red",0xe8761a:"Orange",0xf0c419:"Yellow",0x1d4aa8:"Blue",0x2c8ad8:"Light blue",0x0d6b3c:"Green"};
-function paintName(col,first){const hex="#"+col.toString(16).padStart(6,"0").toUpperCase();return (PAINT_NAMES[col]||(first?"Original":"Custom"))+" paint"+(PAINT_NAMES[col]?"":" "+hex)}
-function swatches(box,current,onPick){
+function paintName(col,original){const hex="#"+col.toString(16).padStart(6,"0").toUpperCase();return (PAINT_NAMES[col]||(original?"Original":"Custom"))+" paint"+(PAINT_NAMES[col]?"":" "+hex)}
+function swatches(box,current,original,onPick){
   box.innerHTML="";
-  const list=[...new Set([current,...PAINTS])];
-  list.forEach((col,i)=>{
+  const list=[...new Set([current,original,...PAINTS])];
+  list.forEach(col=>{
     const b=document.createElement("button"),on=col===current;b.className="swb"+(on?" on":"");
-    b.style.background="#"+col.toString(16).padStart(6,"0");b.setAttribute("aria-label",paintName(col,i===0&&!PAINTS.includes(col)));b.setAttribute("aria-pressed",on?"true":"false");
+    b.style.background="#"+col.toString(16).padStart(6,"0");b.setAttribute("aria-label",paintName(col,col===original));b.setAttribute("aria-pressed",on?"true":"false");
     b.onclick=()=>{[...box.children].forEach(x=>{x.classList.remove("on");x.setAttribute("aria-pressed","false")});b.classList.add("on");b.setAttribute("aria-pressed","true");onPick(col)};
     box.appendChild(b);
   });
@@ -5448,7 +5448,7 @@ function gPick(i){
   carText(c,"g");
   $("v1").textContent=c.top+" km/h";$("v2").textContent=Math.round(c.acc*10)+" / 10";$("v3").textContent=Math.round(c.grip*10)+" / 10";
   statBars(c,"f");
-  swatches($("gSw"),paintOf(id),col=>{save.paint[id]=col;getCar(id).paint(col);if(showMeshes[id])showMeshes[id].paint(col);persist()});
+  swatches($("gSw"),paintOf(id),c.body,col=>{save.paint[id]=col;getCar(id).paint(col);if(showMeshes[id])showMeshes[id].paint(col);persist()});
   [...dots.children].forEach((d,k)=>{d.classList.toggle("on",k===gSel);d.setAttribute("aria-pressed",String(k===gSel))});
   const s=SPOTS[gSel],p=gW(s[0],s[1]);selRing.position.set(p.x,gY+.03,p.z);
   selSpot.position.copy(gW(s[0],s[1]+1,8.8));selSpot.target.position.copy(p);
@@ -5701,7 +5701,7 @@ function dPick(i){
   const m=getShowCar(c.id);m.G.visible=true;dPaint=paintOf(c.id);m.paint(dPaint);
   carText(c,"d");
   $("dv1").textContent=c.top+" km/h";$("dv2").textContent=Math.round(c.acc*10)+" / 10";$("dv3").textContent=Math.round(c.grip*10)+" / 10";statBars(c,"df");
-  swatches($("dSw"),dPaint,col=>{dPaint=col;m.paint(col);if(own){save.paint[c.id]=col;getCar(c.id).paint(col);persist()}});
+  swatches($("dSw"),dPaint,c.body,col=>{dPaint=col;m.paint(col);if(own){save.paint[c.id]=col;getCar(c.id).paint(col);persist()}});
   const sellPrice=Math.round(c.price*.6/100)*100;
   $("dPrice").textContent=own?"In your garage":fmtCr(c.price)+" CR";
   $("dNote").textContent=own?(c.id===curId?"You are driving this car":"Sells for "+fmtCr(sellPrice)+" CR"):(save.cr>=c.price?(full?"Your garage is full":"Delivered to your house after purchase"):"You need "+fmtCr(c.price-save.cr)+" more CR");
