@@ -5,11 +5,11 @@ const path = require('path');
 const vm = require('vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
-test('Port Meridien screens and descriptions identify the early build and its playable features', () => {
+test('Port Meridien screens and descriptions show the game title and describe its playable features', () => {
   const markup = html.slice(0, html.indexOf('<script src='));
   expect(markup).not.toMatch(/IBIZA|EIVISSA|ISLAND PASSPORT|ISLAND OF/);
   const loader = markup.slice(markup.indexOf('<div id="load"'), markup.indexOf('<section id="arrival"'));
-  expect(loader).toMatch(/>EARLY BUILD</);
+  expect(loader).not.toMatch(/early build/i);
   expect(loader).toMatch(/<h1\b[^>]*>PORT MERIDIEN<\/h1>/);
   for (const attribute of ['name="description"', 'property="og:description"']) {
     const description = markup.match(new RegExp('<meta ' + attribute + ' content="([^"]+)"'))?.[1];
