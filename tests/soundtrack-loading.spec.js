@@ -1,9 +1,8 @@
 const { test, expect } = require('@playwright/test');
-const fs = require('node:fs');
-const path = require('node:path');
 const vm = require('node:vm');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+// the game's scripts (js/*.js, in load order): the player is in js/media.js
+const html = require('./support/source').gameSource();
 const player = html.slice(html.indexOf('const SONGS='), html.indexOf('// nothing plays while the tab is hidden'));
 
 // Run the shipping player with a controlled clock and transport. No audio hardware or live network is needed.
