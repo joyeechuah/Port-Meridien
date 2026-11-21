@@ -23,8 +23,10 @@ The source comment describes these as Google Flow Music tracks; `docs/world-plan
 | File | In-game title/use | SHA-256 |
 | --- | --- | --- |
 | `audio/showroom.mp3` | Dusk Fitting Room; wardrobe, garage and dealer | `87f00e86618ab0e87e3956089103d689468e667a8940465212dc3dfa717723ae` |
-| `audio/cruise.mp3` | Coastal Cruise Loop; driving | `1bf54392a3e8b6c8202351e3632c2381605bde0994d580edd69123a9e5d6f26f` |
-| `audio/highway.mp3` | Island Highway Run; racing | `c276a8b73f2bdad5ca67f013df7ccb1795404ff084578fe4e9e7602ffa53879e` |
+| `audio/cruise.mp3` | Harbour Lights Outer Road; free driving | `a072b5a30db060e180f1b86707ff94c7e4fc8013ba53e73e8a912c2a5e83d837` |
+| `audio/highway.mp3` | Coastal Checkpoint; races | `71211cd7f2e95571ce8918ec25165f22af544b986910dc7ccea3ff581ccd60df` |
+| `audio/reveal.mp3` | Harbour Reveal; opening flyover | `18e63df34db5e8995569791159d9707900c6bff95899bd8ea01644b597968780` |
+| `audio/chase.mp3` | Harbor Chase Loop; police pursuits | `3ebd2cc7ad4f656ca8ede7adc5be7d24027c699aa297dc6fc1e386668728e5c6` |
 
 For each file record: actual generating product/model, generation/export date, account plan at generation, output identifier, source inputs, and applicable terms/version. Keep account receipts private; public credits need only attribution required by the actual licence. Until this evidence exists, status is **unverified**, not “free to sell”.
 

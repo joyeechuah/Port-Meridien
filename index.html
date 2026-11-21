@@ -4664,15 +4664,17 @@ function makeMusic(ctx,out){
   };
 }
 
-// ---- recorded tracks: three songs made with Google Flow Music, in the audio folder. Each file plays its
+// ---- recorded tracks: five songs supplied for Port Meridien, in the audio folder. Each file plays its
 // opening once, then loops a section that starts at `offset` and lasts L seconds; every repeat fades in over
 // the X-second tail of the one before, scheduled on the audio clock so the beat never drifts.
 // The composed tracks above stand in while a file loads, and for good if files can't be fetched (a page
 // opened straight from disk can't). Only the songs in use are kept decoded, to spare memory on phones.
 const SONGS={
   lounge:{url:"audio/showroom.mp3",offset:54.75,L:85.33325,X:1.5,gain:.58},   // Dusk Fitting Room
-  coast:{url:"audio/cruise.mp3",offset:20.1286,L:99.9555,X:1.5,gain:.28},      // Coastal Cruise Loop
-  race:{url:"audio/highway.mp3",offset:22.09,L:107.9999,X:1.5,gain:.3}         // Coastal Highway Run
+  coast:{url:"audio/cruise.mp3",offset:40.25,L:73.845875,X:1.5,gain:.28},      // Harbour Lights Outer Road
+  race:{url:"audio/highway.mp3",offset:37.05,L:81.10625,X:1.5,gain:.3},       // Coastal Checkpoint
+  chase:{url:"audio/chase.mp3",offset:32.05,L:97.999625,X:1.5,gain:.32},         // Harbor Chase Loop
+  reveal:{url:"audio/reveal.mp3",once:true,gain:.5}                              // Harbour Reveal
 };
 let MUSIC=null,songOut=null;
 function musicInit(){if(MUSIC||!AC)return;try{
@@ -4715,8 +4717,12 @@ const FADE_IN=equalPower(true),FADE_OUT=equalPower(false);
 function songStart(n,now){const S=SONGS[n],P={bus:AC.createGain(),tone:AC.createBiquadFilter(),srcs:[],want:-1};
   P.tone.type="lowpass";P.tone.frequency.value=18000;P.bus.gain.value=0;P.bus.connect(P.tone);P.tone.connect(songOut);
   // first pass from the very beginning, so the opening is heard once
-  const t0=now+.05,src=AC.createBufferSource(),g=AC.createGain();src.buffer=S.buf;src.connect(g);g.connect(P.bus);src.start(t0);
-  P.srcs.push({src,g});P.next=t0+S.offset+S.L;S.p=P;return P}
+  const t0=now+.05,src=AC.createBufferSource(),g=AC.createGain();src.buffer=S.buf;src.connect(g);g.connect(P.bus);if(S.once){
+    syncArrivalClock();
+    const elapsed=arrivalTime+.05;
+    if(elapsed<S.buf.duration)src.start(t0,elapsed);
+  }else src.start(t0);
+  P.srcs.push({src,g});P.next=S.once?Infinity:t0+S.offset+S.L;S.p=P;return P}
 function songStop(n,now){const S=SONGS[n],P=S.p;if(!P||P.end)return;P.want=0;P.bus.gain.setTargetAtTime(0,now,.45);P.end=now+2.5}
 function songTick(n,now){const S=SONGS[n],P=S.p;if(!P)return;
   if(P.end&&now>P.end){P.srcs.forEach(o=>{try{o.src.stop()}catch(e){}o.g.disconnect()});P.bus.disconnect();P.tone.disconnect();S.p=null;S.idle=now;return}
@@ -4734,8 +4740,9 @@ function songTick(n,now){const S=SONGS[n],P=S.p;if(!P)return;
 function musicWant(){
   if(tabIdle||!save.music)return [null,0];   // SOUND FX covers engine, tyres and beeps; music has its own switch
   if(state==="GARAGE"||state==="WARDROBE"||state==="LOAD"||state==="DEALER")return ["lounge",1];
+  if(state==="ARRIVAL")return arrivalSince!==null&&!matchMedia("(prefers-reduced-motion: reduce)").matches?["reveal",1]:[null,0];
   if(state==="EXIT")return ["coast",.8];
-  const road=ev?"race":"coast";
+  const road=ev?"race":WANTED.lvl?"chase":"coast";
   if(state==="PAUSE"||state==="MAP"||state==="INTRO"||state==="RESULT")return [road,.5];
   return [road,1];
 }
@@ -4752,9 +4759,9 @@ function musicTick(){
     if(SONGS[want].st==="ready")file=want;
     else{const W=SONGS[want],cur=Object.keys(SONGS).find(n=>SONGS[n].p&&!SONGS[n].p.end);
       if(W.askT==null)W.askT=now;
-      if(cur&&W.st!=="failed")file=cur;
+      if(cur&&cur!=="reveal"&&cur!=="chase"&&want!=="reveal"&&W.st!=="failed")file=cur;
       // give a first load up to 4 s of silence rather than starting the composed track only to swap it out
-      else if(W.st==="failed"||now-W.askT>4)comp=want==="race"?"coast":want}
+      else if(W.st==="failed"||now-W.askT>4)comp=want==="reveal"?null:want==="lounge"?"lounge":"coast"}
   }
   for(const n in SONGS){const S=SONGS[n];
     if(n===file){if(!S.p||S.p.end){if(S.p)songTick(n,now+99);songStart(n,now)}
@@ -4785,6 +4792,7 @@ function firstGesture(){
 GESTURES.forEach(g=>addEventListener(g,firstGesture,true));
 // the garage song downloads while the island is being built, so it can start the moment the player taps START
 songFetch("lounge");
+if(save.music&&!matchMedia("(prefers-reduced-motion: reduce)").matches)songFetch("reveal");
 // nothing plays while the tab is hidden; picks up again when it comes back
 document.addEventListener("visibilitychange",()=>{if(!AC)return;if(document.hidden){try{const p=AC.suspend();if(p&&p.catch)p.catch(()=>{})}catch(e){}}else acResume()});
 
