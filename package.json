@@ -6,13 +6,15 @@
     "start": "node tests/support/server.js",
     "lint": "node tests/support/lint.js",
     "test": "playwright test",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "stamp": "node tests/support/stamp.js"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
     "eslint": "9.39.4",
     "firebase": "10.12.2",
     "globals": "15.15.0",
+    "targaryen": "^3.1.0",
     "three": "0.128.0"
   },
   "engines": {

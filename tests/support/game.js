@@ -10,13 +10,13 @@
 //
 // After each test the fixture fails the test if the page threw an error or logged one to the console.
 const { test: base, expect } = require("@playwright/test");
-const { instrumentedPage } = require("./instrument");
+const { instrumentedPage, instrumentedScripts } = require("./instrument");
 
 const THREE_URL = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
 const THREE_FILE = require.resolve("three/build/three.min.js");
 // the Firebase scripts the cloud save loads, from the npm package of the same pinned version (again the page's hashes
 // are checked by the browser). Only the cloud tests that open SAVE MY PROGRESS load them
-const FIREBASE_URL = /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/firebase\/10\.12\.2\/(firebase-(?:app|auth|firestore)-compat\.js)$/;
+const FIREBASE_URL = /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/firebase\/10\.12\.2\/(firebase-(?:app|auth|firestore|database)-compat\.js)$/;
 const FIREBASE_DIR = require("path").dirname(require.resolve("firebase/package.json"));
 const SAVE_KEY = "port-meridien-v1";
 
@@ -96,6 +96,16 @@ class Game {
       await page.route(
         (u) => u.href.startsWith("http://127.0.0.1") && (u.pathname === "/index.html" || u.pathname === "/"),
         (r) => r.fulfill({ contentType: "text/html; charset=utf-8", body: instrumentedPage() })
+      );
+      // the game's scripts, with the test hooks (whatever ?v= stamp the page asks with)
+      let scripts = null;
+      await page.route(
+        (u) => u.href.startsWith("http://127.0.0.1") && /^\/js\/[A-Za-z0-9_-]+\.js$/.test(u.pathname),
+        (r) => {
+          scripts = scripts || instrumentedScripts();
+          const body = scripts[new URL(r.request().url()).pathname.slice(1)];
+          return body === undefined ? r.continue() : r.fulfill({ contentType: "text/javascript; charset=utf-8", body });
+        }
       );
     }
     if (!render && !this._norender) {

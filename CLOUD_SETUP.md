@@ -26,13 +26,20 @@ These rules let a signed-in player read and write only their own save (`saves/<t
 ## 4. Register the web app and copy its config
 
 1. Open **Project settings** (the gear icon), then **General → Your apps**, and add a **Web** app (the `</>` icon). Firebase Hosting isn't needed.
-2. Firebase shows a `firebaseConfig` object. Copy four of its values into `FIREBASE_CONFIG` near the top of the CLOUD SAVE section in `index.html`:
+2. Firebase shows a `firebaseConfig` object. Copy four of its values into `FIREBASE_CONFIG` at the top of the CLOUD SAVE section in `js/screens.js` (then run `npm run stamp`):
 
 ```js
 const FIREBASE_CONFIG={apiKey:"AIza…",authDomain:"port-meridien.firebaseapp.com",projectId:"port-meridien",appId:"1:…:web:…"};
 ```
 
 These values only identify the project and are visible to anyone who opens the page; that's how Firebase web apps work. They are not passwords. What protects the saves is the rules from step 3. You can also send me the four values and I'll put them in.
+
+## 5. Playing together (optional)
+
+1. **Build → Authentication → Sign-in method:** add **Anonymous** and switch it on. Players join rooms without a Google account.
+2. **Build → Realtime Database → Create database:** choose **Singapore (asia-southeast1)** and start in **locked mode**.
+3. Open its **Rules** tab, replace everything with the contents of [`database.rules.json`](database.rules.json) and **Publish**. The rules give each room four numbered seats: a signed-in player can read a room only by its code, sit in a free seat or keep their own, hold one seat at most, and write nothing but their own name, outfit, car and position.
+4. Add the database's URL (shown at the top of its **Data** tab) to `FIREBASE_CONFIG` as `databaseURL`, then run `npm run stamp`.
 
 ## How it behaves
 
@@ -43,6 +50,8 @@ These values only identify the project and are visible to anyone who opens the p
 - **Another device saved meanwhile:** the backup doesn't overwrite it. The player is asked which progress to keep, in the pause menu or the garage, never in the middle of a drive.
 
 ## Free-plan limits (Spark)
+
+The Realtime Database allows 100 connections at once and 10 GB of downloads a month. A game connects only while it's in a room. A player in a full room receives about 5 KB a second, so 10 GB covers roughly 600 player-hours a month in full rooms (more when players are parked, which sends once a second).
 
 Firestore allows 50,000 reads and 20,000 writes a day. Each backup is one read and one write, and backups happen at most every 30 s while progress is changing. That covers a few hundred players a day. If the game grows past that, the Blaze plan charges per use.
 

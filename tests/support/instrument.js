@@ -1,18 +1,17 @@
-// The page the tests drive: the shipping index.html, read from disk on every run, with test hooks added in
-// memory. index.html itself is never changed, so the tests always exercise the code players get.
+// The page the tests drive: the shipping index.html and its scripts in js/, read from disk on every run, with test
+// hooks added in memory. The files themselves are never changed, so the tests always exercise the code players get.
 //
 // The hooks only add ways to look inside the game, plus two small helpers:
-//   window.__T      read access to the game's internal state and functions (the game code is wrapped in a
-//                   function, so nothing is reachable from outside otherwise)
+//   window.__T      read access to the game's internal state and functions, as live getters (the scripts' top-level
+//                   names are global, but a const or let isn't a property of window, so this keeps one way in)
 //   window.__DTMAX  lets a test take bigger time steps through scripted scenes (the garage exit)
 //   window.__AUD    counts impact sounds
 //   window.__NORENDER  set by a test before the page loads: the 3D scene is never drawn (much faster)
-// Each edit must match exactly once. If the game's code changes so that one no longer matches, the tests stop
-// with a message saying which, rather than quietly testing something else.
+// Each edit must match exactly once across the scripts. If the game's code changes so that one no longer matches,
+// the tests stop with a message saying which, rather than quietly testing something else.
 const fs = require("fs");
 const path = require("path");
-
-const ROOT = path.resolve(__dirname, "..", "..");
+const { ROOT, readPage, scriptFiles } = require("./source");
 
 // internal names the tests read; each is exposed as a getter, so the value is always the live one, and a name
 // that no longer exists fails only the tests that use it, with "<name> is not defined"
@@ -26,6 +25,7 @@ const NAMES = (
   "openMap openMapPopup pad passportClose passportOpen pauseOff pauseOn pc persist photoCapture photoEnter " +
   "photoExit photoLook photoLookSet photoReset prNow promptAct renderer resetToRoad routeBetween save scene " +
   "toast toastFit " +
+  "NET netAt netState netTick fbLoad FB_LOADS " +
   "seaT setGPS clearGPS setState skyClock skyU startEvent startTestDrive state streakReset testDrive " +
   "updatePrompt zoneAt Hf LM_R gates fadeThen layoutHUD show audioOn acResume musicWant photoFrame finishTestDrive gateOf trackRoute trackRouteFull mapMarkers CAMV snapCam DIFFS setDiff raceRewards GH ghostAt ghostTimeAt evDirs updateTraffic GP TILT steerIn STEER_SENS pollPad CUPS cupTimes cupsOpen PROF carShape cabinPaint GO garageWant garageCam HOUSE_MESHES SPOTS gW GO_STAGE custOpen custClose modsOf modCost MOD_OPTS carMeshes showMeshes getCar rebuildCar PLATE_TEX HD junctionAt RT TEDGES cupStart cupBlocked showResult SIDE buildHeroCar disposeHeroCar SHAPE_CACHE CAR_ENV ghostModel buildTrafficCar updateCarEnv rebuildCarModels tabStop tabIdle frame CL CLOUD_KEY FIREBASE_CONFIG fbAdapter clSync clProg clFresh clOpen lvlOf jobTick"
 ).split(/\s+/);
@@ -33,13 +33,13 @@ const NAMES = (
 const EDITS = [
   {
     name: "test hooks after boot()",
-    find: "\nboot();\n})();",
+    find: "\nboot();\n",
     replace:
       "\nboot();\nwindow.__T={" +
       NAMES.map((n) => `get ${n}(){return ${n}}`).join(",") +
       ",set camMode(v){camMode=v}};\n" +
       // logic tests switch 3D drawing off from the start (see game.js)
-      "if(window.__NORENDER){renderer.__draw=renderer.render;renderer.render=function(){}}\n})();",
+      "if(window.__NORENDER){renderer.__draw=renderer.render;renderer.render=function(){}}\n",
   },
   {
     name: "time step cap (window.__DTMAX)",
@@ -59,18 +59,24 @@ function count(hay, needle) {
   return n;
 }
 
+// the page itself as shipped (the hooks are in the scripts)
 function instrumentedPage() {
-  let html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-  for (const e of EDITS) {
-    const n = count(html, e.find);
-    if (n !== 1)
-      throw new Error(
-        `tests/support/instrument.js: the "${e.name}" edit expects ${JSON.stringify(e.find)} once in index.html, found ${n}. ` +
-          "The game's code has changed there; update the edit to match."
-      );
-    html = html.replace(e.find, () => e.replace);
-  }
-  return html;
+  return readPage();
 }
 
-module.exports = { instrumentedPage, NAMES, ROOT };
+// every script in js/ with the hooks added: {"js/core.js": text, ...}
+function instrumentedScripts() {
+  const files = scriptFiles();
+  for (const e of EDITS) {
+    const where = files.filter((f) => count(f.text, e.find) > 0), n = files.reduce((a, f) => a + count(f.text, e.find), 0);
+    if (n !== 1)
+      throw new Error(
+        `tests/support/instrument.js: the "${e.name}" edit expects ${JSON.stringify(e.find)} once in the game's scripts, found ${n}` +
+          (where.length ? ` (${where.map((f) => f.rel).join(", ")})` : "") + ". The game's code has changed there; update the edit to match."
+      );
+    where[0].text = where[0].text.replace(e.find, () => e.replace);
+  }
+  return Object.fromEntries(files.map((f) => [f.rel, f.text]));
+}
+
+module.exports = { instrumentedPage, instrumentedScripts, NAMES, ROOT };

@@ -19,6 +19,39 @@ const TYPES = {
   ".txt": "text/plain; charset=utf-8",
 };
 
+// ?mp=local (js/net.js): playing together without the Realtime Database, on this computer. Each room is an event
+// stream: GET /__play/<code> listens, POST /__play/<code> sends a small JSON message to everyone listening
+const ROOMS = new Map();
+function relay(req, res, code) {
+  if (req.method === "GET") {
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
+    res.write(": open\n\n");
+    let set = ROOMS.get(code);
+    if (!set) ROOMS.set(code, (set = new Set()));
+    set.add(res);
+    req.on("close", () => {
+      set.delete(res);
+      if (!set.size) ROOMS.delete(code);
+    });
+    return;
+  }
+  if (req.method !== "POST") return res.writeHead(405).end();
+  let body = "";
+  req.on("data", (c) => {
+    body += c;
+    if (body.length > 4096) req.destroy();
+  });
+  req.on("end", () => {
+    try {
+      JSON.parse(body);
+    } catch {
+      return res.writeHead(400).end();
+    }
+    for (const r of ROOMS.get(code) || []) r.write("data: " + body.replace(/[\r\n]/g, "") + "\n\n");
+    res.writeHead(204).end();
+  });
+}
+
 const server = http.createServer((req, res) => {
   let rel;
   try {
@@ -27,6 +60,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(400).end();
     return;
   }
+  const play = /^\/__play\/([A-HJ-NP-Z2-9]{4})$/.exec(rel);
+  if (play) return relay(req, res, play[1]);
   if (rel.endsWith("/")) rel += "index.html";
   const file = path.join(ROOT, rel);
   // never serve anything outside the repository folder, or its node_modules and git data
