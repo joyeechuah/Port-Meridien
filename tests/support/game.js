@@ -16,7 +16,7 @@ const THREE_URL = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.mi
 const THREE_FILE = require.resolve("three/build/three.min.js");
 // the Firebase scripts the cloud save loads, from the npm package of the same pinned version (again the page's hashes
 // are checked by the browser). Only the cloud tests that open SAVE MY PROGRESS load them
-const FIREBASE_URL = /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/firebase\/10\.12\.2\/(firebase-(?:app|auth|firestore)-compat\.js)$/;
+const FIREBASE_URL = /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/firebase\/10\.12\.2\/(firebase-(?:app|auth|firestore|database)-compat\.js)$/;
 const FIREBASE_DIR = require("path").dirname(require.resolve("firebase/package.json"));
 const SAVE_KEY = "port-meridien-v1";
 

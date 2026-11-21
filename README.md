@@ -125,7 +125,8 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 - **The police:** patrols, a wanted level of one to five stars, chases by car and on foot, fines, and losing them.
 - **The pistol:** lock-on aiming, health, being knocked out, arrest, and settings for violence and flashes.
 - **Things to do:** races, time trials, championships, delivery contracts, speed radars and an explorer passport of 18 landmarks.
-- **Saves** in the browser. Optional cloud saves are built in but switched off until this game has its own Firebase project (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
+- **Playing together:** **PLAY TOGETHER** in the pause menu starts a room with a four-letter code. Up to three friends join with it from their own phones or computers, and everyone sees each other drive, walk and take the boat, with a name above each player. Traffic, the police, races and the time of day stay each player's own.
+- **Saves** in the browser, with an optional cloud backup through Google sign-in on the game's own site (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
 
 ## What's next
 
@@ -183,6 +184,8 @@ Run one Playwright instance at a time: the test server uses port 4173 and reads 
 The default build saves progress in this browser’s local storage. It has no ads. On the game's own site it counts visits with Cloudflare Web Analytics: page views, countries, devices and load times, with no cookies or storage and nothing about you or your progress. It doesn't count a browser that asks not to be tracked (Global Privacy Control or Do Not Track), or any copy of the game outside joyeechuah.github.io. It loads three.js from cdnjs and fonts from Google Fonts. Deployments configured for optional Google sign-in can also back up progress to Firestore. If the game asks which save to keep, **Decide Later** postpones the choice. Reopen Cloud Save to compare the two copies. Ghost laps stay on the device. See [cloud save setup](CLOUD_SETUP.md).
 
 While you're signed in, this browser keeps your Google name and email to show who is signed in. Signing out clears them and keeps only your account's id, with no name or email, so if a different Google account signs in on this browser, the game asks before your progress goes to it.
+
+In a room, **PLAY TOGETHER** sends the name you choose (up to 12 letters), your outfit, your car and paint, and where you are, about eight times a second, to Firebase's Realtime Database in Singapore. Anyone with the room's code can see them, and rooms can't be listed or searched. Leaving the room, closing the game or losing the connection removes them. Joining signs in anonymously: no Google account, name or email is involved.
 
 ## Content
 

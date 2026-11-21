@@ -92,9 +92,9 @@ test.describe("cloud save", () => {
     // and no visit counter either: it only runs on the game's own site (this is the test server)
     expect(game.external.filter((u) => /cloudflareinsights|firebase|gstatic/.test(u))).toEqual([]);
     expect(await game.eval(() => [...document.scripts].some((s) => /cloudflareinsights/.test(s.src)))).toBe(false);
-    // this game has no cloud project yet: the panel says cloud saves aren't set up
+    // the game has its own cloud project, but Google sign-in only accepts the game's own site: the panel says where
     await game.eval(() => __T.clOpen());
-    await expect(page.locator("#clStat")).toHaveText(/aren't set up/);
+    await expect(page.locator("#clStat")).toHaveText("Cloud saves work on the game's own site, joyeechuah.github.io/Port-Meridien.");
     await expect(page.locator("#clIn")).toBeDisabled();
     expect(await game.eval(() => [...document.scripts].some((s) => /firebase/.test(s.src)))).toBe(false);
     await game.key("Escape");

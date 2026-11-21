@@ -14,6 +14,7 @@
     "eslint": "9.39.4",
     "firebase": "10.12.2",
     "globals": "15.15.0",
+    "targaryen": "^3.1.0",
     "three": "0.128.0"
   },
   "engines": {

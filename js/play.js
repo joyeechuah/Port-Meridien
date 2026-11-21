@@ -560,6 +560,7 @@ function drawMini(){
   // the police, on top: blue on patrol, flashing red and blue when they're after you
   for(const t of TRAFFIC)if(t.cop&&t.e&&(t.c.G.visible||t.chase))dotAt(c,t.wx,t.wz,3.4,t.chase?(copClock%.5<.25?"#e2483d":"#3d7bf2"):"#3d7bf2",sc,true);
   if(ev)for(const a of ev.ai)dotAt(c,a.x,a.z,3.6,"#e2483d",sc,true);
+  if(NET.room)netMini(c,sc);   // friends, when playing together
   // first-aid kits within 150 m, as a small green cross
   for(const k of KITS)if(k.back<=0&&Math.hypot(k.x-P.x,k.z-P.z)<150){c.fillStyle="#3fbf6a";const u=3/sc;c.fillRect(k.x-u,k.z-u*3,u*2,u*6);c.fillRect(k.x-u*3,k.z-u,u*6,u*2)}
   const hm=gW(0,-8);
@@ -610,6 +611,7 @@ function drawMap(){
   for(const Z of ZONES){const lx=Z.lx??Z.x,lz=Z.lz??Z.z;c.fillStyle="rgba(13,26,34,.6)";const tw=c.measureText(Z.n).width;c.fillRect(lx-tw/2-5/s,lz-26/s,tw+10/s,16/s);c.fillStyle="#fff";c.fillText(Z.n,lx,lz-18/s)}
   for(const m of mapMarkers())icon(c,m.kind,m.x,m.z,s,true);
   if(gps.t)icon(c,"flag",gps.t.x,gps.t.z,s,true);
+  if(NET.room)netMap(c,s);
   const player=activePlayer();
   carArrow(c,player.x,player.z,player.h,s,true);
   c.restore();

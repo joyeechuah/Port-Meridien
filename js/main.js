@@ -146,6 +146,7 @@ function frame(ts){
   else if(state==="DEALER")dealerCam(dt);
   else if(state==="MAP")drawMap();
   else if(state==="PHOTO")photoFrame(dt);
+  netTick(raw);   // playing together: send where I am, move my friends
   syncRenderView();
   const ptR=perfStart();
   if(state!=="MAP")renderer.render(scene,camera);
