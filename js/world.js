@@ -170,7 +170,9 @@ function defineRoads(){
   addRoad("town",[[560,-120],[760,-120]]);
   addRoad("town",[[560,190],[760,190]]);
   for(const x of [560,620,690,760])addRoad("town",[[x,-120],[x,190]]);
-  addRoad("drive",[[HOUSE.x-1,HOUSE.z],[372,-436],[312,-440]]);
+  // the drive starts at the garage floor's edge (the door), so the car rolls straight from the floor onto it; it
+  // used to start a metre out, leaving a strip of sand to cross every time the car left the garage
+  addRoad("drive",[[HOUSE.x,HOUSE.z],[372,-436],[312,-440]]);
   // The harbour lane: from where the town's avenue meets the coast road, down to the shore, ending 16 m short of the
   // pier (PIER.x0 is 1176). You park at the end and walk on between the bollards. It is a lane like the one to your
   // house, added last and starting exactly on that junction, so no other road, race, landmark or contract moves:
@@ -510,10 +512,25 @@ function resample(path,step){
 /* ---------- road meshes ---------- */
 function asphaltTex(){
   const c=document.createElement("canvas");c.width=c.height=256;const x=c.getContext("2d");
-  x.fillStyle="#4a4b4e";x.fillRect(0,0,256,256);
-  for(let i=0;i<16000;i++){const v=38+Math.random()*70|0;x.fillStyle=`rgba(${v},${v},${v+4},${.25+Math.random()*.5})`;x.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*1.4,1+Math.random()*1.4)}
-  for(let i=0;i<7;i++){x.fillStyle=`rgba(18,18,20,${.06+Math.random()*.09})`;x.beginPath();x.ellipse(Math.random()*256,Math.random()*256,20+Math.random()*50,8+Math.random()*30,Math.random()*3,0,TAU);x.fill()}
-  x.fillStyle="rgba(14,14,16,.14)";[52,88,164,200].forEach(u=>x.fillRect(u,0,18,256));
+  // One tile spans 3.75 m across the carriageway. Feather the two wheel paths
+  // into the aggregate and keep the broad colour variation continuous across tile edges.
+  const pixels=x.createImageData(256,256),wear=new Float32Array(256);
+  for(let u=0;u<256;u++){
+    const d=Math.min(Math.abs(u-70),Math.abs(u-186))/18;
+    wear[u]=Math.exp(-d*d)*8;
+  }
+  let seed=7349;
+  for(let v=0;v<256;v++){
+    const drift=Math.round(2*Math.sin(TAU*v/256));
+    for(let u=0;u<256;u++){
+      seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+      const grain=(seed/4294967296-.5)*21;
+      const stone=72+grain+2.5*Math.sin(TAU*(u+v)/256)+2*Math.cos(TAU*(2*u-v)/256)-wear[(u+drift+256)%256];
+      const i=(v*256+u)*4;
+      pixels.data[i]=stone;pixels.data[i+1]=stone+1;pixels.data[i+2]=stone+3;pixels.data[i+3]=255;
+    }
+  }
+  x.putImageData(pixels,0,0);
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;
 }
 const ROAD_PATHS={};
@@ -674,6 +691,13 @@ function tileOf(x,z){const k=Math.floor(x/TILE)+","+Math.floor(z/TILE);let t=til
 const GEO={box:new THREE.BoxGeometry(1,1,1),trunk:new THREE.CylinderGeometry(.5,.7,1,6),cone:new THREE.ConeGeometry(1,1,7),
   ico:new THREE.IcosahedronGeometry(1,0),palmSeg:new THREE.CylinderGeometry(.18,.24,1,6),pole:new THREE.CylinderGeometry(.09,.13,1,6),
   ball:new THREE.SphereGeometry(1,8,6),rock:new THREE.DodecahedronGeometry(1,0)};
+// A closed, folded frond: the ridge catches the sun while the tip hangs below the crown.
+const palmFrond=new THREE.BufferGeometry();
+palmFrond.setAttribute("position",new THREE.Float32BufferAttribute([
+  0,0,0, -.38,.17,1.35, 0,.38,1.42, .38,.17,1.35, 0,.10,1.38, 0,-.65,3.2
+],3));
+palmFrond.setIndex([0,1,2,0,2,3,0,3,4,0,4,1,5,2,1,5,3,2,5,4,3,5,1,4]);
+palmFrond.computeVertexNormals();
 const inTown=(x,z)=>x>548&&x<772&&z>-132&&z<202;
 function pine(x,z,y,s){vegPine(x,z,y,s)}
 function olive(x,z,y,s){vegOlive(x,z,y,s)}
@@ -681,7 +705,7 @@ function palm(x,z,y,s){const t=tileOf(x,z).solid,a=rnd(x,z)*TAU,dx=Math.sin(a),d
   let px=x,pz=z,py=y;
   for(let k=0;k<5;k++){const lean=.05+k*.06,L=1.9*s;const cx=px+dx*Math.sin(lean)*L/2,cz=pz+dz*Math.sin(lean)*L/2,cy=py+Math.cos(lean)*L/2;
     t.push({g:GEO.palmSeg,m:mat(cx,cy,cz,a,s,L,s,lean),c:0x8a6c4a});px+=dx*Math.sin(lean)*L;pz+=dz*Math.sin(lean)*L;py+=Math.cos(lean)*L}
-  for(let f=0;f<8;f++){const fa=f/8*TAU+a;t.push({g:GEO.box,m:mat(px+Math.sin(fa)*1.5*s,py-.25*s,pz+Math.cos(fa)*1.5*s,fa,.8*s,.06,3.4*s,.42),c:f%2?0x3f6b2a:0x4f7d32})}
+  for(let f=0;f<8;f++){const fa=f/8*TAU+a;t.push({g:palmFrond,m:mat(px,py,pz,fa,s,s,s),c:f%2?0x3f6b2a:0x4f7d32})}
   addCircle(x,z,.45*s);}
 // street lamps; their heads are kept for the light pools on the road and the lamp lights near the car
 const LAMPS=[];
@@ -878,7 +902,17 @@ function buildOldQuay(){
       box(bx,py+.5,bz,2.2,.1,.6,WOOD,a);box(bx,py+.25,bz,2,.42,.12,0x5d6268,a);addBox(bx,bz,1.1,.35,a)}
     for(const[x,z]of[[px0+7,pz0+9],[px1-7,pz0+9],[px0+7,pz1-9],[px1-7,pz1-9]])palm(x,z,gy(x,z),1.15);
     for(const[x,z,ax]of[[px0+6,fz,1],[px1-6,fz,-1]])lamp(x,z,py+.07,ax,0,9);
-    for(const x of[px0+1.2,px1-1.2])for(let z=pz0+6;z<pz1-4;z+=13){box(x,py+.45,z,1.5,.9,1.5,0xc9bda6);tileOf(x,z).solid.push({g:GEO.ico,m:mat(x,py+1.25,z,R(8)*3,.85,.7,.85),c:R(9)<.5?0x4f7d32:0xc2185b});addBox(x,z,.75,.75,0)}
+    for(const x of[px0+1.2,px1-1.2])for(let z=pz0+6;z<pz1-4;z+=13){
+      box(x,py+.45,z,1.5,.9,1.5,0xc9bda6);
+      const turn=R(8)*3,flowering=R(9)>=.5;
+      box(x,py+1.08,z,.76,.48,.70,0x456439,turn,VGEO.shrub);
+      for(let i=0;i<3;i++){
+        const angle=turn+i*TAU/3,dx=Math.cos(angle),dz=Math.sin(angle);
+        box(x+dx*.34,py+1.20,z+dz*.34,.42,.34,.43,i%2?0x526f3d:0x638749,angle,VGEO.shrub);
+        if(flowering)box(x+dx*.44,py+1.44,z+dz*.44,.19,.12,.16,i%2?0xae4666:0xcc687c,angle,VGEO.shrub);
+      }
+      addBox(x,z,.75,.75,0);
+    }
   }
   // 6. beside the Auto Gallery, south-east: a short ring of houses south of its forecourt
   ring(699,751,130,181,{dep:11,w:[8,12],fl:[2,3],pal:WARM,pitch:.7,gaps:[["n",720,730]]});
@@ -970,11 +1004,34 @@ const gW=(x,z,y=0)=>new V3(HOUSE.x-gDir.x*x+gOut.x*z,gY+y,HOUSE.z-gDir.z*x+gOut.
 const HOUSE_MESHES=[];
 const SPOTS=[[-16,12.5,.55],[-10,10,.42],[-3.6,8.6,.18],[3.6,8.6,-.18],[10,10,-.42],[16,12.5,-.55],[-17,21.5,.35],[-10.5,22,.2],[-4.8,22,.05],[4.8,22,-.05],[10.8,22,-.2],[17,21.5,-.35]];
 let doorMesh,aquaLight,selRing,selSpot;const fishes=[],pickers=[];
+// polished concrete: one 4 m bay of faintly mottled grey with fine aggregate and a saw-cut joint along two edges, so
+// tiling it lays a joint grid across the floor (the floor was one flat teal)
+function garageFloorTex(){
+  const c=document.createElement("canvas");c.width=c.height=512;const x=c.getContext("2d");
+  let seed=91;const R=()=>(seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296;
+  x.fillStyle="#5a6a73";x.fillRect(0,0,512,512);
+  for(let i=0;i<120;i++){const px=R()*512,py=R()*512,r=30+R()*90,l=R()<.5?255:0,g=x.createRadialGradient(px,py,0,px,py,r);
+    g.addColorStop(0,`rgba(${l},${l},${l},${.012+R()*.022})`);g.addColorStop(1,`rgba(${l},${l},${l},0)`);x.fillStyle=g;x.fillRect(px-r,py-r,r*2,r*2)}
+  for(let i=0;i<9000;i++){const l=R()<.5?235:20;x.fillStyle=`rgba(${l},${l},${l},${.04+R()*.1})`;x.fillRect(R()*512,R()*512,1,1)}
+  x.fillStyle="rgba(26,32,36,.6)";x.fillRect(0,0,512,3);x.fillRect(0,0,3,512);
+  x.fillStyle="rgba(255,255,255,.08)";x.fillRect(0,3,512,1);x.fillRect(3,0,1,512);
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(46/4,30/4);
+  t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t;
+}
+// a turntable pad under each parking spot: graphite with a fine lathe finish and a bright rim
+function garagePadTex(){
+  const c=document.createElement("canvas");c.width=c.height=256;const x=c.getContext("2d");
+  x.fillStyle="#525c62";x.fillRect(0,0,256,256);
+  for(let r=3;r<118;r+=2){const l=r%4?255:0;x.strokeStyle=`rgba(${l},${l},${l},.05)`;x.beginPath();x.arc(128,128,r,0,TAU);x.stroke()}
+  x.lineWidth=2.5;x.strokeStyle="rgba(24,28,32,.7)";x.beginPath();x.arc(128,128,118.5,0,TAU);x.stroke();
+  x.lineWidth=6;x.strokeStyle="#c4ccd1";x.beginPath();x.arc(128,128,123,0,TAU);x.stroke();
+  return new THREE.CanvasTexture(c);
+}
 function buildHouse(){
   gY=PADS[0].h+YO;
   const wallM=new THREE.MeshPhongMaterial({color:0x86a9c0,shininess:14});
   const darkM=new THREE.MeshPhongMaterial({color:0x22282f,shininess:20});
-  const floorM=new THREE.MeshPhongMaterial({color:0x557d93,shininess:90,specular:0x33454f});
+  const floorM=new THREE.MeshPhongMaterial({map:garageFloorTex(),shininess:70,specular:0x3c484f});
   const shellM=new THREE.MeshLambertMaterial({color:0xf4f2ec});
   const put=(g,m,x,y,z,cast,yaw)=>{const q=new THREE.Mesh(g,m);q.position.copy(gW(x,z,y));q.rotation.y=yaw===undefined?gYaw:yaw;q.castShadow=!!cast;q.receiveShadow=true;scene.add(q);HOUSE_MESHES.push(q);return q};
   const B=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
@@ -1022,6 +1079,21 @@ function buildHouse(){
   // lights
   [[-12,9],[3,12],[15,9]].forEach(([x,z])=>{const l=new THREE.PointLight(0xffeec8,.6,44);l.position.copy(gW(x,z,8.6));scene.add(l);put(new THREE.CylinderGeometry(.5,.62,.22,10),new THREE.MeshBasicMaterial({color:0xfff6dd}),x,9.9,z)});
   [-16,-8,0,8,16].forEach((x,k)=>{const q=put(new THREE.CylinderGeometry(.2,.28,.6,10),darkM,x,8.75,4+k%2*14);q.rotation.order="YXZ";q.rotation.x=.7});
+  // the finish: the pads, a dark skirting and panel joints on the walls, light bars between the ceiling beams and a
+  // light strip along the top of the walls. Three meshes in all (the room was flat colour)
+  {const pads=[],trim=[],glow=[],box=(L,w,h,d,x,y,z,c)=>L.push({g:GEO.box,m:mat(x,y,z,0,w,h,d),c});
+   const pg=new THREE.CircleGeometry(2.85,48).rotateX(-Math.PI/2);
+   for(const [x,z] of SPOTS)pads.push({g:pg,m:new THREE.Matrix4().makeTranslation(x,.012,z),c:0xffffff});
+   const SK=0x2a3036,JN=0x6e8fa3;
+   for(const s of [-1,1]){box(trim,.05,.2,29.5,s*22.725,.1,15,SK);box(trim,15.75,.2,.05,s*14.875,.1,.275,SK);
+     for(let z=3;z<29;z+=3)box(trim,.02,9.8,.04,s*22.74,5.1,z,JN);
+     box(glow,.05,.05,29.5,s*22.72,9.9,15,0xffffff)}
+   box(trim,45.5,.2,.05,0,.1,29.725,SK);for(let x=-21;x<=21;x+=3)box(trim,.04,9.8,.02,x,5.1,29.74,JN);
+   box(glow,45.5,.05,.05,0,9.9,29.72,0xffffff);
+   for(const x of [-11,-4,4,11])box(glow,.3,.04,26,x,9.96,15,0xffffff);
+   put(merge(pads),new THREE.MeshPhongMaterial({map:garagePadTex(),shininess:90,specular:0x46525a}),0,0,0);pg.dispose();
+   put(merge(trim),new THREE.MeshLambertMaterial({vertexColors:true}),0,0,0);
+   put(merge(glow),new THREE.MeshBasicMaterial({color:0xfff3df}),0,0,0)}
   selRing=new THREE.Mesh(new THREE.RingGeometry(2.7,3.0,48),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.85,side:THREE.DoubleSide}));
   selRing.rotation.x=-Math.PI/2;scene.add(selRing);
   selSpot=new THREE.SpotLight(0xfff1d6,1.1,22,.5,.6);scene.add(selSpot);scene.add(selSpot.target);
@@ -1038,9 +1110,28 @@ const SHOW=new V3(0,-300,0);
 let podium;
 function buildDealer(){
   const y=meshH(DEALER.x,DEALER.z);
-  const wallM=new THREE.MeshLambertMaterial({color:0xf2f0ea});
+  // Bake recessed display bays into one facade map for the three street-facing blank walls.
+  const facade=document.createElement("canvas");facade.width=512;facade.height=128;
+  const ctx=facade.getContext("2d");
+  ctx.fillStyle="#e4dfd4";ctx.fillRect(0,0,512,128);
+  ctx.fillStyle="#b5afa4";ctx.fillRect(0,14,512,2);ctx.fillRect(0,110,512,18);
+  const glazing=ctx.createLinearGradient(0,34,0,89);
+  glazing.addColorStop(0,"#819698");glazing.addColorStop(.56,"#566d70");glazing.addColorStop(1,"#384f53");
+  for(let bay=0;bay<6;bay++){
+    const left=12+bay*82;
+    ctx.fillStyle="#b5afa4";ctx.fillRect(left-2,32,72,61);
+    ctx.fillStyle="#303e3f";ctx.fillRect(left,34,68,55);
+    ctx.fillStyle=glazing;ctx.fillRect(left+3,37,30,49);ctx.fillRect(left+35,37,30,49);
+    ctx.fillStyle="#c9c3b8";ctx.fillRect(left-3,89,74,3);
+  }
+  const facadeMap=new THREE.CanvasTexture(facade);facadeMap.encoding=THREE.sRGBEncoding;
+  facadeMap.anisotropy=4;
+  const wallM=new THREE.MeshLambertMaterial({map:facadeMap});
+  const walls=new THREE.BoxGeometry(40,11,40),uv=walls.attributes.uv,normals=walls.attributes.normal;
+  // The roof, underside and signed entrance sample a plain patch of plaster.
+  for(let i=0;i<uv.count;i++)if(Math.abs(normals.getY(i))>.5||normals.getZ(i)<-.5)uv.setXY(i,.5,.95);
   const add=(g,m,x,yy,z)=>{const q=new THREE.Mesh(g,m);q.position.set(x,yy,z);q.castShadow=true;q.receiveShadow=true;scene.add(q);return q};
-  add(new THREE.BoxGeometry(40,11,40),wallM,DEALER.x,y+5.5,DEALER.z);
+  add(walls,wallM,DEALER.x,y+5.5,DEALER.z);
   add(new THREE.BoxGeometry(34,7.5,.4),new THREE.MeshPhongMaterial({color:0x1b252d,shininess:160,specular:0xbfd3e0}),DEALER.x,y+4,DEALER.z-20.1);
   add(new THREE.BoxGeometry(46,.16,16),new THREE.MeshLambertMaterial({color:0xc9c5bb}),DEALER.x,y+.2,DEALER.z-28);
   const c=document.createElement("canvas");c.width=512;c.height=96;const x=c.getContext("2d");
@@ -1263,8 +1354,15 @@ function buildSea(){
   g.setAttribute("color",new THREE.BufferAttribute(col,3));
   const m=new THREE.MeshPhongMaterial({vertexColors:true,transparent:true,opacity:.86,shininess:240,specular:0xdfeef5,normalMap:waveNormalTex(),normalScale:new THREE.Vector2(.42,.42)});
   m.onBeforeCompile=s=>{Object.assign(s.uniforms,seaU);
-    s.fragmentShader="uniform vec2 wO1,wO2;\n"+s.fragmentShader.replace("vec3 mapN = texture2D( normalMap, vUv ).xyz * 2.0 - 1.0;",
-      "vec3 mapN = normalize( ( texture2D( normalMap, vUv*"+(SZ/46).toFixed(1)+"+wO1 ).xyz*2.-1. ) + ( texture2D( normalMap, vUv*"+(SZ/17).toFixed(1)+"+wO2 ).xyz*2.-1. )*.8 );")};
+    // Three r128 expands shader includes after onBeforeCompile. Edit the normal-map
+    // chunk itself so both scrolling samples reach the compiled fragment shader.
+    const waveChunk=THREE.ShaderChunk.normal_fragment_maps.replace(
+      "vec3 mapN = texture2D( normalMap, vUv ).xyz * 2.0 - 1.0;",
+      `vec3 swell = texture2D(normalMap, vUv * ${(SZ/46).toFixed(1)} + wO1).xyz * 2.0 - 1.0;
+       vec3 ripple = texture2D(normalMap, vUv * ${(SZ/17).toFixed(1)} + wO2).xyz * 2.0 - 1.0;
+       vec3 mapN = normalize(swell + 0.55 * ripple);`);
+    s.fragmentShader="uniform vec2 wO1,wO2;\n"+s.fragmentShader.replace("#include <normal_fragment_maps>",waveChunk);
+  };
   water=new THREE.Mesh(g,m);water.receiveShadow=true;scene.add(water);
   buildFoam();buildVedra();buildBoats();
 }
@@ -1286,7 +1384,7 @@ function buildFoam(){
     const cx=Math.cos(a),cz=Math.sin(a),x=cx*r,z=cz*r;
     if(prev)cum+=Math.hypot(x-prev[0],z-prev[1]);
     const base=P.length/3;
-    P.push(cx*(r-2.5),.07,cz*(r-2.5),cx*(r+7),.07,cz*(r+7));U.push(cum/14,0,cum/14,1);
+    P.push(cx*(r-2.5),.07,cz*(r-2.5),cx*(r+7),.07,cz*(r+7));U.push(cum/14,1,cum/14,0);
     if(prev)I.push(base-2,base,base-1,base-1,base,base+1);
     prev=[x,z];
   }

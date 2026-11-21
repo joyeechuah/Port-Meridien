@@ -85,7 +85,7 @@ const MOD_OPTS={
   tint:{n:"WINDOW TINT",p:1500,o:["LIGHT","DARK","LIMO"]},
   plate:{n:"NUMBER PLATE",p:500}
 };
-const MOD_STOCK={fin:0,roof:0,rim:0,rimC:0,cal:0,wing:0,exh:0,exhC:0,exhS:0,liv:0,livC:0,num:7,tint:1,plate:"WID 2026"};
+const MOD_STOCK={fin:0,roof:0,rim:0,rimC:0,cal:0,wing:0,exh:0,exhC:0,exhS:0,liv:0,livC:0,num:7,tint:1,plate:"PM 2026"};
 const MOD_ROOF=[null,0x0d0e10,0xf2f2f0,0x3a3d42],MOD_RIMS=[null,"y5","ten","five","split","seven","six"];
 const MOD_RIMC=[0xc4c8cd,0x15161a,0x55595f,0xc9a14a,0xeceeee,0x8a5a3a,0xb3121a,0x1d4aa8];
 const MOD_CAL=[null,0xc8141a,0xf2c200,0x18191c,0x1f5fd0,0x1f9a4a,0xf07a10],MOD_WING=[null,"none","lip","mid","big"];
@@ -153,7 +153,8 @@ try{
   {const m=save.mods&&typeof save.mods==="object"&&!Array.isArray(save.mods)?save.mods:{},o={};
    for(const id of Object.keys(m)){if(!CARS.some(c=>c.id===id)||!m[id]||typeof m[id]!=="object")continue;const v=m[id],c={};
      for(const k in MOD_STOCK){const x=v[k];if(x===undefined)continue;
-       if(k==="plate"){if(typeof x==="string"&&/^[A-Z0-9 ]{1,8}$/.test(x)&&x.trim())c[k]=x}
+       // "WID 2026" was the stock plate this game inherited from White Isle Drive: a save holding it gets today's stock plate
+       if(k==="plate"){if(typeof x==="string"&&/^[A-Z0-9 ]{1,8}$/.test(x)&&x.trim()&&x!=="WID 2026")c[k]=x}
        else if(k==="num"){if(Number.isInteger(x)&&x>=1&&x<=99)c[k]=x}
        else if(Number.isInteger(x)&&x>=0&&x<MOD_OPTS[k].o.length)c[k]=x}
      if(Object.keys(c).length)o[id]=c}

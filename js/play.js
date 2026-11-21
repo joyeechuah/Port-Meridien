@@ -57,7 +57,7 @@ function ghostModel(id){
     o.material=(Array.isArray(o.material)?o.material:[o.material]).map(x=>{if(!own.has(x)){const c=x.clone();c.transparent=true;c.opacity=.36;c.depthWrite=false;own.set(x,c)}return own.get(x)});
     if(o.material.length===1)o.material=o.material[0]});
   for(const o of drop)o.parent.remove(o);
-  for(const [x,c] of own){if(CAR_ENV.mats.has(x)){envMat(c);if(CAR_ENV.tex)c.envMap=CAR_ENV.tex}if(!sh.M.has(x)){CAR_ENV.mats.delete(x);x.dispose()}}
+  for(const [x,c] of own){if(CAR_ENV.mats.has(x)){envMat(c);if(CAR_ENV.tex)c.envMap=curCarEnv()}if(!sh.M.has(x)){CAR_ENV.mats.delete(x);x.dispose()}}
   m.bodyM=own.get(m.bodyM)||m.bodyM;m.tailM=own.get(m.tailM)||m.tailM;
   if(m.inside)m.inside.visible=false;
   m.G.visible=false;scene.add(m.G);GH.m=m;GH.id=id;GH.o={};return m;
