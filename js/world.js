@@ -170,7 +170,9 @@ function defineRoads(){
   addRoad("town",[[560,-120],[760,-120]]);
   addRoad("town",[[560,190],[760,190]]);
   for(const x of [560,620,690,760])addRoad("town",[[x,-120],[x,190]]);
-  addRoad("drive",[[HOUSE.x-1,HOUSE.z],[372,-436],[312,-440]]);
+  // the drive starts at the garage floor's edge (the door), so the car rolls straight from the floor onto it; it
+  // used to start a metre out, leaving a strip of sand to cross every time the car left the garage
+  addRoad("drive",[[HOUSE.x,HOUSE.z],[372,-436],[312,-440]]);
   // The harbour lane: from where the town's avenue meets the coast road, down to the shore, ending 16 m short of the
   // pier (PIER.x0 is 1176). You park at the end and walk on between the bollards. It is a lane like the one to your
   // house, added last and starting exactly on that junction, so no other road, race, landmark or contract moves:
