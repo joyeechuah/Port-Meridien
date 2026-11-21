@@ -377,7 +377,7 @@ function nearestRoad(x,z,maxD){
       const e=it.e,p=e.pts[it.i],q=e.pts[it.i+1],sx=q.x-p.x,sz=q.z-p.z,L2=sx*sx+sz*sz;
       const t=L2>0?clamp(((x-p.x)*sx+(z-p.z)*sz)/L2,0,1):0;
       const px=p.x+sx*t,pz=p.z+sz*t,d=Math.hypot(x-px,z-pz);
-      if(d-e.half*.02<bd){bd=d-e.half*.02;const l=Math.sqrt(L2)||1;best={e,i:it.i,d,x:px,z:pz,dx:sx/l,dz:sz/l,s:e.cum[it.i]+t*l}}
+      if(d-e.half*.02<bd){bd=d-e.half*.02;const l=Math.sqrt(L2)||1;best={e,i:it.i,d,x:px,z:pz,dx:sx/l,dz:sz/l,s:e.cum[it.i]+t*l,side:0}}
     }
   }
   if(best)best.side=(x-best.x)*(-best.dz)+(z-best.z)*best.dx;
@@ -388,7 +388,7 @@ function nearestRoadGlobal(x,z,skipDrive){
   for(const e of EDGES){if(skipDrive&&e.type==="drive")continue;for(let i=0;i<e.pts.length-1;i++){
     const p=e.pts[i],q=e.pts[i+1],sx=q.x-p.x,sz=q.z-p.z,L2=sx*sx+sz*sz;
     const t=L2>0?clamp(((x-p.x)*sx+(z-p.z)*sz)/L2,0,1):0,px=p.x+sx*t,pz=p.z+sz*t,d=Math.hypot(x-px,z-pz);
-    if(d<bd){bd=d;const l=Math.sqrt(L2)||1;best={e,i,d,x:px,z:pz,dx:sx/l,dz:sz/l,s:e.cum[i]+t*l}}
+    if(d<bd){bd=d;const l=Math.sqrt(L2)||1;best={e,i,d,x:px,z:pz,dx:sx/l,dz:sz/l,s:e.cum[i]+t*l,side:0}}
   }}
   if(best)best.side=(x-best.x)*(-best.dz)+(z-best.z)*best.dx;
   return best;
@@ -1417,7 +1417,7 @@ function signAtlas(){
   slot(0,()=>{x.fillStyle="#c8102e";x.fillRect(8,8,240,240);x.fillStyle="#fff";
     for(const o of [-56,30]){x.beginPath();x.moveTo(70+o,40);x.lineTo(150+o,128);x.lineTo(70+o,216);x.lineTo(110+o,216);x.lineTo(190+o,128);x.lineTo(110+o,40);x.closePath();x.fill()}
     x.strokeStyle="#fff";x.lineWidth=8;x.strokeRect(12,12,232,232)});
-  for(const [i,n] of [[1,"60"],[2,"90"],[3,"120"]])slot(i,()=>{x.fillStyle="#fff";x.beginPath();x.arc(128,128,118,0,TAU);x.fill();
+  for(const [i,n] of /** @type {[number, string][]} */ ([[1,"60"],[2,"90"],[3,"120"]]))slot(i,()=>{x.fillStyle="#fff";x.beginPath();x.arc(128,128,118,0,TAU);x.fill();
     x.strokeStyle="#d0102c";x.lineWidth=30;x.beginPath();x.arc(128,128,100,0,TAU);x.stroke();
     x.fillStyle="#111";x.font="bold "+(n.length>2?86:104)+"px Arial,Helvetica,sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText(n,128,134)});
   slot(4,()=>{x.fillStyle="#8b9096";x.beginPath();x.arc(128,128,118,0,TAU);x.fill()});

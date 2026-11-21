@@ -2,6 +2,9 @@
 // One of the game's scripts in js/, loaded in order by index.html; they share one global scope (see docs/CODE_LAYOUT.md).
 "use strict";
 /* ================================================================ UTIL */
+// an element by its id. Typed loosely for the type check (npm run typecheck): the game uses it for every kind of
+// element, from inputs to canvases, without casting each one
+/** @type {(id: string) => any} */
 const $=id=>document.getElementById(id);
 const TAU=Math.PI*2;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -166,7 +169,7 @@ try{
   if(typeof save.passBonus!=="boolean")save.passBonus=false;
   // Contracts: completed runs by type and by contract id, failed and abandoned runs, credits earned; and a note
   // that one was under way (so a reload can say it was cancelled)
-  {const j=save.jobs&&typeof save.jobs==="object"&&!Array.isArray(save.jobs)?save.jobs:{},n=v=>Math.round(num(v,0,0,1e9));
+  {const j=/** @type {any} */ (save.jobs&&typeof save.jobs==="object"&&!Array.isArray(save.jobs)?save.jobs:{}),n=v=>Math.round(num(v,0,0,1e9));
    save.jobs={parcel:n(j.parcel),courier:n(j.courier),tour:n(j.tour),failed:n(j.failed),abandoned:n(j.abandoned),earned:n(j.earned),runs:dict(j.runs,v=>Number.isInteger(v)&&v>0)}}
   save.jobActive=save.jobActive&&typeof save.jobActive==="object"&&typeof save.jobActive.id==="string"?{id:save.jobActive.id}:null;
   if(!Array.isArray(save.owned))save.owned=[];

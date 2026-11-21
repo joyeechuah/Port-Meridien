@@ -43,7 +43,7 @@ function drawGauges(kph,rpm,gear){
     const a=Math.PI*.8+Math.PI*1.4*clamp(v/max,0,1);x.strokeStyle="#f2b33d";x.lineWidth=2.5;x.beginPath();x.moveTo(cx,58);x.lineTo(cx+Math.cos(a)*38,58+Math.sin(a)*38);x.stroke();
     x.fillStyle="#9aa1a8";x.font="700 10px Arial";x.textAlign="center";x.fillText(lab,cx,100)};
   dial(64,kph,360,"KM/H");dial(192,rpm,8,"RPM x1000");
-  x.fillStyle="#fff";x.font="700 20px Arial";x.textAlign="center";x.fillText(Math.round(kph),64,66);x.fillText(gear,192,66);
+  x.fillStyle="#fff";x.font="700 20px Arial";x.textAlign="center";x.fillText(String(Math.round(kph)),64,66);x.fillText(String(gear),192,66);
   gaugeTex.needsUpdate=true;
 }
 const darkInM=new THREE.MeshPhongMaterial({color:0x2a2c30,shininess:30});
@@ -414,7 +414,7 @@ function liveryMasks(parts,type,num){
   const paint=mirror=>paintSurface(K.z0,K.z1,K.sec,tw,th,true,fn(mirror),parts.body,type===3?[zc-R-.03,zc+R+.03]:null).lit;
   let cab=null;
   if(type===1){const cp=cabinPaint(K);cab=paintSurface(K.cz0,K.cz1,K.csec,parts.q>0?512:256,parts.q>0?256:128,true,(x,y,z,nx,ny,nz,o)=>{
-    const t={c:1,r:.36,m:.35,l:0,lr:1,lg:1,lb:1};cp(x,y,z,nx,ny,nz,t,.004);const ax=Math.abs(x);
+    const t={c:1,r:.36,m:.35,l:0,lr:1,lg:1,lb:1};cp(x,y,z,nx,ny,nz,t);const ax=Math.abs(x);
     if(t.c>.99&&t.l===0&&ny>.3&&((ax>.05&&ax<.17)||(ax>.21&&ax<.33)))o.l=1},parts.cabin).lit}
   const made=parts.liv[key]=type===3?{R:paint(false),L:paint(true),cab:null,t:performance.now()}:{R:paint(false),L:null,cab,t:0};
   if(type===3){const nums={},used=new Set([key]);for(const k in parts.liv)if(k[0]==="n")nums[k]=parts.liv[k];
@@ -701,6 +701,7 @@ let locked=false,autoHold=false;
 // trigger the brake, A the handbrake; Start pauses, View/Back opens the map, Y changes camera, X is the prompt key
 const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,index:null,prev:[]};
 // screens opened from the pause menu, and how each closes
+/** @type {[string, () => void][]} */
 const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()]];
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
