@@ -20,7 +20,9 @@ jobs:
   chromium:
     name: Playwright (Chromium)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The suite (364 tests on 2 workers, the WebGL ones on a software GPU) now takes about an hour on its own: at
+    # 60 minutes it was cut off with every test passed but the last two, so nothing could merge
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
 

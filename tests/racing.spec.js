@@ -23,6 +23,18 @@ async function start(game, page, i) {
   await page.waitForFunction(() => __T.ev && __T.state === "DRIVE", null, { timeout: 30_000 });
 }
 
+// Keep civilian traffic out of tests that measure the rivals or the checkpoint gates.
+function clearRoadTraffic(game) {
+  return game.eval(() => {
+    for (const t of __T.TRAFFIC) {
+      t.e = null;
+      t.c.G.visible = false;
+      t.wx = t.wz = 1e6;
+      t.lost = false;
+    }
+  });
+}
+
 const toasts = (game) => game.eval(() => [...document.querySelectorAll("#toasts .toast")].map((t) => t.textContent));
 
 test.describe("races and time trials", () => {
@@ -53,6 +65,7 @@ test.describe("races and time trials", () => {
   test("a race lines up three rivals who drive the route, and the result names your position", async ({ game, page }) => {
     await ready(game);
     await start(game, page, 1);
+    await clearRoadTraffic(game);
     await game.steps(200, {}); // the countdown
     await game.eventBot(900);
     const ai = await game.eval(() => __T.ev.ai.map((a) => Math.round(a.s)));
@@ -125,14 +138,7 @@ test.describe("races and time trials", () => {
     await start(game, page, 2);
     // no traffic: a car in the way would stop it short of the 25 m it has to drive past the line, saying nothing about
     // the finish (it failed once that way)
-    await game.eval(() => {
-      for (const t of __T.TRAFFIC) {
-        t.e = null;
-        t.c.G.visible = false;
-        t.wx = t.wz = 1e6;
-        t.lost = false;
-      }
-    });
+    await clearRoadTraffic(game);
     await game.steps(200, {});
     const last = await game.eval(() => __T.ev.E.cps.length - 1);
     const reach = await game.eventBot(20000, last);
