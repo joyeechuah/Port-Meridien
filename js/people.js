@@ -431,18 +431,18 @@ function footHud(on){
 }
 // the prompt for whichever car is within reach: "Get in" for yours and those left standing, "Take this car" for traffic
 function footPrompt(){const tg=footTarget();promptAct=tg?tg.a:null;show("prompt",!!tg);if(tg)$("promptTxt").textContent=tg.t}
-function footPlace(dt){
-  const m=FOOT.m,sw=Math.sin(FOOT.ph)*Math.min(.95,Math.abs(FOOT.v)*.34);
+function footPlace(dt,speed=Math.abs(FOOT.v)){
+  const m=FOOT.m,sw=Math.sin(FOOT.ph)*Math.min(.95,speed*.34);
   m.G.position.set(FOOT.x,FOOT.y,FOOT.z);m.G.rotation.y=FOOT.h;
   m.legs[0].rotation.x=sw;m.legs[1].rotation.x=-sw;m.arms[0].rotation.x=-sw*.8;m.arms[1].rotation.x=sw*.8;
   // each knee bends as its leg swings through, and the elbows bend more the faster you go
-  const amp=Math.min(1,Math.abs(FOOT.v)*.3),c=Math.cos(FOOT.ph);
+  const amp=Math.min(1,speed*.3),c=Math.cos(FOOT.ph);
   m.knees[0].rotation.x=amp*(.06+Math.max(0,-c)*1.15);m.knees[1].rotation.x=amp*(.06+Math.max(0,c)*1.15);
   m.elbows[0].rotation.x=m.elbows[1].rotation.x=-(.18+amp*.75);
   // a slight bob with each step
   m.G.rotation.z=Math.sin(FOOT.ph)*amp*.028;
   m.G.rotation.x=amp*.06;
-  m.G.position.y+=Math.abs(Math.cos(FOOT.ph))*Math.min(.05,Math.abs(FOOT.v)*.012);
+  m.G.position.y+=Math.abs(Math.cos(FOOT.ph))*Math.min(.05,speed*.012);
 }
 // behind and above the walker, coming in closer when a wall or tree is in the way
 function footCam(dt,snap){
@@ -465,18 +465,32 @@ function footUpdate(dt){
   FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
   // right turns right, as in the car: the heading decreases (it was the wrong way round, on foot and on the boat)
   FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
+  let strideSpeed=0;
   if(Math.abs(FOOT.v)>.01){
     let nx=FOOT.x+Math.sin(FOOT.h)*FOOT.v*dt,nz=FOOT.z+Math.cos(FOOT.h)*FOOT.v*dt;
     [nx,nz]=footClear(nx,nz);
+    // Pedestrians already yield when approaching a walker. Also stop the walker
+    // from entering their space from behind, allowing a sideways step or retreat.
+    for(const ped of PEDS){
+      if(!ped.m.G.visible||ped.st==="down")continue;
+      const gap=Math.hypot(nx-ped.x,nz-ped.z);
+      if(gap<.48&&gap<Math.hypot(FOOT.x-ped.x,FOOT.z-ped.z)){
+        nx=FOOT.x;nz=FOOT.z;break;
+      }
+    }
     // not into the sea, and not up a step taller than a kerb in one stride
     const g=footGround(nx,nz);
-    if(g>-.4&&g-FOOT.y<.6){FOOT.x=nx;FOOT.z=nz}else FOOT.v=0;
+    if(g>-.4&&g-FOOT.y<.6){
+      strideSpeed=dt>0?Math.min(Math.abs(FOOT.v),Math.hypot(nx-FOOT.x,nz-FOOT.z)/dt):0;
+      FOOT.x=nx;FOOT.z=nz;
+    }
+    if(strideSpeed<.01)FOOT.v=0;
   }else{const c=footClear(FOOT.x,FOOT.z);FOOT.x=c[0];FOOT.z=c[1]}   // a passing car nudges you aside
   // Plant the feet immediately on a raised surface. Ease down when leaving it.
   const g=footGround(FOOT.x,FOOT.z);
   FOOT.y=Math.max(g,FOOT.y+(g-FOOT.y)*Math.min(1,dt*14));
-  FOOT.ph+=Math.abs(FOOT.v)*dt*3.1;if(Math.abs(FOOT.v)<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
-  footPlace(dt);
+  FOOT.ph+=strideSpeed*dt*3.1;if(strideSpeed<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
+  footPlace(dt,strideSpeed);
   gunFoot(dt);
   footPrompt();
   // the car you left is switched off: its engine and tyres are silent (they used to hum on at whatever they were
