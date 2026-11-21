@@ -4670,7 +4670,7 @@ function makeMusic(ctx,out){
 // The composed tracks above stand in while a file loads, and for good if files can't be fetched (a page
 // opened straight from disk can't). Only the songs in use are kept decoded, to spare memory on phones.
 const SONGS={
-  lounge:{url:"audio/showroom.mp3",offset:5.9122,L:120.0001,X:1.5,gain:.41},   // Mediterranean Showroom
+  lounge:{url:"audio/showroom.mp3",offset:54.75,L:85.33325,X:1.5,gain:.58},   // Dusk Fitting Room
   coast:{url:"audio/cruise.mp3",offset:20.1286,L:99.9555,X:1.5,gain:.28},      // Coastal Cruise Loop
   race:{url:"audio/highway.mp3",offset:22.09,L:107.9999,X:1.5,gain:.3}         // Coastal Highway Run
 };
@@ -4733,7 +4733,7 @@ function songTick(n,now){const S=SONGS[n],P=S.p;if(!P)return;
 // which song for which screen: the lounge indoors, the road outside, the race track during events, quieter behind menus
 function musicWant(){
   if(tabIdle||!save.music)return [null,0];   // SOUND FX covers engine, tyres and beeps; music has its own switch
-  if(state==="GARAGE"||state==="LOAD"||state==="DEALER")return ["lounge",1];
+  if(state==="GARAGE"||state==="WARDROBE"||state==="LOAD"||state==="DEALER")return ["lounge",1];
   if(state==="EXIT")return ["coast",.8];
   const road=ev?"race":"coast";
   if(state==="PAUSE"||state==="MAP"||state==="INTRO"||state==="RESULT")return [road,.5];

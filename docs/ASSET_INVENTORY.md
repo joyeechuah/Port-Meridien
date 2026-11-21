@@ -22,7 +22,7 @@ The source comment describes these as Google Flow Music tracks; `docs/world-plan
 
 | File | In-game title/use | SHA-256 |
 | --- | --- | --- |
-| `audio/showroom.mp3` | Mediterranean Showroom; garage/dealer | `01b88c0f085e7887b518ad10937c6d48d25deaf149cccf6e6e36dce49cbf5248` |
+| `audio/showroom.mp3` | Dusk Fitting Room; wardrobe, garage and dealer | `87f00e86618ab0e87e3956089103d689468e667a8940465212dc3dfa717723ae` |
 | `audio/cruise.mp3` | Coastal Cruise Loop; driving | `1bf54392a3e8b6c8202351e3632c2381605bde0994d580edd69123a9e5d6f26f` |
 | `audio/highway.mp3` | Island Highway Run; racing | `c276a8b73f2bdad5ca67f013df7ccb1795404ff084578fe4e9e7602ffa53879e` |
 
