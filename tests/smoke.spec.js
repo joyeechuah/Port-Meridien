@@ -37,6 +37,21 @@ test.describe("smoke", () => {
     await expect(page.locator("#arrival")).toBeHidden();
   });
 
+  test("slow frames count toward the intro and time in the cloud dialog is excluded", async ({ game, page }) => {
+    await page.clock.install();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await game.open({ autostart: false });
+    await page.locator("#lstart").click({ timeout: 180_000 });
+    await game.waitState("ARRIVAL");
+    await page.clock.fastForward(3000);
+    await game.eval(() => __T.clOpen());
+    await page.clock.fastForward(20_000);
+    await page.locator("#clClose").click();
+    await expect(page.locator("#arrival")).toBeVisible();
+    await page.clock.fastForward(5000);
+    await expect(page.locator("#wardrobe")).toBeVisible({ timeout: 2000 });
+  });
+
   test("reduced motion starts the saved car on an Old Quay road", async ({ game, page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await game.open({ autostart: false });
