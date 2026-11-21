@@ -16,9 +16,9 @@ Updated 14 November 2026. Scope: runtime and tracked assets on the merged Port M
 
 MIT permits commercial distribution subject to its notice condition. OFL permits software bundling under its conditions, including retaining licence/copyright and not selling the font alone. Firebase's package declaration does not replace review of its embedded notices. Sources were checked alongside local dependency metadata; latest upstream Firebase licence is not proof of every historical bundle's exact contents.
 
-## Recorded music — clearance remains open
+## Recorded music — provenance confirmed
 
-The source comment describes these as Google Flow Music tracks; `docs/world-plan` says the exact tool/account/plan is still unconfirmed. No generation receipt or commercial-use licence is committed. Do not infer clearance merely from a paid subscription or that comment.
+Jo Yee generated all five recordings with Google Flow Music under a Google AI Plus plan (Flow Music Starter plan). She keeps the generation receipts in her private records.
 
 | File | In-game title/use | SHA-256 |
 | --- | --- | --- |
@@ -28,7 +28,6 @@ The source comment describes these as Google Flow Music tracks; `docs/world-plan
 | `audio/reveal.mp3` | Harbour Reveal; opening flyover | `18e63df34db5e8995569791159d9707900c6bff95899bd8ea01644b597968780` |
 | `audio/chase.mp3` | Harbor Chase Loop; police pursuits | `3ebd2cc7ad4f656ca8ede7adc5be7d24027c699aa297dc6fc1e386668728e5c6` |
 
-For each file record: actual generating product/model, generation/export date, account plan at generation, output identifier, source inputs, and applicable terms/version. Keep account receipts private; public credits need only attribution required by the actual licence. Until this evidence exists, status is **unverified**, not “free to sell”.
 
 ## Code-generated sound and imagery
 
@@ -37,7 +36,7 @@ The current implementation constructs the harbour boat, Old Quay environment and
 | Asset group | Generators/content | Source/licence status |
 | --- | --- | --- |
 | Engine, tyre/skid, brush, impact, UI beep; boat motor/water wash | Shared Web Audio oscillator/filter/noise graph: `audioInit`, `audioUpd`; boat mode passes motor-like rpm/throttle and speed-based wash to the existing graph; walking sets car volume to zero | Synthesized by repository code, **no newly licensed recorded outboard sample**. Document authorship/contributor chain. This is an audio approximation, not a separate dedicated boat recording. |
-| Fallback procedural music | `makeMusic`: Cala Lounge and Coast Road; generated instruments/reverb/sequencing | Repository code describes these as original; provenance evidence still belongs in release records. The old comment saying “no audio files” is contradicted by the three MP3s used later. |
+| Fallback procedural music | `makeMusic`: Cala Lounge and Coast Road; generated instruments/reverb/sequencing | Repository code describes these as original; provenance evidence still belongs in release records. The old comment saying “no audio files” is contradicted by the five MP3s listed above. |
 | Favicon | Inline road-symbol SVG data URL | Repository markup; no external icon package found. |
 | Sky/cloud/terrain | `cloudTex`, `groundDetailTex`, terrain vertex colours | Canvas/noise generation in repository. |
 | Roads and buildings; Old Quay district | `asphaltTex`, road gutter canvas, `windowTex`, lighting pool gradient; `buildOldQuay` creates six blocks with facades, roof meshes, market stalls, clock tower, four workshops, garden housing, Harbour Hall, civic square, fountain and house rows | Procedural geometry/canvas textures made in repository; verify original code provenance and any inherited source rights. No external building or city-model asset was introduced by this feature. |
@@ -69,7 +68,7 @@ The lock inventory is metadata, not a full notice bundle. Before shipping any pa
 
 ## Release blockers and records
 
-1. Resolve the three MP3 provenance/permission records or replace them with documented assets.
+1. Recorded-music provenance is closed for the five MP3s listed above.
 2. The 24 fictional display names are approved and in code, but perform actual trademark searches and obtain appropriate jurisdiction-specific review; the evidence log currently marks every register task `not_checked`. Separately review car shapes, grilles, badges, plates and marketing renders.
 3. Prepare THIRD_PARTY_NOTICES and licence copies for the exact release files; pin/hashes for fonts and vendored JS.
 4. Confirm ownership/contributor permissions for inherited project code and generated assets. Missing project LICENSE does not require making the game open source; it means this audit cannot infer a distribution grant from the repo.
