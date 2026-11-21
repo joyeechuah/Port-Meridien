@@ -12,15 +12,26 @@ test("the jacket adds room at the wrist and the selected sleeve survives leaving
     const elbow = __T.FOOT.m.elbows[0], point = new THREE.Vector3();
     elbow.updateWorldMatrix(true, true);
     const local = elbow.matrixWorld.clone().invert();
+    const slice = -.215;
     let left = Infinity, right = -Infinity;
     elbow.traverse(mesh => {
       if (!mesh.isMesh) return;
-      const vertices = mesh.geometry.attributes.position;
-      for (let i = 0; i < vertices.count; i++) {
-        point.fromBufferAttribute(vertices, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(local);
-        if (point.y < -.235 || point.y > -.19) continue;
-        left = Math.min(left, point.x);
-        right = Math.max(right, point.x);
+      const g = mesh.geometry, positions = g.attributes.position, vertices = [];
+      for (let i = 0; i < positions.count; i++) {
+        vertices.push(point.fromBufferAttribute(positions, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(local).clone());
+      }
+      // Intersect actual triangle edges. The old cylindrical forearm has no
+      // vertex at the wrist itself, but its width can still be measured there.
+      const at = i => vertices[g.index ? g.index.getX(i) : i];
+      const count = g.index ? g.index.count : positions.count;
+      for (let i = 0; i < count; i += 3) {
+        for (let j = 0; j < 3; j++) {
+          const a = at(i + j), b = at(i + (j + 1) % 3);
+          if ((a.y < slice) === (b.y < slice)) continue;
+          const x = a.x + (b.x - a.x) * (slice - a.y) / (b.y - a.y);
+          left = Math.min(left, x);
+          right = Math.max(right, x);
+        }
       }
     });
     return right - left;
