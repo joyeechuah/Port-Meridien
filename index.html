@@ -5639,7 +5639,7 @@ function exitSeq(dt){
 
 function beginFreeRide(){
   setState("DRIVE");hudOn(true);updateMoney();
-  $("keys").style.opacity=1;setTimeout(()=>$("keys").style.opacity=0,10000);
+  keyHints(false);$("keys").style.opacity=1;setTimeout(()=>$("keys").style.opacity=0,10000);
   for(const t of TRAFFIC)if(!t.cop||t.patrol)spawnTraffic(t,60,600,false);   // police cars beyond the two patrols wait until they are called
   toast("FREE RIDE",isTouch?"Explore Port Meridien. Tap MAP to plan a route.":"Explore Port Meridien. Press M for the map.");
   while(jobNotices.length){const[t,s]=jobNotices.shift();toast(t,s,"bad")}
@@ -6618,9 +6618,15 @@ function footEnd(){
   promptAct=null;show("prompt",false);footHud(false);autoHold=true;if(pc)snapCam();
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
-const driveKeys=$("keys").innerHTML;
+// The keys along the bottom on a computer, for driving or for walking, with F to get out, and G whenever the pistol
+// can fire. G was only in the README, so on a laptop there seemed to be no way to shoot (Jo Yee, 21 Nov)
+const DRIVE_KEYS=$("keys").innerHTML+" &nbsp; <kbd>F</kbd> get out";
+const FOOT_KEYS="<kbd>W</kbd><kbd>S</kbd> walk / back &nbsp; <kbd>A</kbd><kbd>D</kbd> turn &nbsp; <kbd>Shift</kbd> run &nbsp; <kbd>E</kbd> interact";
+let keysShown="";
+const gunReady=()=>save.armed&&state==="DRIVE"&&!BOAT.on&&(FOOT.on||(!ev&&!testDrive));
+function keyHints(foot){const h=(foot?FOOT_KEYS:DRIVE_KEYS)+(gunReady()?" &nbsp; <kbd>G</kbd> fire":"");if(h!==keysShown){keysShown=h;$("keys").innerHTML=h}}
 function footHud(on){
-  $("keys").innerHTML=on?"<kbd>W</kbd><kbd>S</kbd> walk / back &nbsp; <kbd>A</kbd><kbd>D</kbd> turn &nbsp; <kbd>Shift</kbd> run &nbsp; <kbd>E</kbd> interact":driveKeys;
+  keyHints(on);
   document.body.classList.toggle("outsideCar",on);
   document.body.classList.toggle("walking",on&&FOOT.on);
   show("speedo",!on);show("streak",!on);show("chFoot",!on);show("chRear",!on);show("chCam",!on);
@@ -7104,9 +7110,10 @@ function healthTick(dt){
     const show1=(save.armed&&!BOAT.on)||H.hp<H.max;show("gunHud",show1);
     // the FIRE pad: whenever the pistol can be fired, kept up to date here rather than only on getting in or out
     // (Codex's review of #35: it was missing on the first drive after taking the pistol, and stayed in races)
-    show("bF",save.armed&&state==="DRIVE"&&!BOAT.on&&(FOOT.on||(!ev&&!testDrive)));
+    const ready=gunReady();show("bF",ready);if(!BOAT.on)keyHints(FOOT.on);
     if(show1){$("hpBar").style.width=Math.round(H.hp/H.max*100)+"%";$("gunHud").classList.toggle("low",H.hp<30);
-      const t=save.armed?(GUN.ammo?"PISTOL "+GUN.ammo:"PISTOL EMPTY"):"";$("gunTxt").textContent=t;$("gunHud").classList.toggle("empty",save.armed&&!GUN.ammo)}}
+      // on a computer the pill also says which key fires (on a phone the FIRE pad does)
+      const t=save.armed?(GUN.ammo?"PISTOL "+GUN.ammo+(ready&&!isTouch?" · G TO FIRE":""):"PISTOL EMPTY"):"";$("gunTxt").textContent=t;$("gunHud").classList.toggle("empty",save.armed&&!GUN.ammo)}}
 }
 /* ================================================================ PEDESTRIANS
    People walking in Old Quay: round the blocks on the pavements, across the streets on the zebra crossings when no car is
@@ -7329,7 +7336,7 @@ function boatLandSpot(){
   const x=clamp(BOAT.x,PIER.x0+2.2,PIER.x1-1),z=BOAT.z<0?PIER.z0+.75:PIER.z1-.75;
   return Math.hypot(BOAT.x-x,BOAT.z-z)<=BOAT_V.land?[x,z]:null;
 }
-function boatHud(){footHud(true);$("keys").innerHTML="<kbd>W</kbd><kbd>S</kbd> power / reverse &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>E</kbd> land";$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
+function boatHud(){footHud(true);keysShown="";$("keys").innerHTML="<kbd>W</kbd><kbd>S</kbd> power / reverse &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>E</kbd> land";$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
 function boatBoard(){
   if(!FOOT.on||BOAT.on||!BOAT.m)return false;
   FOOT.on=false;FOOT.m.G.visible=false;BOAT.on=true;BOAT.v=0;BOAT.steer=0;BOAT.car=[P.x,P.z];BOAT.cy=BOAT.h;
