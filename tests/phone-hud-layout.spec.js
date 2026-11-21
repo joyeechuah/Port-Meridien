@@ -1,7 +1,8 @@
 // On a phone, on foot, with everything showing at once (the wanted stars, the pistol and health bar, the get-in
 // prompt and two messages), nothing covers anything else: the minimap stays clear of the column above it, and the
 // messages, the pads and the buttons along the top stay clear of the prompt. The car's damage pill is hidden on foot
-// (#47: it's about the car, not you). Portrait and two landscape sizes.
+// (#47: it's about the car, not you). Phones in portrait and landscape, a small phone, a folded foldable and a
+// tablet both ways.
 const { test, expect } = require("./support/game");
 
 const overlap = (a, b) => a && b && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
@@ -10,6 +11,10 @@ for (const [name, w, h] of [
   ["portrait", 390, 844],
   ["landscape", 844, 390],
   ["small landscape", 740, 360],
+  ["small phone", 360, 640],
+  ["folded foldable", 344, 882],
+  ["tablet", 768, 1024],
+  ["tablet landscape", 1024, 768],
 ])
   test.describe(name, () => {
     test.use({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
