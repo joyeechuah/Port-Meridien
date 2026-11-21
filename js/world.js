@@ -1002,11 +1002,34 @@ const gW=(x,z,y=0)=>new V3(HOUSE.x-gDir.x*x+gOut.x*z,gY+y,HOUSE.z-gDir.z*x+gOut.
 const HOUSE_MESHES=[];
 const SPOTS=[[-16,12.5,.55],[-10,10,.42],[-3.6,8.6,.18],[3.6,8.6,-.18],[10,10,-.42],[16,12.5,-.55],[-17,21.5,.35],[-10.5,22,.2],[-4.8,22,.05],[4.8,22,-.05],[10.8,22,-.2],[17,21.5,-.35]];
 let doorMesh,aquaLight,selRing,selSpot;const fishes=[],pickers=[];
+// polished concrete: one 4 m bay of faintly mottled grey with fine aggregate and a saw-cut joint along two edges, so
+// tiling it lays a joint grid across the floor (the floor was one flat teal)
+function garageFloorTex(){
+  const c=document.createElement("canvas");c.width=c.height=512;const x=c.getContext("2d");
+  let seed=91;const R=()=>(seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296;
+  x.fillStyle="#5a6a73";x.fillRect(0,0,512,512);
+  for(let i=0;i<120;i++){const px=R()*512,py=R()*512,r=30+R()*90,l=R()<.5?255:0,g=x.createRadialGradient(px,py,0,px,py,r);
+    g.addColorStop(0,`rgba(${l},${l},${l},${.012+R()*.022})`);g.addColorStop(1,`rgba(${l},${l},${l},0)`);x.fillStyle=g;x.fillRect(px-r,py-r,r*2,r*2)}
+  for(let i=0;i<9000;i++){const l=R()<.5?235:20;x.fillStyle=`rgba(${l},${l},${l},${.04+R()*.1})`;x.fillRect(R()*512,R()*512,1,1)}
+  x.fillStyle="rgba(26,32,36,.6)";x.fillRect(0,0,512,3);x.fillRect(0,0,3,512);
+  x.fillStyle="rgba(255,255,255,.08)";x.fillRect(0,3,512,1);x.fillRect(3,0,1,512);
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(46/4,30/4);
+  t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t;
+}
+// a turntable pad under each parking spot: graphite with a fine lathe finish and a bright rim
+function garagePadTex(){
+  const c=document.createElement("canvas");c.width=c.height=256;const x=c.getContext("2d");
+  x.fillStyle="#525c62";x.fillRect(0,0,256,256);
+  for(let r=3;r<118;r+=2){const l=r%4?255:0;x.strokeStyle=`rgba(${l},${l},${l},.05)`;x.beginPath();x.arc(128,128,r,0,TAU);x.stroke()}
+  x.lineWidth=2.5;x.strokeStyle="rgba(24,28,32,.7)";x.beginPath();x.arc(128,128,118.5,0,TAU);x.stroke();
+  x.lineWidth=6;x.strokeStyle="#c4ccd1";x.beginPath();x.arc(128,128,123,0,TAU);x.stroke();
+  return new THREE.CanvasTexture(c);
+}
 function buildHouse(){
   gY=PADS[0].h+YO;
   const wallM=new THREE.MeshPhongMaterial({color:0x86a9c0,shininess:14});
   const darkM=new THREE.MeshPhongMaterial({color:0x22282f,shininess:20});
-  const floorM=new THREE.MeshPhongMaterial({color:0x557d93,shininess:90,specular:0x33454f});
+  const floorM=new THREE.MeshPhongMaterial({map:garageFloorTex(),shininess:70,specular:0x3c484f});
   const shellM=new THREE.MeshLambertMaterial({color:0xf4f2ec});
   const put=(g,m,x,y,z,cast,yaw)=>{const q=new THREE.Mesh(g,m);q.position.copy(gW(x,z,y));q.rotation.y=yaw===undefined?gYaw:yaw;q.castShadow=!!cast;q.receiveShadow=true;scene.add(q);HOUSE_MESHES.push(q);return q};
   const B=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
@@ -1054,6 +1077,21 @@ function buildHouse(){
   // lights
   [[-12,9],[3,12],[15,9]].forEach(([x,z])=>{const l=new THREE.PointLight(0xffeec8,.6,44);l.position.copy(gW(x,z,8.6));scene.add(l);put(new THREE.CylinderGeometry(.5,.62,.22,10),new THREE.MeshBasicMaterial({color:0xfff6dd}),x,9.9,z)});
   [-16,-8,0,8,16].forEach((x,k)=>{const q=put(new THREE.CylinderGeometry(.2,.28,.6,10),darkM,x,8.75,4+k%2*14);q.rotation.order="YXZ";q.rotation.x=.7});
+  // the finish: the pads, a dark skirting and panel joints on the walls, light bars between the ceiling beams and a
+  // light strip along the top of the walls. Three meshes in all (the room was flat colour)
+  {const pads=[],trim=[],glow=[],box=(L,w,h,d,x,y,z,c)=>L.push({g:GEO.box,m:mat(x,y,z,0,w,h,d),c});
+   const pg=new THREE.CircleGeometry(2.85,48).rotateX(-Math.PI/2);
+   for(const [x,z] of SPOTS)pads.push({g:pg,m:new THREE.Matrix4().makeTranslation(x,.012,z),c:0xffffff});
+   const SK=0x2a3036,JN=0x6e8fa3;
+   for(const s of [-1,1]){box(trim,.05,.2,29.5,s*22.725,.1,15,SK);box(trim,15.75,.2,.05,s*14.875,.1,.275,SK);
+     for(let z=3;z<29;z+=3)box(trim,.02,9.8,.04,s*22.74,5.1,z,JN);
+     box(glow,.05,.05,29.5,s*22.72,9.9,15,0xffffff)}
+   box(trim,45.5,.2,.05,0,.1,29.725,SK);for(let x=-21;x<=21;x+=3)box(trim,.04,9.8,.02,x,5.1,29.74,JN);
+   box(glow,45.5,.05,.05,0,9.9,29.72,0xffffff);
+   for(const x of [-11,-4,4,11])box(glow,.3,.04,26,x,9.96,15,0xffffff);
+   put(merge(pads),new THREE.MeshPhongMaterial({map:garagePadTex(),shininess:90,specular:0x46525a}),0,0,0);pg.dispose();
+   put(merge(trim),new THREE.MeshLambertMaterial({vertexColors:true}),0,0,0);
+   put(merge(glow),new THREE.MeshBasicMaterial({color:0xfff3df}),0,0,0)}
   selRing=new THREE.Mesh(new THREE.RingGeometry(2.7,3.0,48),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.85,side:THREE.DoubleSide}));
   selRing.rotation.x=-Math.PI/2;scene.add(selRing);
   selSpot=new THREE.SpotLight(0xfff1d6,1.1,22,.5,.6);scene.add(selSpot);scene.add(selSpot.target);

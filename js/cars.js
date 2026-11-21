@@ -76,7 +76,7 @@ function carEnvScene(){
   const s=new THREE.Scene(),m=new THREE.Mesh(new THREE.SphereGeometry(90,32,16),sky.material);m.frustumCulled=false;s.add(m);
   const g=new THREE.Mesh(new THREE.CircleGeometry(85,32),new THREE.MeshBasicMaterial({color:0x55524c,fog:false}));g.rotation.x=-Math.PI/2;g.position.y=-3;s.add(g);
   CAR_ENV.ground=g;return s}
-function carEnvTex(){if(!CAR_ENV.tex)updateCarEnv(true);return CAR_ENV.tex}
+function carEnvTex(){if(!CAR_ENV.tex)updateCarEnv(true);return curCarEnv()}
 function updateCarEnv(force){
   const k=[skyU.top.value,skyU.hor.value,skyU.sunCol.value].map(c=>c.r+c.g+c.b).concat([skyU.sunDir.value.x,skyU.sunDir.value.y]);
   const old=CAR_ENV.key,now=performance.now();
@@ -88,10 +88,35 @@ function updateCarEnv(force){
   if(!CAR_ENV.pm){CAR_ENV.pm=new THREE.PMREMGenerator(renderer);CAR_ENV.scene=carEnvScene()}
   CAR_ENV.ground.material.color.copy(hemi.groundColor).lerp(scene.fog.color,.35).multiplyScalar(.55);
   const rt=CAR_ENV.pm.fromScene(CAR_ENV.scene,.02,.1,200),old2=CAR_ENV.rt;CAR_ENV.rt=rt;CAR_ENV.tex=rt.texture;
-  for(const m of CAR_ENV.mats){m.envMap=rt.texture;m.needsUpdate=true}
+  if(!STUDIO_ENV.on)for(const m of CAR_ENV.mats){m.envMap=rt.texture;m.needsUpdate=true}
   if(old2)old2.dispose();CAR_ENV.key=k;CAR_ENV.t=now;
 }
 const envMat=m=>{CAR_ENV.mats.add(m);return m};
+// Indoors (the garage and the showroom) the cars reflect a studio, a grey room with long light panels overhead and
+// soft ones round the sides, instead of the open sky: the sky's blue and its bright horizon used to wash over a car
+// standing in the garage
+const STUDIO_ENV={tex:null,on:false};
+function studioEnvTex(){
+  if(STUDIO_ENV.tex)return STUDIO_ENV.tex;
+  const s=new THREE.Scene(),basic=(c,side)=>new THREE.MeshBasicMaterial({color:c,side,fog:false});
+  const room=new THREE.Mesh(new THREE.BoxGeometry(44,16,44),basic(0x3c4349,THREE.BackSide));room.position.y=5;s.add(room);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(44,44),basic(0x5a6268,THREE.FrontSide));floor.rotation.x=-Math.PI/2;floor.position.y=-1.5;s.add(floor);
+  const panel=(w,h,k,x,y,z,rx,ry)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),basic(new THREE.Color(k,k,k*.96),THREE.DoubleSide));m.position.set(x,y,z);m.rotation.set(rx,ry,0);s.add(m)};
+  for(const x of [-7.5,-2.5,2.5,7.5])panel(1.2,30,5,x,12,0,Math.PI/2,0);
+  for(const sd of [-1,1])panel(16,4.5,2.2,sd*21.5,4.5,0,0,sd*Math.PI/2);
+  panel(20,4,1.6,0,4.5,21.5,0,Math.PI);panel(20,4,1.6,0,4.5,-21.5,0,0);
+  if(!CAR_ENV.pm){CAR_ENV.pm=new THREE.PMREMGenerator(renderer);CAR_ENV.scene=carEnvScene()}
+  STUDIO_ENV.tex=CAR_ENV.pm.fromScene(s,0,.1,100).texture;
+  s.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose()}});
+  return STUDIO_ENV.tex;
+}
+// the reflections a car shows now: the studio indoors, the sky outside
+const curCarEnv=()=>STUDIO_ENV.on?studioEnvTex():CAR_ENV.tex;
+function carIndoors(on){
+  if(STUDIO_ENV.on===on)return;STUDIO_ENV.on=on;
+  const tex=curCarEnv();if(!tex)return;
+  for(const m of CAR_ENV.mats){m.envMap=tex;m.needsUpdate=true}
+}
 /* ================================================================ CAR LOOKS
    A body is a smooth loft: cross-sections along the car whose top and bottom follow the side profile (PROF), whose
    width narrows towards the nose and tail like a car seen from above, with the sides cut up round the wheels and
