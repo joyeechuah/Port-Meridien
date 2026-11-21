@@ -1,27 +1,22 @@
 # Port Meridien
 
-**[▶ Play Now](https://joyeechuah.github.io/Port-Meridien/)** · in the browser, on a computer or a phone, no install
+![Port Meridien cover art with a sports coupe overlooking the harbour](docs/images/port-meridien.jpg)
 
-An open-world city game for the browser: walk the streets, take any car, and sail from the harbour. Built with three.js as a single `index.html`, with no install and no build step.
+**[Play Port Meridien in your browser](https://joyeechuah.github.io/Port-Meridien/)**
 
-> **Status: early.** Port Meridien builds on the foundation of [White Isle Drive](https://github.com/joyeechuah/white-isle-drive). Walking, running, taking cars, the harbour boat, the Old Quay district, people on its streets, the police, and a pistol with health and arrest are in. See [What's next](#whats-next) and [ROADMAP.md](ROADMAP.md).
-
-Port Meridien is an original game. Its name, city, characters and story are its own.
+Race the coastal roads, explore Old Quay on foot, or take a boat across the harbour. Port Meridien is a 3D open-world browser game built with Three.js for desktop and mobile. It builds on [White Isle Drive](https://github.com/joyeechuah/white-isle-drive) with an original city, characters and activities.
 
 ## Play
 
-**Online:** [joyeechuah.github.io/Port-Meridien](https://joyeechuah.github.io/Port-Meridien/). It updates a minute or two after each change to `main`. Your progress is saved in that browser.
+1. Open the game and choose **Play as guest**. Progress saves in this browser. Watch the harbour flyover or select **Skip intro** to go straight to the wardrobe. Reduced motion also skips the flyover.
+2. Choose **Harbour palms**, **Boardwalk stripe** or **Night shift**. Use **Turn around** to inspect the fit, then **Wear outfit & drive** to start in Old Quay. Left and right arrows or the controller D-pad change outfits. On a controller, Y turns the preview and A confirms.
+3. Try a coastal drive. Accelerate with W, steer with A and D, and brake with S. To reverse after braking, stop, release the brake and press it again. On a phone, use the steering and pedal pads.
+4. Stop near the harbour and select **Get out** to walk. Follow the pier to the motorboat and use the boarding prompt. To return to your car, walk up to it and select **Get in**.
+5. Open **Map** to plan a route. For a delivery or a race series, open **Pause → Contracts** or **Pause → Championships**. For car customisation or a free repair, choose **Pause → Go home**.
 
-**Locally:** clone the repository and run:
+<img src="docs/images/harbour-arrival.jpg" alt="Phone gameplay showing the opening flyover above the Old Quay pier and coastal road" width="235">
 
-```
-npm ci
-npm start        # http://127.0.0.1:4173/index.html
-```
-
-Or open `index.html` directly in Chrome, Edge, Firefox or Safari. It needs an internet connection to load three.js and the fonts.
-
-Play opens with a 7.6-second harbour flyover and a street-level reveal of your saved car in Old Quay. The flyover ends at the Old Quay wardrobe. **Skip intro**, Escape, controller A/B/Start and reduced motion all go straight to outfit selection. Preview Harbour palms, Boardwalk stripe or Night shift on your character, select **Turn around** to see the back, then **Wear outfit & drive** to start free roam. Arrow keys or the controller D-pad change outfits. On a controller, Y turns the preview and A confirms. Your outfit is saved and appears whenever you leave the car. Use the pause menu’s home action to visit the garage and customise your cars.
+*Old Quay from the opening flyover, captured on Android.*
 
 ### Graphics and saved settings
 
@@ -39,16 +34,17 @@ The browser remembers your graphics mode, FLASHES setting, VIOLENCE level and pi
 
 | | Keyboard | Touch | Controller |
 | --- | --- | --- | --- |
-| Gas / brake, reverse | `W` / `S` (or arrows) | GAS / BRAKE pads | Triggers |
+| Gas / brake, reverse | `W` / `S` (or arrows) | GAS / BRAKE pads | Right / left trigger |
 | Steer | `A` / `D` (or arrows) | Steering pads, or tilt | Left stick |
+| Run on foot | Hold `Shift` or `Space` | Hold RUN | Hold A |
 | Handbrake | `Space` | HANDBRAKE pad | `A` |
 | Get out | `F` | GET OUT | `B` |
-| Get in, board, step off, enter | `E`, `Enter` or `F` | Tap the prompt | `X` |
+| Use the nearby interaction prompt | `E` or `Enter` (also `F` on foot or aboard) | Tap the prompt | `X` |
 | Map and GPS | `M` | MAP | View / Back |
 | Camera | `C` | CAM | `Y` |
 | Look behind | Hold `B` | REAR | Hold left shoulder |
 | Photo Mode | `V` | PHOTO | |
-| Back to the road | `R` | Pause menu | |
+| Return the car to the road outside an event | `R` | — | — |
 | Fire (on foot or in free driving) | `G` | FIRE | Right shoulder |
 | Pause | `Esc` or `P` | PAUSE | Menu / Start |
 
@@ -139,12 +135,21 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 
 | Step | What you'll be able to do | State |
 | --- | --- | --- |
-| 4 | More weapons, shooting from a car or the boat, police cars that shoot, health pickups | Not decided yet |
+| 4 | More weapons, shooting from the boat, police cars that shoot, health pickups | Not decided yet |
 | Later | The full city as its own world, with the island kept as a second place to drive | Planned |
 
 The opening sequence and audio have been tested on an Android phone. The AUTO resolution change and Old Quay junction traffic still need a driving check on a physical phone.
 
 ## Development
+
+To play locally, clone the repository, install Node.js 18 or later, then run these commands from the repository root.
+
+```sh
+npm ci
+npm start
+```
+
+Open [the local game](http://127.0.0.1:4173/index.html). The page loads Three.js from a CDN, so the first load needs an internet connection.
 
 ```
 npm run lint                                  # must be 0 errors, 0 warnings
@@ -157,7 +162,7 @@ GitHub Actions runs lint and both test projects on every pull request. The drawn
 
 Run one Playwright instance at a time: the test server uses port 4173 and reads `index.html` from disk on each page load, so don't edit it during a run.
 
-- The game is `index.html` and nothing else. `package.json` holds only test tooling.
+- The game logic and interface live in `index.html`. Recorded music lives in `audio/`.
 - Every fix or feature comes with a test that fails without it.
 - Tests reach the game's internals through `window.__T`; add a name to the list in `tests/support/instrument.js` when a test needs one.
 - In tests the police ignore crimes unless a test opens the game with `game.open({ police: true })`, so a crash in an unrelated test never starts a chase.
