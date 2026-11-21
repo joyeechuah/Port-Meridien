@@ -8,16 +8,16 @@ Return to [README](../README.md) · Set up [Cloud Save](../CLOUD_SETUP.md).
 
 | Area | Implementation | Main entry point |
 | --- | --- | --- |
-| Game UI and control surfaces | HTML, CSS, vanilla JavaScript | `index.html` |
-| 3D renderer, camera, scene graph | three.js r128, WebGL | `index.html` |
-| Terrain, roads, Old Quay buildings, NPCs, cars and harbour | Procedural geometry / generated textures | `index.html` |
-| Physics-style driving, collisions and AI | Frame-based JavaScript simulation | `index.html` |
-| Audio | Web Audio API, pre-recorded music and synthesised fallback | `index.html`, `audio/` |
-| Guest progress | Validated browser `localStorage` save | `index.html` |
-| Optional cloud backup | Firebase Auth + Firestore (disabled until configured) | `index.html`, `firestore.rules`, `CLOUD_SETUP.md` |
+| Game UI and control surfaces | HTML, CSS, vanilla JavaScript | `index.html`, `js/screens.js`, `js/play.js` |
+| 3D renderer, camera, scene graph | three.js r128, WebGL | `js/core.js`, `js/main.js` |
+| Terrain, roads, Old Quay buildings, NPCs, cars and harbour | Procedural geometry / generated textures | `js/world.js`, `js/cars.js`, `js/people.js` |
+| Physics-style driving, collisions and AI | Frame-based JavaScript simulation | `js/cars.js`, `js/people.js` |
+| Audio | Web Audio API, pre-recorded music and synthesised fallback | `js/media.js`, `audio/` |
+| Guest progress | Validated browser `localStorage` save | `js/core.js` |
+| Optional cloud backup | Firebase Auth + Firestore (disabled until configured) | `js/screens.js`, `firestore.rules`, `CLOUD_SETUP.md` |
 | Automation | Playwright / ESLint / GitHub Actions, including manual rendered-only runs | `tests/`, `playwright.config.js`, `.github/workflows/test.yml`, `.github/workflows/drawn-webgl.yml` |
 
-The sizeable `index.html` contains the production game, not a framework application with separate ES modules. Search the section comments and functions listed below rather than expecting `src/` or a bundler.
+The production game is `index.html` (markup and styles) and nine classic scripts in `js/`, loaded in order and sharing one global scope: no framework, modules or bundler. [CODE_LAYOUT.md](CODE_LAYOUT.md) says what's in each file and the one rule the split brings. Search the section comments and functions listed below.
 
 ## Boot and the main loop
 
@@ -78,7 +78,7 @@ The game uses one Web Audio oscillator/filter/noise graph for engine, tyres and 
 
 ## Tests and continuous integration
 
-Production `index.html` is loaded fresh for browser tests. `tests/support/instrument.js` inserts controlled inspection hooks into an **in-memory copy**; it does **not** modify the shipping HTML file. Tests can then inspect internal state using `window.__T`. `tests/support/game.js` contains test-driving helpers. `tests/on-foot.spec.js` tests player mobility and exit prompts; `tests/take-cars.spec.js` covers temporary ownership, model/save/ghost invariants and dealer lifecycle; `tests/boat.spec.js` and `tests/boat-input.spec.js` cover navigation and controller/touch input. `tests/old-quay.spec.js`, `tests/old-quay-access-regressions.spec.js` and `tests/pedestrians.spec.js` cover district clearance, dealer access, race finish and the first NPC crossing behaviours. The world-baseline regression compares authored roads, generated edges, events, landmarks, stop points and contract legs against a reviewed fixture. Do **not** silently regenerate it during geometry changes. The Playwright server is in `tests/support/server.js`.
+Production `index.html` and its scripts are loaded fresh for browser tests. `tests/support/instrument.js` inserts controlled inspection hooks into **in-memory copies** of the scripts; it does **not** modify the shipping files. Tests can then inspect internal state using `window.__T`. `tests/support/game.js` contains test-driving helpers. `tests/on-foot.spec.js` tests player mobility and exit prompts; `tests/take-cars.spec.js` covers temporary ownership, model/save/ghost invariants and dealer lifecycle; `tests/boat.spec.js` and `tests/boat-input.spec.js` cover navigation and controller/touch input. `tests/old-quay.spec.js`, `tests/old-quay-access-regressions.spec.js` and `tests/pedestrians.spec.js` cover district clearance, dealer access, race finish and the first NPC crossing behaviours. The world-baseline regression compares authored roads, generated edges, events, landmarks, stop points and contract legs against a reviewed fixture. Do **not** silently regenerate it during geometry changes. The Playwright server is in `tests/support/server.js`.
 
 `playwright.config.js` defines two projects: `chromium` for logic and interaction without 3D rendering, and `webgl` for tests tagged `@webgl`, drawing with WebGL/SwiftShader as needed. The workflow `.github/workflows/test.yml` installs dependencies, runs lint, then runs `npx playwright test` (both `chromium` and `webgl` projects), and uploads reports and failure artifacts. The separate workflow `.github/workflows/drawn-webgl.yml` is a **manual, rendered-only** run of `npx playwright test --project=webgl --workers=1`; it does not fill a gap in the normal CI because the normal workflow already runs WebGL tests. Its job label says Chromium, but it does not filter out WebGL tests. Run only one Playwright instance at a time because the server uses port 4173. Do not edit the served `index.html` during a test run.
 
@@ -103,7 +103,7 @@ Automated mobile cases use emulated viewports and touch events, **not physical m
 4. For input/camera changes, test mouse, touch, controllers and short phone landscape layouts.
 5. For save or cloud changes, test migrations, corrupt saves, offline behaviour and multi-tab ownership.
 6. Run lint and relevant targeted tests first, then the complete suite and GitHub Actions before merging.
-7. When multiple PRs touch `index.html`, merge one and update the others against the latest `main`; preserve both sides of the change.
+7. When multiple PRs touch the same file in `js/`, merge one and update the others against the latest `main`; preserve both sides of the change, then run `npm run stamp`.
 8. Describe user-visible behaviour in the README and keep implementation status in [ROADMAP.md](../ROADMAP.md) accurate. There is no changelog file in this repository.
 
 ## Known constraints

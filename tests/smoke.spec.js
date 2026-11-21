@@ -1,6 +1,7 @@
 // Smoke tests: the page as shipped loads and the main screens open. The first two use the exact index.html in the
 // repository, with no test hooks at all.
 const { test, expect } = require("./support/game");
+const { scriptFiles } = require("./support/source");
 
 test.describe("smoke", () => {
   test("the shipping page loads three.js with its integrity hash, shows START and opens Old Quay @webgl", async ({ game, page }) => {
@@ -109,6 +110,8 @@ test.describe("site files", () => {
   test("the files the page and README refer to are served with the right types", async ({ request }) => {
     for (const [path, type] of [
       ["/index.html", "text/html"],
+      // the game's scripts, as the page asks for them (with their ?v= stamps)
+      ...scriptFiles().map((f) => [`/${f.rel}?v=${f.stamp}`, "text/javascript"]),
       ["/404.html", "text/html"],
       ["/audio/cruise.mp3", "audio/mpeg"],
       ["/audio/highway.mp3", "audio/mpeg"],
