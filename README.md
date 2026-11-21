@@ -156,9 +156,9 @@ npx playwright test --project=webgl           # drawn tests, slow with a softwar
 
 GitHub Actions runs lint and both test projects on every pull request. The drawn tests can also be run on their own: Actions → **Drawn browser tests (WebGL)** → Run workflow.
 
-Run one Playwright instance at a time: the test server uses port 4173 and reads `index.html` from disk on each page load, so don't edit it during a run.
+Run one Playwright instance at a time: the test server uses port 4173 and reads `index.html` and `js/` from disk on each page load, so don't edit them during a run.
 
-- The game logic and interface live in `index.html`. Recorded music lives in `audio/`.
+- The game is `index.html` and the scripts in `js/`, which share one global scope; [docs/CODE_LAYOUT.md](docs/CODE_LAYOUT.md) says what's where. After changing a file in `js/`, run `npm run stamp`. The five recorded tracks live in `audio/`. `package.json` holds only test tooling.
 - Every fix or feature comes with a test that fails without it.
 - Tests reach the game's internals through `window.__T`; add a name to the list in `tests/support/instrument.js` when a test needs one.
 - In tests the police ignore crimes unless a test opens the game with `game.open({ police: true })`, so a crash in an unrelated test never starts a chase.

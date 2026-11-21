@@ -1,9 +1,9 @@
 // Renaming visible places must not sever the name-based joins used to build activities.
 const { test, expect } = require('@playwright/test');
-const fs = require('fs');
-const path = require('path');
 const vm = require('vm');
-const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const { gameSource } = require('./support/source');
+// the page and its scripts in js/, as one text
+const html = gameSource();
 
 test('Port Meridien screens and descriptions show the game title and describe its playable features', () => {
   const markup = html.slice(0, html.indexOf('<script src='));
@@ -40,7 +40,6 @@ test('renamed zones still match all contract and landmark lookups, with stable s
 });
 
 test('every car has a made-up make and model, and keeps its id, class and figures', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const cars = vm.runInNewContext(html.match(/const CARS=(\[[\s\S]*?\n\]);/)[1]);
   expect(cars).toHaveLength(24);
   // the names approved on 13 Nov 2026 (docs/CAR_NAME_PROPOSAL.md); ids are what saves, records and ghosts refer to
