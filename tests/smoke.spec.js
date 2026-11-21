@@ -113,6 +113,8 @@ test.describe("site files", () => {
       ["/audio/cruise.mp3", "audio/mpeg"],
       ["/audio/highway.mp3", "audio/mpeg"],
       ["/audio/showroom.mp3", "audio/mpeg"],
+      ["/audio/reveal.mp3", "audio/mpeg"],
+      ["/audio/chase.mp3", "audio/mpeg"],
     ]) {
       const r = await request.get(path);
       expect(r.status(), path).toBe(200);
