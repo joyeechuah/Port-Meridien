@@ -90,7 +90,7 @@ function placeCarMesh(dt){
 function updateLampLights(){
   const on=night>.02&&pc&&state!=="GARAGE"&&state!=="LOAD"&&state!=="DEALER"&&state!=="EXIT";
   let a=null,b=null,da=1e18,db=1e18;
-  if(on){const x=pc.G.position.x,z=pc.G.position.z;for(const L of LAMPS){const d=(L.x-x)**2+(L.z-z)**2;if(d<da){db=da;b=a;da=d;a=L}else if(d<db){db=d;b=L}}}
+  if(on){const {x,z}=activePlayer();for(const L of LAMPS){const d=(L.x-x)**2+(L.z-z)**2;if(d<da){db=da;b=a;da=d;a=L}else if(d<db){db=d;b=L}}}
   [[a,da],[b,db]].forEach(([L,d2],i)=>{const l=LAMP_LIGHTS[i];
     if(!on||!L){l.intensity=0;return}
     // fades out before the next lamp takes over, so the light never jumps between poles
