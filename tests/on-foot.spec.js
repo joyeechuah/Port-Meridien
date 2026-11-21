@@ -327,3 +327,39 @@ test.describe("on foot, on a phone", () => {
     expect(await game.eval(() => document.getElementById("bH").textContent)).toBe("HANDBRAKE");
   });
 });
+
+test("stopping in Old Quay leaves both soles on the visible paving", async ({ game }) => {
+  await parked(game);
+  await game.key("f");
+  const samples = await game.eval(() => {
+    const T = __T, F = T.FOOT;
+    // Cast onto the built town, independently of the walker's height calculation.
+    const ray = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0);
+    const point = new THREE.Vector3(), clearance = [];
+    const [plazaX] = T.QUAY.fountain;
+    T.scene.updateMatrixWorld(true);
+    const paving = T.scene.children.filter(o => o.isMesh && o.receiveShadow && o.material.isMeshLambertMaterial && o.material.vertexColors);
+    for (const [x,z] of [[plazaX + 4, 118], [plazaX + 21, 118], [plazaX + 25, 118], [655, -78], [590, 110]]) {
+      F.x=x; F.z=z; F.y=T.footGround(x,z); F.h=0; F.v=1.9;
+      for(let i=0;i<50;i++) T.driveUpdate(1/60);
+      F.m.G.updateMatrixWorld(true);
+      for(const knee of F.m.knees){
+        const shoe=knee.children[1], vertices=shoe.geometry.attributes.position;
+        let lowest=Infinity;
+        for(let i=0;i<vertices.count;i++){
+          point.fromBufferAttribute(vertices,i).applyMatrix4(shoe.matrixWorld);
+          lowest=Math.min(lowest,point.y);
+        }
+        shoe.getWorldPosition(point);
+        ray.set(point,down); ray.far=1;
+        const hit=ray.intersectObjects(paving)[0];
+        if(!hit) throw Error('No surface beneath shoe');
+        clearance.push(lowest-hit.point.y);
+      }
+      if(F.v!==0) throw Error('Walker did not stop');
+    }
+    return clearance;
+  });
+  expect(Math.min(...samples)).toBeGreaterThanOrEqual(-0.003);
+  expect(Math.max(...samples)).toBeLessThan(0.025);
+});
