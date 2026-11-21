@@ -87,7 +87,8 @@ test.describe("pistol", () => {
     // the HUD is refreshed ten times a second
     await game.page.waitForFunction(() => !document.getElementById("gunHud").classList.contains("hide"), null, { timeout: 5000 });
     const onFoot = await game.eval(() => ({ gun: __T.GUN.m.visible, hud: !document.getElementById("gunHud").classList.contains("hide"), txt: document.getElementById("gunTxt").textContent }));
-    expect(onFoot).toEqual({ gun: true, hud: true, txt: "PISTOL 48" });
+    // on a computer the pill also names the key that fires (fire-key.spec.js)
+    expect(onFoot).toEqual({ gun: true, hud: true, txt: "PISTOL 48 · G TO FIRE" });
   });
 
   test("G fires at the car in front of you: 12 damage a hit, it stops at 100; not at one behind you", async ({ game }) => {
