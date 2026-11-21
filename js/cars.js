@@ -151,6 +151,10 @@ function carShape(pr,shape,openCockpit){
     const Ts=a>0?Math.max(T,a+.075):T,yb=Bo+H*S.belt;
     const c=[0,Bo, hw*.72,Bo, hw-.07*k,Bo+.015, hw-.012*k,Bo+Math.min(.09,H*.25), hw,yb, hw-.025*k,Bo+(Ts-Bo)*.82,
       hw-.07*k,Ts-.03*k, hw-S.tuck*1.7*k,Ts, hw*.45,(Ts+T)/2+S.crown*.8, 0,T+S.crown];
+    // Raised bonnet shoulders taper into the nose and disappear before the windscreen.
+    const bonnet=smooth01(pr.ws[0],pr.ws[0]+.28,z)*(1-smooth01(z1-.42,z1-.12,z));
+    c[16]+=hw*.12*bonnet;
+    c[17]+=(shape==="muscle"?.048:.024)*bonnet;
     if(a>0)for(const i of [1,2,3]){const y=c[i*2+1];if(y<a){c[i*2+1]=a;if(i===1)c[2]=Math.min(c[2],pr.tr-.24)}}
     // up the side the points only ever climb (the lifted arch used to fold the side over itself)
     for(let i=2;i<=7;i++)c[i*2+1]=Math.max(c[i*2+1],c[i*2-1]+.012);
@@ -249,7 +253,11 @@ function bodyPaint(K){
       else if(S.head==="box"){inL=band(ax,xc-lw*1.2,xc+lw*1.15,aa)*band(y,hy-.065,hy+.06,aa);drl=line(y-(hy+.05),.007,aa)*band(ax,xc-lw*1.1,xc+lw*1.05,aa);
         for(const c of [xc-lw*.45,xc+lw*.35])proj=Math.max(proj,1-smooth01(.028,.034,Math.hypot(ax-c,y-hy+.005)))}
       else{inL=1-smooth01(.07,.07+aa,Math.hypot(ax-xc,y-hy));drl=line(Math.hypot(ax-xc,y-hy)-.058,.005,aa);proj=1-smooth01(.03,.036,Math.hypot(ax-xc,y-hy))}
-      if(inL>.5){o.c=.02;o.r=.04;o.m=0;o.l=Math.max(drl,proj*.35,.04);o.lr=1;o.lg=.97;o.lb=.9;return}
+      if(inL>.5){
+        // The reflector cup remains visible behind the running light even with the lamps off.
+        const lensHeight=S.head==="swept"?hy+(ax-xc)*.3:S.head==="blade"?hy+.02+(ax-xc)*.22:hy;
+        const reflector=1-smooth01(0,.052,Math.abs(y-lensHeight));
+        o.c=.036+reflector*.20+proj*.18;o.r=.10+.12*(1-reflector);o.m=.4;o.l=Math.max(drl,proj*.35,.04);o.lr=1;o.lg=.97;o.lb=.9;return}
     }
     // tail lights
     if(nz<-.05&&z<R+.55){
@@ -258,6 +266,17 @@ function bodyPaint(K){
         if(!inL&&ax<xc-lw&&Math.abs(y-(yt-.005))<.006){o.c=.02;o.r=.05;o.m=0;o.l=.55;o.lr=1;o.lg=.12;o.lb=.05;return}}
       else{inL=band(ax,xc-lw*.85,xc+lw*1.1,aa)*band(y,yt-.07,yt+.035,aa);led=Math.max(.3,(line(y-(yt-.02),.01,aa)+line(ax-(xc+lw*.6),.008,aa))*inL)}
       if(inL>.5){o.c=.03;o.r=.05;o.m=0;o.l=led;o.lr=1;o.lg=.1;o.lb=.04;return}
+    }
+    // A recessed pocket and a painted pull sit just forward of each door's trailing seam.
+    if(side&&y>T-.22&&y<T-.055){
+      for(const door of dA){
+        const dz=z-(door[1]+.17),dy=y-(T-.135);
+        if(Math.abs(dz)>.105||Math.abs(dy)>.045)continue;
+        const pocket=1-smooth01(.75,1,(dz/.105)**2+(dy/.044)**2);
+        const pull=band(dz,-.08,.08,aa)*band(dy,-.004,.018,aa);
+        o.c=1-pocket*.72+pull*.5;o.r=.43-pull*.19;
+        if(pocket>.01)return;
+      }
     }
     // side intake behind the doors (mid-engined cars)
     if(S.intake&&side&&z<dA[0][1]-.06&&z>dA[0][1]-.62){const yt=T-.1-(dA[0][1]-.06-z)*.25;if(y>Bo+.16&&y<yt){o.c=.012;o.r=.6;o.m=0;return}}
@@ -509,8 +528,14 @@ function buildLook(cd,color,env,q,mods){
   // mirrors on the doors, just behind the windscreen base
   const mz=pr.ws[0]-.18,my=pr.ws[1]+.07;
   // the mirror sits on the door top, just outside the glass, on a short black arm
+  // The cap uses the same paint and finish as the body. Sample bare bonnet paint
+  // at its centreline; wrapping the whole body atlas around a cap put grille and lamp marks on it.
+  const capGeo=new THREE.SphereGeometry(.1,16,10),capUv=capGeo.attributes.uv;
+  const bonnetZ=(pr.ws[0]+K.z1)/2;
+  const paintU=Math.acos(1-2*(bonnetZ-K.z0)/(K.z1-K.z0))/Math.PI;
+  for(let i=0;i<capUv.count;i++)capUv.setXY(i,paintU,1);
   for(const s of [-1,1]){const hw=K.halfW(mz),xs=hw-S.tuck*1.7;
-    const cap=add(new THREE.SphereGeometry(.1,16,10),bodyM,s*(hw+.02),my+.07,mz);cap.scale.set(.8,.55,1.1);
+    const cap=add(capGeo,bodyM,s*(hw+.02),my+.07,mz);cap.scale.set(.8,.55,1.1);
     const gl=add(new THREE.CircleGeometry(.075,16),Mt.chrome,s*(hw+.02),my+.07,mz-.105);gl.rotation.y=Math.PI;gl.scale.set(1.05,.68,1);
     add(new THREE.BoxGeometry(hw+.02-xs,.03,.07),Mt.black,s*(xs+hw+.02)/2,my+.03,mz+.02)}
   // number plates
@@ -659,7 +684,14 @@ function buildTrafficCar(color,shape){
     for(const [x,z] of [[-tw,pr.wb],[tw,pr.wb],[-tw,-pr.wb],[tw,-pr.wb]]){
       const m=new THREE.Matrix4().makeTranslation(x,pr.wr,z).multiply(new THREE.Matrix4().makeScale(x<0?-sc:sc,sc,sc));
       items.push({g:W.tire,m,c:0x101112},{g:trafficDisc,m,c:0x7d8288},{g:W.cap,m,c:0x2a2c2f})}
-    tGeoCache[key]=merge(items)}
+    // Batch the two satin door mirrors with the wheels so distant traffic keeps three draws.
+    const mirrorZ=pr.ws[0]-.18,mirrorY=pr.ws[1]+.12,shoulder=parts.K.halfW(mirrorZ);
+    const housing=new THREE.SphereGeometry(1,8,5),stem=new THREE.BoxGeometry(1,1,1);
+    for(const side of [-1,1]){
+      items.push({g:stem,m:mat(side*(shoulder-.035),mirrorY-.04,mirrorZ,0,.18,.035,.055),c:0x292c2e},
+        {g:housing,m:mat(side*(shoulder+.065),mirrorY,mirrorZ,0,.095,.057,.11),c:0x383c40});
+    }
+    tGeoCache[key]=merge(items);housing.dispose();stem.dispose()}
   const G=new THREE.Group();
   const bodyM=envMat(new THREE.MeshStandardMaterial({color,map:parts.bt.col,roughnessMap:parts.bt.rm,metalnessMap:parts.bt.rm,roughness:1,metalness:1,
     envMap:env,envMapIntensity:.7,emissive:0xffffff,emissiveMap:parts.bt.lit,emissiveIntensity:.35}));

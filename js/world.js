@@ -674,6 +674,13 @@ function tileOf(x,z){const k=Math.floor(x/TILE)+","+Math.floor(z/TILE);let t=til
 const GEO={box:new THREE.BoxGeometry(1,1,1),trunk:new THREE.CylinderGeometry(.5,.7,1,6),cone:new THREE.ConeGeometry(1,1,7),
   ico:new THREE.IcosahedronGeometry(1,0),palmSeg:new THREE.CylinderGeometry(.18,.24,1,6),pole:new THREE.CylinderGeometry(.09,.13,1,6),
   ball:new THREE.SphereGeometry(1,8,6),rock:new THREE.DodecahedronGeometry(1,0)};
+// A closed, folded frond: the ridge catches the sun while the tip hangs below the crown.
+const palmFrond=new THREE.BufferGeometry();
+palmFrond.setAttribute("position",new THREE.Float32BufferAttribute([
+  0,0,0, -.38,.17,1.35, 0,.38,1.42, .38,.17,1.35, 0,.10,1.38, 0,-.65,3.2
+],3));
+palmFrond.setIndex([0,1,2,0,2,3,0,3,4,0,4,1,5,2,1,5,3,2,5,4,3,5,1,4]);
+palmFrond.computeVertexNormals();
 const inTown=(x,z)=>x>548&&x<772&&z>-132&&z<202;
 function pine(x,z,y,s){vegPine(x,z,y,s)}
 function olive(x,z,y,s){vegOlive(x,z,y,s)}
@@ -681,7 +688,7 @@ function palm(x,z,y,s){const t=tileOf(x,z).solid,a=rnd(x,z)*TAU,dx=Math.sin(a),d
   let px=x,pz=z,py=y;
   for(let k=0;k<5;k++){const lean=.05+k*.06,L=1.9*s;const cx=px+dx*Math.sin(lean)*L/2,cz=pz+dz*Math.sin(lean)*L/2,cy=py+Math.cos(lean)*L/2;
     t.push({g:GEO.palmSeg,m:mat(cx,cy,cz,a,s,L,s,lean),c:0x8a6c4a});px+=dx*Math.sin(lean)*L;pz+=dz*Math.sin(lean)*L;py+=Math.cos(lean)*L}
-  for(let f=0;f<8;f++){const fa=f/8*TAU+a;t.push({g:GEO.box,m:mat(px+Math.sin(fa)*1.5*s,py-.25*s,pz+Math.cos(fa)*1.5*s,fa,.8*s,.06,3.4*s,.42),c:f%2?0x3f6b2a:0x4f7d32})}
+  for(let f=0;f<8;f++){const fa=f/8*TAU+a;t.push({g:palmFrond,m:mat(px,py,pz,fa,s,s,s),c:f%2?0x3f6b2a:0x4f7d32})}
   addCircle(x,z,.45*s);}
 // street lamps; their heads are kept for the light pools on the road and the lamp lights near the car
 const LAMPS=[];
@@ -878,7 +885,17 @@ function buildOldQuay(){
       box(bx,py+.5,bz,2.2,.1,.6,WOOD,a);box(bx,py+.25,bz,2,.42,.12,0x5d6268,a);addBox(bx,bz,1.1,.35,a)}
     for(const[x,z]of[[px0+7,pz0+9],[px1-7,pz0+9],[px0+7,pz1-9],[px1-7,pz1-9]])palm(x,z,gy(x,z),1.15);
     for(const[x,z,ax]of[[px0+6,fz,1],[px1-6,fz,-1]])lamp(x,z,py+.07,ax,0,9);
-    for(const x of[px0+1.2,px1-1.2])for(let z=pz0+6;z<pz1-4;z+=13){box(x,py+.45,z,1.5,.9,1.5,0xc9bda6);tileOf(x,z).solid.push({g:GEO.ico,m:mat(x,py+1.25,z,R(8)*3,.85,.7,.85),c:R(9)<.5?0x4f7d32:0xc2185b});addBox(x,z,.75,.75,0)}
+    for(const x of[px0+1.2,px1-1.2])for(let z=pz0+6;z<pz1-4;z+=13){
+      box(x,py+.45,z,1.5,.9,1.5,0xc9bda6);
+      const turn=R(8)*3,flowering=R(9)>=.5;
+      box(x,py+1.08,z,.76,.48,.70,0x456439,turn,VGEO.shrub);
+      for(let i=0;i<3;i++){
+        const angle=turn+i*TAU/3,dx=Math.cos(angle),dz=Math.sin(angle);
+        box(x+dx*.34,py+1.20,z+dz*.34,.42,.34,.43,i%2?0x526f3d:0x638749,angle,VGEO.shrub);
+        if(flowering)box(x+dx*.44,py+1.44,z+dz*.44,.19,.12,.16,i%2?0xae4666:0xcc687c,angle,VGEO.shrub);
+      }
+      addBox(x,z,.75,.75,0);
+    }
   }
   // 6. beside the Auto Gallery, south-east: a short ring of houses south of its forecourt
   ring(699,751,130,181,{dep:11,w:[8,12],fl:[2,3],pal:WARM,pitch:.7,gaps:[["n",720,730]]});
@@ -1038,9 +1055,28 @@ const SHOW=new V3(0,-300,0);
 let podium;
 function buildDealer(){
   const y=meshH(DEALER.x,DEALER.z);
-  const wallM=new THREE.MeshLambertMaterial({color:0xf2f0ea});
+  // Bake recessed display bays into one facade map for the three street-facing blank walls.
+  const facade=document.createElement("canvas");facade.width=512;facade.height=128;
+  const ctx=facade.getContext("2d");
+  ctx.fillStyle="#e4dfd4";ctx.fillRect(0,0,512,128);
+  ctx.fillStyle="#b5afa4";ctx.fillRect(0,14,512,2);ctx.fillRect(0,110,512,18);
+  const glazing=ctx.createLinearGradient(0,34,0,89);
+  glazing.addColorStop(0,"#819698");glazing.addColorStop(.56,"#566d70");glazing.addColorStop(1,"#384f53");
+  for(let bay=0;bay<6;bay++){
+    const left=12+bay*82;
+    ctx.fillStyle="#b5afa4";ctx.fillRect(left-2,32,72,61);
+    ctx.fillStyle="#303e3f";ctx.fillRect(left,34,68,55);
+    ctx.fillStyle=glazing;ctx.fillRect(left+3,37,30,49);ctx.fillRect(left+35,37,30,49);
+    ctx.fillStyle="#c9c3b8";ctx.fillRect(left-3,89,74,3);
+  }
+  const facadeMap=new THREE.CanvasTexture(facade);facadeMap.encoding=THREE.sRGBEncoding;
+  facadeMap.anisotropy=4;
+  const wallM=new THREE.MeshLambertMaterial({map:facadeMap});
+  const walls=new THREE.BoxGeometry(40,11,40),uv=walls.attributes.uv,normals=walls.attributes.normal;
+  // The roof, underside and signed entrance sample a plain patch of plaster.
+  for(let i=0;i<uv.count;i++)if(Math.abs(normals.getY(i))>.5||normals.getZ(i)<-.5)uv.setXY(i,.5,.95);
   const add=(g,m,x,yy,z)=>{const q=new THREE.Mesh(g,m);q.position.set(x,yy,z);q.castShadow=true;q.receiveShadow=true;scene.add(q);return q};
-  add(new THREE.BoxGeometry(40,11,40),wallM,DEALER.x,y+5.5,DEALER.z);
+  add(walls,wallM,DEALER.x,y+5.5,DEALER.z);
   add(new THREE.BoxGeometry(34,7.5,.4),new THREE.MeshPhongMaterial({color:0x1b252d,shininess:160,specular:0xbfd3e0}),DEALER.x,y+4,DEALER.z-20.1);
   add(new THREE.BoxGeometry(46,.16,16),new THREE.MeshLambertMaterial({color:0xc9c5bb}),DEALER.x,y+.2,DEALER.z-28);
   const c=document.createElement("canvas");c.width=512;c.height=96;const x=c.getContext("2d");
