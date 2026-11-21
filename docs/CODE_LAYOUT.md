@@ -45,6 +45,8 @@ After changing a file in `js/`, run `npm run stamp`, which updates the stamps. `
 
 ## Tests
 
+`npm run lint` also type-checks the nine scripts with TypeScript, as plain JavaScript (`checkJs`), in load order and sharing one global scope as in the browser (`tests/support/typecheck.js`). Three.js and Firebase are declared loosely in `types/globals.d.ts`.
+
 - **Hooks:** the tests serve the real `index.html` and add their hooks to the scripts in memory (`tests/support/instrument.js`). Each hook's text must appear exactly once across all the scripts.
 - **Source text:** tests that read the game's source text use `gameSource()` from `tests/support/source.js` (the page followed by each script), not `index.html` alone.
 - **Load order:** the load-order check is `tests/support/load-order.js`. The stamp helpers are in `tests/support/source.js` and `tests/support/stamp.js`.

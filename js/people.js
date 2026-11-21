@@ -251,7 +251,7 @@ function footModel(){
     const path=(color,points)=>{c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill()};
     // the soft shadow a collar casts along its outer edge, so it reads as a collar at phone size, not just a V
     const shadow=style=>{c.strokeStyle="rgba(10,25,25,.28)";c.lineWidth=2.5;c.lineJoin=c.lineCap="round";
-      for(const side of collarTrace(style,1)){c.beginPath();side.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke()}};
+      for(const side of /** @type {number[][][]} */ (collarTrace(style,1))){c.beginPath();side.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke()}};
     if(o.id==="palms"){
       // Small tonal sprigs leave the placket and collar readable at wardrobe scale.
       for(let row=0;row<5;row++)for(let col=-1;col<9;col++){
@@ -955,7 +955,7 @@ function pedModel(k,h,look){
   G.scale.setScalar(h);G.visible=false;scene.add(G);return{G,legs,arms,face:{m:fm,tex:L.face,t:1+Math.random()*5,shut:false}};
 }
 function buildPeds(){
-  const xs=[560,620,690,760],o=PED_V.line,B=[];
+  const xs=[560,620,690,760],o=PED_V.line,B=/** @type {any[]} */ ([]);
   const node=(x,z)=>{const n={x,z,adj:[]};PED_NODES.push(n);return n};
   // in: the unit direction from the pavement into the block (away from the road), for stepping aside. Crossings have none
   const link=(a,b,cross,inx=0,inz=0)=>{const e={a,b,cross,len:Math.hypot(b.x-a.x,b.z-a.z),inx,inz};a.adj.push(e);b.adj.push(e);PED_EDGES.push(e)};

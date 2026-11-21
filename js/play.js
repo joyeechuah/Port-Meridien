@@ -162,7 +162,7 @@ function rivalModel(cd,key){
 function startEvent(E,cup){
   P.damage=P.damageT=0;repairWarnLevel=0;
   const R=E.route,me=curCar(),idx=CARS.indexOf(me);
-  ev={E,R,t:-3,phase:"count",cp:0,hint:0,s:14,sNow:14,d:99,ai:[],done:false,wrongT:0,last:4,px:null,pz:null,gate:gateOf(R,E.cps[0]),reT:0,missT:0,diff:E.type==="race"?save.diff:1,obs:[],cup:cup||null,tg:cup&&E.type==="tt"?cupTimes(E,cup.cls):E,rec:E.type==="tt"?[]:null,ghost:E.type==="tt"&&save.ghost[E.id]?save.ghost[E.id]:null};
+  ev={E,R,lanes:null,t:-3,phase:"count",cp:0,hint:0,s:14,sNow:14,d:99,ai:[],done:false,wrongT:0,last:4,px:null,pz:null,gate:gateOf(R,E.cps[0]),reT:0,missT:0,diff:E.type==="race"?save.diff:1,obs:[],cup:cup||null,tg:cup&&E.type==="tt"?cupTimes(E,cup.cls):E,rec:E.type==="tt"?[]:null,ghost:E.type==="tt"&&save.ghost[E.id]?save.ghost[E.id]:null};
   const p=edgePos(R,14);
   // the grid: you on the outer side of the road, rivals beside and behind (mirrored when driving on the left)
   const S=SIDE(),L1=1.9*S,L2=-1.7*S;
@@ -591,6 +591,7 @@ function mapZoomAt(f,sx,sy){const before=mapToWorld(sx,sy);MV.z=clamp(MV.z*f,1,1
 function clampMap(){const lim=MAPX*.95;MV.cx=clamp(MV.cx,-lim,lim);MV.cz=clamp(MV.cz,-lim,lim)}
 function mapMarkers(){
   const hm=gW(0,-8);
+  /** @type {any[]} */
   const list=[{x:hm.x,z:hm.z,name:"Your house",desc:"Change car, paint it, or pick another",kind:"home",act:"home"},{x:DEALER_MARK.x,z:DEALER_MARK.z,name:"Auto Gallery",desc:"Buy, sell and test drive cars",kind:"dealer",act:"dealer"}];
   for(const E of EVENTS)list.push({x:E.x,z:E.z,name:E.name,desc:(E.type==="tt"?"Time trial":"Race")+" · "+(E.route.len/1000).toFixed(1)+" km"+(save.rec[E.id]?" · best "+fmtT(save.rec[E.id]):""),kind:"event",act:"event",E});
   for(const r of RADARS)list.push({x:r.x,z:r.z,name:"Speed radar",desc:save.radar[r.id]?"Record "+save.radar[r.id]+" km/h":"No record yet",kind:"radar"});

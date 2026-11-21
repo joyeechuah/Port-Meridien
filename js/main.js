@@ -154,6 +154,7 @@ function frame(ts){
 }
 
 /* ================================================================ BOOT (built in steps so the loader can update) */
+/** @type {[string, () => void][]} */
 const STEPS=[
   ["Laying the roads",()=>{buildNetwork();buildRoadGrid();buildGroundGrid()}],
   ["Shaping the terrain",buildTerrain],
@@ -216,7 +217,7 @@ function boot(){
   clBoot();
   if(window.__autostart){setTimeout(enter,200);return}
   $("lmsg").textContent="Ready";$("lf").parentNode.classList.add("hide");
-  show("lstart",true);show("lhint",true);$("lstart").onclick=enter;addEventListener("keydown",onKey,true);
+  show("lstart",true);show("lhint",true);$("lstart").onclick=()=>enter();addEventListener("keydown",onKey,true);
   // signed in: PLAY carries on (the backup runs by itself); a guest can choose SAVE MY PROGRESS, which plays and opens it
   clStartScreen(()=>enter(true));
   try{$("lstart").focus({preventScroll:true})}catch(e){}

@@ -690,6 +690,7 @@ function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audi
   show("pQuit",!!(ev||testDrive));$("pQuit").textContent=testDrive?"END TEST DRIVE":ev&&ev.fin?"SEE RESULT":"QUIT EVENT";show("pHome",!testDrive);
   syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);show("pause",true)}
 function pauseOff(){show("pause",false);if(state==="PAUSE"){setState("DRIVE");audioOn(true);TILT.zero=TILT.phi}}
+/** @type {[string, number|null][]} */
 const TODS=[["AUTO",null],["MORNING",8.5],["NOON",13],["SUNSET",17.75],["NIGHT",22.5]];
 const VIOL=["LOW","STANDARD","STRONG"];
 function syncPause(){$("pViol").textContent="VIOLENCE: "+VIOL[save.violence];$("pFlash").textContent="FLASHES: "+(save.flash?"ON":"OFF");$("pAssist").textContent="DRIVING ASSIST: "+(save.assist?"ON":"OFF");$("pTime").textContent="TIME OF DAY: "+TODS[save.todMode][0];$("pAuto").textContent="AUTO GAS: "+(save.auto?"ON":"OFF");$("pSnd").textContent="SOUND FX: "+(save.sound?"ON":"OFF");$("pMus").textContent=$("gMus").textContent="MUSIC: "+(save.music?"ON":"OFF");$("pGfx").textContent="GRAPHICS: "+["AUTO","SHARP","SMOOTH"][save.gfx];$("pGhost").textContent="GHOST CAR: "+(save.ghostOn?"ON":"OFF");$("pSteer").textContent="STEERING: "+["LOW","NORMAL","HIGH"][save.steer];$("pTilt").textContent="TILT STEERING: "+(save.tilt?"ON":"OFF");show("pTilt",isTouch);$("pSide").textContent="DRIVE ON: "+(save.side==="R"?"RIGHT":"LEFT")}
@@ -712,7 +713,8 @@ $("pSteer").onclick=()=>{save.steer=(save.steer+1)%3;syncPause();persist()};
 $("pTilt").onclick=()=>{
   if(save.tilt){save.tilt=false;syncPause();persist();return}
   const on=()=>{save.tilt=true;TILT.zero=TILT.phi;syncPause();persist();toast("TILT STEERING","Hold the phone the way you want to drive straight, then resume")};
-  const D=window.DeviceOrientationEvent;
+  // requestPermission only exists in Safari on iPhones and iPads
+  const D=/** @type {any} */ (window.DeviceOrientationEvent);
   if(D&&typeof D.requestPermission==="function")D.requestPermission().then(r=>{if(r==="granted")on();else toast("TILT NOT ALLOWED","Allow motion and orientation access to steer by tilting","bad")}).catch(()=>toast("TILT NOT ALLOWED","Allow motion and orientation access to steer by tilting","bad"));
   else on()};
 // off: no muzzle flash, and no red flash at the screen edges when you are hit (only a steady tint while health is low)

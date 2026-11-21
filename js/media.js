@@ -110,7 +110,7 @@ function makeMusic(ctx,out){
   const TRACKS={
     lounge:{bpm:92,level:1.25,
       // ii-V-I-vi in C: Dm9, G13, Cmaj9, Am9
-      ch:[[38,[53,57,60,64]],[43,[53,59,64,69]],[36,[52,55,59,62]],[45,[55,60,64,71]]],
+      ch:/** @type {[number, number[]][]} */ ([[38,[53,57,60,64]],[43,[53,59,64,69]],[36,[52,55,59,62]],[45,[55,60,64,71]]]),
       step(B,bar,s,t,q){const c=bar%16,[root,v]=this.ch[bar%4],next=this.ch[(bar+1)%4][0],late=c>=8;
         if(s===0)kick(B,t,.42);if(s===10)kick(B,t,.26);if(bar%4===3&&s===14)kick(B,t,.18);
         if(s===4||s===12)hit(B,t,.11,"bandpass",1800,2.5,.08,.3);
@@ -123,7 +123,7 @@ function makeMusic(ctx,out){
         if(late&&s%2===0){const pat=[0,1,2,3,2,1,3,1];pluck(B,t,v[pat[(s/2)%8]]+12,.022)}}},
     coast:{bpm:118,level:.8,
       // i-VI-III-VII in A minor: Am9, Fmaj7, Cmaj7, Gadd9
-      ch:[[33,[55,60,64,71]],[29,[53,57,60,64]],[36,[52,55,59,64]],[31,[55,59,62,69]]],
+      ch:/** @type {[number, number[]][]} */ ([[33,[55,60,64,71]],[29,[53,57,60,64]],[36,[52,55,59,64]],[31,[55,59,62,69]]]),
       step(B,bar,s,t,q){const c=bar%32,[root,v]=this.ch[bar%4];
         const sec=c<8?"A":c<16?"B":c<20?"brk":c<24?"build":"C",full=sec==="A"||sec==="B"||sec==="C";
         // drums: four on the floor, claps on 2 and 4, open hats on the off-beats; the break drops the beat
@@ -246,6 +246,7 @@ function songTick(n,now){const S=SONGS[n],P=S.p;if(!P)return;
     P.next+=S.L}
 }
 // which song for which screen: the lounge indoors, the road outside, the race track during events, quieter behind menus
+/** @returns {[string|null, number]} */
 function musicWant(){
   if(tabIdle||!save.music)return [null,0];   // SOUND FX covers engine, tyres and beeps; music has its own switch
   if(state==="GARAGE"||state==="WARDROBE"||state==="LOAD"||state==="DEALER")return ["lounge",1];
@@ -322,13 +323,14 @@ const PHOTO_LOOKS=[
   {name:"NIGHT DRIVE",tod:22.6,exp:1.1,tint:0x4a6aaa,k:.18},
   {name:"COASTAL SUNSET",tod:18.08,exp:.98,tint:0xff7f8a,k:.24}];
 PHOTO_LOOKS.forEach(L=>{if(L.tint!==undefined)L.col=new THREE.Color(L.tint)});
-const PH={on:false,prev:null,look:0,yaw:0,pitch:.25,dist:7,fov:50,saved:null,ptr:new Map(),pinch:null,last:null,busy:false,shot:null};
+const PH={on:false,prev:null,look:0,yaw:0,pitch:.25,dist:7,fov:50,saved:null,ptr:new Map(),pinch:null,last:null,busy:/** @type {any} */ (false),shot:null};
 const PH_D=[3,16],PH_P=[.03,1.3],PH_F=[20,80];
 // what Photo Mode looks at: the boat or the walker when you're out of the car (it used to turn to the parked car)
 const phTarget=()=>{if(BOAT.on)return new V3(BOAT.x,BOAT.y+.9,BOAT.z);if(FOOT.on)return new V3(FOOT.x,FOOT.y+1,FOOT.z);
   const p=pc.G.position;return new V3(p.x,p.y+(pc.shape==="suv"?1.05:.85),p.z)};
 function phSync(){$("phZoom").value=String(Math.round(PH_F[1]-PH.fov));$("phDist").value=String(Math.round(PH.dist*10))}
-function phMsg(t,kind){const m=$("phMsg");m.textContent=t;m.className=kind||"";clearTimeout(phMsg.tm);phMsg.tm=setTimeout(()=>m.classList.add("hide"),3600)}
+let phMsgT=0;
+function phMsg(t,kind){const m=$("phMsg");m.textContent=t;m.className=kind||"";clearTimeout(phMsgT);phMsgT=setTimeout(()=>m.classList.add("hide"),3600)}
 function photoLookSet(i){
   PH.look=clamp(i|0,0,PHOTO_LOOKS.length-1);photoLook=PH.on&&PH.look>0?PHOTO_LOOKS[PH.look]:null;CAR_ENV.dirty=true;
   [...$("phLooks").children].forEach((b,k)=>{b.classList.toggle("on",k===PH.look);b.setAttribute("aria-pressed",k===PH.look?"true":"false")});

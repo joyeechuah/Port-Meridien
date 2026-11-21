@@ -149,7 +149,7 @@ npm start
 Open [the local game](http://127.0.0.1:4173/index.html). The page loads Three.js from a CDN, so the first load needs an internet connection.
 
 ```
-npm run lint                                  # must be 0 errors, 0 warnings
+npm run lint                                  # must be 0 errors, 0 warnings; it also type-checks js/ with TypeScript
 npx playwright install chromium               # once
 npx playwright test --project=chromium        # logic tests (about 25 min)
 npx playwright test --project=webgl           # drawn tests, slow with a software GPU
