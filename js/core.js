@@ -103,7 +103,7 @@ const OUTFITS=[
   {id:"stripe",name:"Boardwalk stripe",detail:"Coral striped tee · dark denim",shirt:0xaf5a53,pants:0x394c59,trim:0xffcfaa},
   {id:"club",name:"Night shift",detail:"Ink jacket · ivory trousers",shirt:0x323958,pants:0xd9ccae,trim:0xcaa57f}
 ];
-const save={v:2,outfit:"palms",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{}};
+const save={v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{}};
 let loadedV=0;
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
@@ -119,6 +119,8 @@ try{
   const dict=(v,ok)=>{const o={};if(v&&typeof v==="object"&&!Array.isArray(v))for(const k of Object.keys(v))if(ok(v[k]))o[k]=v[k];return o};
   save.v=3;
   if(!OUTFITS.some(o=>o.id===save.outfit))save.outfit=OUTFITS[0].id;
+  // the name friends see when playing together (js/net.js): letters, digits, spaces and . ' _ -, at most 12
+  save.nick=typeof save.nick==="string"?save.nick.replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim().slice(0,12):"";
   save.cr=num(save.cr,120000,0,1e12);save.xp=num(save.xp,0,0,1e12);
   save.todMode=Math.round(num(save.todMode,0,0,4));save.tod=num(save.tod,16.6,0,23.99);
   save.paint=dict(save.paint,c=>Number.isInteger(c)&&c>=0&&c<=0xffffff);

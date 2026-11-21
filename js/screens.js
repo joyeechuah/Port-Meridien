@@ -822,6 +822,7 @@ addEventListener("keydown",e=>{
     else if(k==="r"&&!ev&&!FOOT.on&&!BOAT.on)resetToRoad(true);
   }else if(!$("passport").classList.contains("hide")){if(k==="escape")passportClose()}
   else if(!$("jobs").classList.contains("hide")){if(k==="escape")jobsClose()}
+  else if(!$("play").classList.contains("hide")){if(k==="escape")netClose()}
   else if(!$("cups").classList.contains("hide")){if(k==="escape")cupsClose()}
   else if(state==="PAUSE"){if(k==="escape"||k==="p")pauseOff();else if(k==="v")photoEnter()}
   else if(state==="PHOTO"){
@@ -912,16 +913,32 @@ tabHello();
    Firebase identifies the project with the values below. They are public by design (anyone loading the page sees
    them); what protects each save is firestore.rules, which lets a signed-in player read and write only their own.
    Left empty, the game has no cloud save and says so. */
-// Empty until this game has a Firebase project of its own (CLOUD_SETUP.md): cloud saves stay hidden until then.
-// When it is filled in, add the project's sign-in frame (https://<authDomain>) to frame-src in the policy at the top
-const FIREBASE_CONFIG={apiKey:"",authDomain:"",projectId:"",appId:""};
+// Port Meridien's own Firebase project (set up on 21 Nov 2026, CLOUD_SETUP.md): cloud saves (Google sign-in and
+// Firestore) and playing together (the Realtime Database, js/net.js). These values only identify the project; the
+// rules in firestore.rules and database.rules.json protect the data. The policy at the top of index.html allows the
+// project's sign-in frame (https://<authDomain>) and its database's addresses
+const FIREBASE_CONFIG={apiKey:"AIzaSyDLil4gAN9cI9vBDzwbNdwQwIi2z7tgVTw",authDomain:"port-meridien-cc723.firebaseapp.com",projectId:"port-meridien-cc723",
+  appId:"1:1089130569125:web:73917baf756cc7a9459c4c",databaseURL:"https://port-meridien-cc723-default-rtdb.asia-southeast1.firebasedatabase.app"};
 // Google sign-in only accepts the sites listed in the project (Authentication, Authorized domains): elsewhere (a copy
 // of the page, a preview) the game says where cloud saves work instead of offering a sign-in that would fail
 const CLOUD_HOSTS=["joyeechuah.github.io"];
 const FB_VER="10.12.2",CLOUD_KEY="port-meridien-cloud";
+// Firebase's scripts: pinned version, each file checked against its hash (as three.js is), from cdnjs. Each is loaded
+// once, whoever asks first (the cloud save or playing together): loaded twice, a script would set Firebase up again.
+// A failed load is forgotten, so the next try fetches it again
+const FB_SRI={"firebase-app-compat.js":"sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9",
+  "firebase-auth-compat.js":"sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1",
+  "firebase-firestore-compat.js":"sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC",
+  "firebase-database-compat.js":"sha384-1/m+A1jVWbD3yiK3/vtFvm1+LjK1WLpSoDY+Kaxppwn/yP9BVSgdHTNQVOjrzUO5"};
+const FB_LOADS={};
+function fbLoad(f){
+  return FB_LOADS[f]||(FB_LOADS[f]=new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/firebase/"+FB_VER+"/"+f;
+    s.integrity=FB_SRI[f];s.async=true;s.crossOrigin="anonymous";s.onload=res;
+    s.onerror=()=>{delete FB_LOADS[f];s.remove();console.warn("Couldn't load "+s.src);rej(new Error("Couldn't load "+f))};document.head.appendChild(s)}));
+}
 // what isn't progress: settings, the car picked, a note about a contract under way. They're backed up too, but don't
 // count as a difference worth asking about. Ghost laps stay on each device (they can pass Firestore's 1 MB limit)
-const CL_PREFS=["outfit","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn"];
+const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 const clProg=sv=>{const o={};for(const k in sv)if(!CL_PREFS.includes(k))o[k]=sv[k];return clHash(clCanon(o))};
@@ -942,16 +959,14 @@ function fbAdapter(){
   // apis.google.com (scripts), the sign-in frame on the authDomain, and the Auth and Firestore addresses (connect-src).
   // Google's own sign-in page opens in its own window, under its own policy, so it needs nothing here.
   // It once allowed none of them, and sign-in said "Couldn't reach the sign-in service" on every device.
-  const SRI={"firebase-app-compat.js":"sha384-AQ3POAMqIhwS81FrUH95ekxqBZHeP5tG2JfEL3+7GuTtfRLWnrRh32UxwzM+//A9",
-    "firebase-auth-compat.js":"sha384-TnlRYaR4JYz/lpaGuaiU61PjNberSA4vjLjtF+oRC/IkohkJqnWxw5EmDSOt1vA1",
-    "firebase-firestore-compat.js":"sha384-qn4Jh88HhJA8dplNQyGjOh9OGI4izVhrfj/qIFgaKcdgOE06pXqIKGlsCILZcLAC"};
-  const load=f=>new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/firebase/"+FB_VER+"/"+f;s.integrity=SRI[f];s.async=true;s.crossOrigin="anonymous";s.onload=res;s.onerror=()=>{console.warn("Couldn't load "+s.src);rej(new Error("Couldn't load Google sign-in. Try again."))};document.head.appendChild(s)});
+  const load=f=>fbLoad(f).catch(()=>{throw new Error("Couldn't load Google sign-in. Try again.")});
   const usr=u=>u?{uid:u.uid,name:u.displayName||"",email:u.email||""}:null;
   return{
     loaded:false,
     init(){if(ready)return ready;const me=this;
       return ready=load("firebase-app-compat.js").then(()=>Promise.all([load("firebase-auth-compat.js"),load("firebase-firestore-compat.js")])).then(()=>{
-        const app=window.firebase.apps.length?window.firebase.app():window.firebase.initializeApp(FIREBASE_CONFIG);auth=app.auth();db=app.firestore();me.loaded=true;
+        // the default app: playing together runs in a Firebase app of its own ("play"), which may exist already
+        const fb=window.firebase,app=fb.apps.some(a=>a.name==="[DEFAULT]")?fb.app():fb.initializeApp(FIREBASE_CONFIG);auth=app.auth();db=app.firestore();me.loaded=true;
         return new Promise(r=>{const off=auth.onAuthStateChanged(u=>{off();r(usr(u))})})}).catch(e=>{ready=null;throw e})},
     // Google's sign-in window, opened straight from the button press (the panel loads the service first, so nothing
     // waits in between and the browser allows the window). Sign-in by redirect isn't used: on a site other than
