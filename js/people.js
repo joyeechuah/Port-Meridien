@@ -295,7 +295,14 @@ function footModel(){
   G.visible=false;scene.add(G);dress(OUTFITS.find(o=>o.id===save.outfit));
   return FOOT.m={G,legs,arms,knees,elbows,dress,face:{m:faceM,tex:faceT,t:2+Math.random()*3,shut:false}};
 }
-const footGround=(x,z)=>onPier(x,z)?PIER.y:Math.max(meshH(x,z),surfH(x,z));   // the pier's deck stands over the water
+function footGround(x,z){
+  if(onPier(x,z))return PIER.y;
+  let y=Math.max(meshH(x,z),surfH(x,z));
+  for(const f of QUAY.floors){
+    if(Math.abs(x-f.x)<=f.hx&&Math.abs(z-f.z)<=f.hz)y=Math.max(y,f.top);
+  }
+  return y;
+}
 // pushes a point clear of buildings, walls and trees, of traffic, and of your own car; returns the cleared point
 function footClear(x,z){
   const r=FOOT_V.r;
@@ -430,7 +437,7 @@ function footPlace(dt){
   m.legs[0].rotation.x=sw;m.legs[1].rotation.x=-sw;m.arms[0].rotation.x=-sw*.8;m.arms[1].rotation.x=sw*.8;
   // each knee bends as its leg swings through, and the elbows bend more the faster you go
   const amp=Math.min(1,Math.abs(FOOT.v)*.3),c=Math.cos(FOOT.ph);
-  m.knees[0].rotation.x=.06+Math.max(0,-c)*amp*1.15;m.knees[1].rotation.x=.06+Math.max(0,c)*amp*1.15;
+  m.knees[0].rotation.x=amp*(.06+Math.max(0,-c)*1.15);m.knees[1].rotation.x=amp*(.06+Math.max(0,c)*1.15);
   m.elbows[0].rotation.x=m.elbows[1].rotation.x=-(.18+amp*.75);
   // a slight bob with each step
   m.G.rotation.z=Math.sin(FOOT.ph)*amp*.028;
@@ -465,7 +472,9 @@ function footUpdate(dt){
     const g=footGround(nx,nz);
     if(g>-.4&&g-FOOT.y<.6){FOOT.x=nx;FOOT.z=nz}else FOOT.v=0;
   }else{const c=footClear(FOOT.x,FOOT.z);FOOT.x=c[0];FOOT.z=c[1]}   // a passing car nudges you aside
-  const g=footGround(FOOT.x,FOOT.z);FOOT.y+=(g-FOOT.y)*Math.min(1,dt*14);
+  // Plant the feet immediately on a raised surface. Ease down when leaving it.
+  const g=footGround(FOOT.x,FOOT.z);
+  FOOT.y=Math.max(g,FOOT.y+(g-FOOT.y)*Math.min(1,dt*14));
   FOOT.ph+=Math.abs(FOOT.v)*dt*3.1;if(Math.abs(FOOT.v)<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
   footPlace(dt);
   gunFoot(dt);

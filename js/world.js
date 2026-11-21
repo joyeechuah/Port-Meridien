@@ -778,13 +778,18 @@ const ROOF_GEO=(()=>{const a=[-.5,0,-.5],b=[.5,0,-.5],c=[0,1,-.5],d=[-.5,0,.5],e
   g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute([a,d,f,a,f,c,b,c,f,b,f,e,a,c,b,d,e,f].flat(),3));g.computeVertexNormals();return g})();
 const DRUM_GEO=new THREE.CylinderGeometry(.5,.5,1,14);
 // what was built, for the map, the tests and anything that later needs to know where the town's places are
-const QUAY={houses:0,tower:[655,-41],fountain:[655,135],hall:[655,70,20,12],market:[639,671,-101,18],plaza:[629,681,90,181],
+const QUAY={floors:[],houses:0,tower:[655,-41],fountain:[655,135],hall:[655,70,20,12],market:[639,671,-101,18],plaza:[629,681,90,181],
   gaps:[["w",629,-41],["e",681,-41],["s",655,29]],sheds:[]};
 function buildOldQuay(){
   const WARM=[0xf2d49a,0xeeb38c,0xf3e3c2,0xe9c7a0,0xf6efdd,0xe2a98f],MARKET=[0xf3e3c2,0xf0c987,0xd9dfc2,0xf6efdd,0xe8b89a],
     PASTEL=[0xcfdcc0,0xc4d9e2,0xf3e3c2,0xf0d2c4,0xf6efdd,0xe6d9a8],TILE_C=[0xb05a3c,0x9c4f38,0xc0714a,0xa8553a],TRIM=0xe9e2d2,STONE=0xd9cdb4,WOOD=0x7d5c3e;
   let sd=1;const R=k=>rnd(sd++,k);
   const box=(x,y,z,w,h,d,c,ry=0,g=GEO.box)=>tileOf(x,z).solid.push({g,m:mat(x,y,z,ry,w,h,d),c});
+  // Use the dimensions of the rendered slab for foot contact, including overlapping paving inlays.
+  const floor=(x,y,z,w,h,d,color)=>{
+    box(x,y,z,w,h,d,color);
+    QUAY.floors.push({x,z,hx:w/2,hz:d/2,top:y+h/2});
+  };
   // a house: walls with windows and a shopfront (the town's facade picture, tinted) and a roof. Its collider comes
   // from the row it stands in.
   // roof 0 is flat behind a parapet; 1 has its ridge along x, 2 along z
@@ -815,8 +820,8 @@ function buildOldQuay(){
   // gap on the avenue, stalls in two rows and a clock tower in the middle
   ring(629,681,-111,28,{dep:10,w:[8,12],fl:[2,3],pal:MARKET,pitch:.7,gaps:[["w",-48,-34],["e",-48,-34],["s",649,661]]});
   {const[mx0,mx1,mz0,mz1]=QUAY.market,cx=(mx0+mx1)/2,cz=(mz0+mz1)/2,y=gy(cx,cz);
-    box(cx,y+.03,cz,mx1-mx0,.08,mz1-mz0,0xb9ad94);
-    for(const[x,z,w,d]of[[634,-41,10,14],[676,-41,10,14],[655,23,12,10]])box(x,y+.035,z,w,.08,d,0xb9ad94);   // the ways in are paved too
+    floor(cx,y+.03,cz,mx1-mx0,.08,mz1-mz0,0xb9ad94);
+    for(const[x,z,w,d]of[[634,-41,10,14],[676,-41,10,14],[655,23,12,10]])floor(x,y+.035,z,w,.08,d,0xb9ad94);   // the ways in are paved too
     const[tx,tz]=QUAY.tower;
     box(tx,y+9,tz,4.4,18,4.4,STONE);box(tx,y+18.3,tz,5.2,.6,5.2,TRIM);box(tx,y+20.1,tz,3.6,3,3.6,STONE);
     box(tx,y+21.6,tz,3.4,4.2,3.4,TILE_C[0],Math.PI/7,GEO.cone);box(tx,y+.5,tz,5.4,1,5.4,0xbfb29a);
@@ -851,7 +856,7 @@ function buildOldQuay(){
   }
   // 4. houses round a garden, south-west: lower and paler, a lawn with palms and olives, one way in from the south
   ring(569,611,49,181,{dep:11,w:[8,12],fl:[2,3],pal:PASTEL,pitch:.6,gaps:[["s",585,595]]});
-  {const y=gy(590,114);box(590,y+.03,114,16,.08,104,0x7da25c);box(590,y+.04,114,2.2,.08,104,0xb9ad94);box(590,y+.035,176,10,.08,11,0xb9ad94);
+  {const y=gy(590,114);floor(590,y+.03,114,16,.08,104,0x7da25c);floor(590,y+.04,114,2.2,.08,104,0xb9ad94);floor(590,y+.035,176,10,.08,11,0xb9ad94);
     palm(584,76,gy(584,76),1);palm(596,150,gy(596,150),1.1);for(const[x,z]of[[596,92],[584,118],[596,126],[584,158]])olive(x,z,gy(x,z),.9)}
   // 5. the civic square, south-middle: the Harbour Hall behind its columns, and an open paved square with a fountain
   {const[hx,hz,hw,hd]=QUAY.hall,y=gy(hx,hz),H=13.3;
@@ -863,7 +868,7 @@ function buildOldQuay(){
     box(hx,y+2,hz+hd+.06,3.2,4,.14,0x4a3a2a);box(hx,y+H+3.4,hz,.14,7,.14,0x5d6268);box(hx+1.1,y+H+6.2,hz,2,1.2,.06,0x1d7d86);
     addBox(hx,hz,hw,hd,0);addBox(hx,hz+hd+1.7,16,1.8,0);
     const[px0,px1,pz0,pz1]=QUAY.plaza,pcx=(px0+px1)/2,pcz=(pz0+pz1)/2,py=gy(pcx,pcz);
-    box(pcx,py+.03,pcz,px1-px0,.08,pz1-pz0,0xbdb199);box(pcx,py+.035,pcz,px1-px0-8,.08,pz1-pz0-8,0xa99d86);box(pcx,py+.04,pcz,px1-px0-10,.08,pz1-pz0-10,0xbdb199);
+    floor(pcx,py+.03,pcz,px1-px0,.08,pz1-pz0,0xbdb199);floor(pcx,py+.035,pcz,px1-px0-8,.08,pz1-pz0-8,0xa99d86);floor(pcx,py+.04,pcz,px1-px0-10,.08,pz1-pz0-10,0xbdb199);
     const[fx,fz]=QUAY.fountain;
     box(fx,py+.4,fz,9.6,.8,9.6,STONE,0,DRUM_GEO);box(fx,py+.72,fz,8.6,.2,8.6,0x4fb0c6,0,DRUM_GEO);box(fx,py+1.5,fz,1.1,2.4,1.1,STONE,0,DRUM_GEO);
     box(fx,py+2.75,fz,3.2,.3,3.2,STONE,0,DRUM_GEO);box(fx,py+2.92,fz,2.7,.1,2.7,0x4fb0c6,0,DRUM_GEO);box(fx,py+3.5,fz,.4,1,.4,STONE,0,DRUM_GEO);
