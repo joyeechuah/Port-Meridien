@@ -26,7 +26,7 @@ These rules let a signed-in player read and write only their own save (`saves/<t
 ## 4. Register the web app and copy its config
 
 1. Open **Project settings** (the gear icon), then **General → Your apps**, and add a **Web** app (the `</>` icon). Firebase Hosting isn't needed.
-2. Firebase shows a `firebaseConfig` object. Copy four of its values into `FIREBASE_CONFIG` near the top of the CLOUD SAVE section in `index.html`:
+2. Firebase shows a `firebaseConfig` object. Copy four of its values into `FIREBASE_CONFIG` at the top of the CLOUD SAVE section in `js/screens.js` (then run `npm run stamp`):
 
 ```js
 const FIREBASE_CONFIG={apiKey:"AIza…",authDomain:"port-meridien.firebaseapp.com",projectId:"port-meridien",appId:"1:…:web:…"};
