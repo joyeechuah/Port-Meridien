@@ -186,6 +186,8 @@ Run one Playwright instance at a time: the test server uses port 4173 and reads 
 
 The default build saves progress in this browser’s local storage. It has no ads or analytics. It loads three.js from cdnjs and fonts from Google Fonts. Deployments configured for optional Google sign-in can also back up progress to Firestore. If the game asks which save to keep, **Decide Later** postpones the choice. Reopen Cloud Save to compare the two copies. Ghost laps stay on the device. See [cloud save setup](CLOUD_SETUP.md).
 
+While you're signed in, this browser keeps your Google name and email to show who is signed in. Signing out clears them and keeps only your account's id, with no name or email, so if a different Google account signs in on this browser, the game asks before your progress goes to it.
+
 ## Content
 
 Port Meridien is a mature game: you can shoot cars, people and the police. VIOLENCE in the pause menu controls how it's shown, from LOW to STRONG, with STANDARD as the default. It shows no blood by default.
