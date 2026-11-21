@@ -3313,8 +3313,8 @@ function pollPad(){
   const inputState=state;
   if(state==="ARRIVAL"){if(hit(0)||hit(1)||hit(9))finishArrival();return}
   else if(state==="WARDROBE"){
-    if(hit(14)||hit(12))selectLook(lookIndex-1);
-    else if(hit(15)||hit(13))selectLook(lookIndex+1);
+    if(hit(14)||hit(12))moveLook(-1);
+    else if(hit(15)||hit(13))moveLook(1);
     else if(hit(3))backView=!backView;
     else if(hit(0)||hit(9))wearOutfit();
     return;
@@ -5722,6 +5722,7 @@ function selectLook(i){
   Array.from($("wardLooks").children).forEach((b,j)=>b.setAttribute("aria-pressed",String(j===lookIndex)));
   FOOT.m.dress(OUTFITS[lookIndex]);
 }
+function moveLook(step){selectLook(lookIndex+step);$("wardLooks").children[lookIndex].focus({preventScroll:true})}
 function drawFitting(dt){
   if(FOOT.m.face)faceBlink(FOOT.m.face,dt);
   const r=$("fitting").getBoundingClientRect(),button=$("wardTurn").getBoundingClientRect();
@@ -6016,11 +6017,11 @@ addEventListener("keydown",e=>{
   // a focused slider keeps its own arrow, Home, End and Page keys (they moved the photo camera and the slider stood still)
   if(tg&&tg.tagName==="INPUT"&&tg.type==="range"&&/^(arrow(up|down|left|right)|home|end|pageup|pagedown)$/.test(k))return;
   if(clOverlayOpen()){if(k==="escape"&&!e.repeat)clEscape();return}
-  if(state==="ARRIVAL"){if(!e.repeat&&["escape","enter"," "].includes(k)){e.preventDefault();finishArrival()}return}
+  if(state==="ARRIVAL"){if(["escape","enter"," "].includes(k)){e.preventDefault();if(!e.repeat)finishArrival()}return}
   if(state==="WARDROBE"){
     if(e.repeat&&(k==="enter"||k===" ")){e.preventDefault();return}
     if(k==="arrowleft"||k==="arrowright"){
-      e.preventDefault();selectLook(lookIndex+(k==="arrowright"?1:-1));$("wardLooks").children[lookIndex].focus();
+      e.preventDefault();moveLook(k==="arrowright"?1:-1);
     }
     return;
   }
