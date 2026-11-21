@@ -5237,7 +5237,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
 function setState(s){if(s==="GARAGE")gunSync();if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
-function show(id,on){$(id).classList.toggle("hide",!on)}
+function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
 
@@ -5646,7 +5646,16 @@ function beginFreeRide(){
 }
 
 // A harbour establishing shot cuts to a crane descending along the player's street.
-let arrivalTime=0;
+let arrivalTime=0,arrivalSince=null;
+// Count foreground viewing time even when the GPU takes seconds to draw a frame.
+// Settle the clock at pause boundaries so a hidden tab or a cloud dialog costs no intro time.
+function syncArrivalClock(){
+  if(state!=="ARRIVAL")return;
+  const now=performance.now();
+  if(arrivalSince!==null)arrivalTime+=(now-arrivalSince)/1000;
+  arrivalSince=document.hidden||clOverlayOpen()?null:now;
+}
+document.addEventListener("visibilitychange",syncArrivalClock);
 function arrivalCamera(t){
   if(t<3.4){
     const u=smooth(0,3.4,t),shore=PIER.x1-18;
@@ -5664,7 +5673,7 @@ function startArrival(){
   prepareDrive();
   const x=680,road=nearestRoadGlobal(x,avenueZ(x),true);
   placeOnRoad(road,road.dx>=0?1:-1);placeCarMesh(0);
-  arrivalTime=0;setState("ARRIVAL");arrivalCamera(0);show("arrival",true);
+  arrivalTime=0;arrivalSince=null;setState("ARRIVAL");syncArrivalClock();arrivalCamera(0);show("arrival",true);
   if(!clOverlayOpen())$("arrivalSkip").focus({preventScroll:true});
 }
 function finishArrival(){
@@ -7568,10 +7577,12 @@ function frame(ts){
   if(doorMesh)doorMesh.position.y=gY+3.3+doorOpen*6.3;
   if(state==="GARAGE"||state==="LOAD")garageCam(dt);
   else if(state==="ARRIVAL"){
-    if(!document.hidden&&!clOverlayOpen()){
-      arrivalTime+=Math.max(0,Math.min(raw,.25));
-      if(arrivalTime>=7.6||matchMedia("(prefers-reduced-motion: reduce)").matches)finishArrival();
-      else arrivalCamera(arrivalTime);
+    syncArrivalClock();
+    if(arrivalSince!==null){
+      if(arrivalTime>=7.6||matchMedia("(prefers-reduced-motion: reduce)").matches){
+        finishArrival();drawFitting(0);return;
+      }
+      arrivalCamera(arrivalTime);
     }
   }
   else if(state==="EXIT")exitSeq(dt);
