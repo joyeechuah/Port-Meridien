@@ -6396,40 +6396,42 @@ function faceTex(skin,hair,iris,big){
   const draw=closed=>{
     const cv=document.createElement("canvas");cv.width=W;cv.height=H;const c=cv.getContext("2d");
     c.fillStyle=hex(skin);c.fillRect(0,0,W,H);
-    const cx=W*.25,ey=H*.465,dx=W*.062,E=14*k;
-    // soft shading: under the brow, down the sides of the nose and under the jaw; a warm blush on the cheeks
+    const cx=W*.25,ey=H*.462,dx=W*.06,E=15.5*k;
     const glow=(x,y,r,col,a)=>{const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,col.replace("A",a));g.addColorStop(1,col.replace("A",0));c.fillStyle=g;c.fillRect(x-r,y-r,2*r,2*r)};
     const shade="rgba(70,35,20,A)";
-    for(const s of[-1,1]){glow(cx+s*dx,ey-5*k,20*k,shade,.16);glow(cx+s*W*.095,H*.56,22*k,"rgba(215,95,85,A)",.2)}
-    glow(cx,H*.7,26*k,shade,.05);glow(cx+7*k,H*.53,9*k,shade,.22);glow(cx-7*k,H*.53,9*k,shade,.22);
-    // the nose: a soft shadow under the tip and two faint nostrils, no outline
-    glow(cx,H*.551,11*k,shade,.25);c.fillStyle="rgba(60,28,18,.35)";
-    for(const s of[-1,1]){c.beginPath();c.ellipse(cx+s*4*k,H*.551,2.6*k,1.6*k,0,0,7);c.fill()}
+    // soft shading: a little under each brow, a warm blush on the cheeks, the jaw's underside
+    for(const s of[-1,1]){glow(cx+s*dx,ey-6*k,18*k,shade,.1);glow(cx+s*W*.09,H*.565,20*k,"rgba(215,95,85,A)",.16)}
+    glow(cx,H*.72,26*k,shade,.05);
+    // the nose is mostly in the head's shape (faceGeometry); paint only a faint shadow beside the bridge and under the
+    // tip, two small nostrils and a highlight on the tip. Darker paint here read as a smudge under the nose at phone size
+    glow(cx+5*k,H*.52,7*k,shade,.08);glow(cx,H*.568,7*k,shade,.1);
+    c.fillStyle="rgba(70,32,22,.2)";for(const s of[-1,1]){c.beginPath();c.ellipse(cx+s*3.4*k,H*.567,1.9*k,1.1*k,0,0,7);c.fill()}
+    glow(cx-k,H*.545,5*k,"rgba(255,240,225,A)",.22);
     // eyebrows: an arch, thicker inside, in the hair's colour
     c.lineCap="round";
-    for(const s of[-1,1]){c.fillStyle=hex(mix(hair,skin,.15));c.beginPath();c.moveTo(cx+s*(dx-E*.85),H*.419);c.quadraticCurveTo(cx+s*dx,H*.395,cx+s*(dx+E*1.08),H*.416);c.quadraticCurveTo(cx+s*dx,H*.374,cx+s*(dx-E*.82),H*.403);c.closePath();c.fill()}
+    for(const s of[-1,1]){c.fillStyle=hex(mix(hair,skin,.15));c.beginPath();c.moveTo(cx+s*(dx-E*.85),ey-E*.98);c.quadraticCurveTo(cx+s*dx,ey-E*1.3,cx+s*(dx+E*1.05),ey-E*1.02);c.quadraticCurveTo(cx+s*dx,ey-E*1.6,cx+s*(dx-E*.82),ey-E*1.22);c.closePath();c.fill()}
     for(const s of[-1,1]){const x=cx+s*dx;
-      if(closed){c.strokeStyle=hex(mix(skin,0x2a1810,.6));c.lineWidth=2.6*k;c.beginPath();c.moveTo(x-E,ey);c.quadraticCurveTo(x,ey+E*.45,x+E,ey);c.stroke();continue}
-      // the white, the iris, the pupil and a catchlight
-      const lid=()=>{c.beginPath();c.moveTo(x-s*E,ey+E*.10);c.quadraticCurveTo(x,ey-E*.88,x+s*E,ey-E*.08)};
-      c.save();lid();c.quadraticCurveTo(x,ey+E*.68,x-s*E,ey+E*.10);c.closePath();c.clip();
-      c.fillStyle="#f3eee8";c.fillRect(x-E,ey-E,2*E,2*E);
-      c.fillStyle=hex(iris);c.beginPath();c.arc(x,ey+E*.05,E*.47,0,7);c.fill();
-      c.strokeStyle=hex(mix(iris,0,.45));c.lineWidth=1.4*k;c.stroke();
-      c.fillStyle="#201612";c.beginPath();c.arc(x,ey+E*.05,E*.22,0,7);c.fill();
-      c.fillStyle="#fff";c.beginPath();c.arc(x-E*.16,ey-E*.16,E*.13,0,7);c.fill();
+      if(closed){c.strokeStyle=hex(mix(skin,0x2a1810,.6));c.lineWidth=2.6*k;c.beginPath();c.moveTo(x+s*E,ey);c.quadraticCurveTo(x,ey+E*.45,x-s*E,ey);c.stroke();continue}
+      // an almond eye, the inner corner a little lower: the white, the iris, the pupil and a catchlight
+      const lid=()=>{c.beginPath();c.moveTo(x-s*E,ey+E*.1);c.quadraticCurveTo(x,ey-E*1.02,x+s*E,ey-E*.06)};
+      c.save();lid();c.quadraticCurveTo(x,ey+E*.78,x-s*E,ey+E*.1);c.closePath();c.clip();
+      c.fillStyle="#f4efe9";c.fillRect(x-E,ey-E,2*E,2*E);
+      c.fillStyle=hex(iris);c.beginPath();c.arc(x,ey+E*.02,E*.5,0,7);c.fill();
+      c.strokeStyle=hex(mix(iris,0,.5));c.lineWidth=1.3*k;c.stroke();
+      c.fillStyle="#1a110d";c.beginPath();c.arc(x,ey+E*.02,E*.24,0,7);c.fill();
+      c.fillStyle="#fff";c.beginPath();c.arc(x-E*.17,ey-E*.17,E*.13,0,7);c.fill();
       // the upper lid's shadow on the eyeball
-      const g=c.createLinearGradient(0,ey-E*.62,0,ey);g.addColorStop(0,"rgba(60,30,20,.35)");g.addColorStop(1,"rgba(60,30,20,0)");c.fillStyle=g;c.fillRect(x-E,ey-E,2*E,E);
+      const g=c.createLinearGradient(0,ey-E*.6,0,ey);g.addColorStop(0,"rgba(60,30,20,.3)");g.addColorStop(1,"rgba(60,30,20,0)");c.fillStyle=g;c.fillRect(x-E,ey-E,2*E,E);
       c.restore();
-      // the upper lid, heavier than the lower, with a lash flick at the outer corner
-      c.strokeStyle=hex(mix(hair,skin,.2));c.lineWidth=2.1*k;lid();c.stroke();
-      c.beginPath();c.moveTo(x+s*E,ey-E*.08);c.quadraticCurveTo(x+s*E*.55,ey+E*.28,x,ey+E*.30);
-      c.strokeStyle="rgba(90,46,35,.35)";c.lineWidth=k;c.stroke()}
-    // lips: a darker upper lip, a fuller lighter lower one, a shadow between them
-    const ly=H*.64,lw=16*k,lip=mix(skin,0x9a4a44,.55);
-    c.fillStyle=hex(mix(lip,0x3a1a14,.25));c.beginPath();c.moveTo(cx-lw,ly);c.quadraticCurveTo(cx-lw*.4,ly-5*k,cx,ly-2.5*k);c.quadraticCurveTo(cx+lw*.4,ly-5*k,cx+lw,ly);c.closePath();c.fill();
-    c.fillStyle=hex(lip);c.beginPath();c.moveTo(cx-lw*.9,ly);c.quadraticCurveTo(cx,ly+5*k,cx+lw*.9,ly);c.closePath();c.fill();
-    c.strokeStyle="rgba(60,22,18,.55)";c.lineWidth=1.3*k;c.beginPath();c.moveTo(cx-lw,ly);c.quadraticCurveTo(cx,ly+2.4*k,cx+lw,ly-.8*k);c.stroke();
+      // the upper lid line, darker and heavier toward the outer corner, a lash flick, and a faint lower lid
+      c.strokeStyle="#2b1a12";c.lineWidth=2.4*k;lid();c.stroke();
+      c.lineWidth=1.6*k;c.beginPath();c.moveTo(x+s*E*.9,ey-E*.12);c.quadraticCurveTo(x+s*E*1.08,ey-E*.2,x+s*E*1.16,ey-E*.32);c.stroke();
+      c.strokeStyle="rgba(90,46,35,.32)";c.lineWidth=k;c.beginPath();c.moveTo(x+s*E*.95,ey-E*.02);c.quadraticCurveTo(x,ey+E*.5,x-s*E*.8,ey+E*.12);c.stroke()}
+    // lips: a darker upper lip, a fuller lighter lower one, a mouth line that lifts a touch at the corners
+    const ly=H*.635,lw=15*k,lip=mix(skin,0x9a4a44,.5);
+    c.fillStyle=hex(mix(lip,0x3a1a14,.2));c.beginPath();c.moveTo(cx-lw,ly);c.quadraticCurveTo(cx-lw*.4,ly-4.5*k,cx,ly-2.2*k);c.quadraticCurveTo(cx+lw*.4,ly-4.5*k,cx+lw,ly);c.closePath();c.fill();
+    c.fillStyle=hex(lip);c.beginPath();c.moveTo(cx-lw*.88,ly);c.quadraticCurveTo(cx,ly+5.5*k,cx+lw*.88,ly);c.closePath();c.fill();
+    c.strokeStyle="rgba(60,22,18,.5)";c.lineWidth=1.2*k;c.beginPath();c.moveTo(cx-lw*1.04,ly-.8*k);c.quadraticCurveTo(cx,ly+2*k,cx+lw*1.04,ly-.8*k);c.stroke();
     const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t};
   const f={open:draw(false),closed:draw(true)};FACES.set(key,f);return f;
 }
@@ -6458,12 +6460,14 @@ function tailoredShape(rows,segments=16){
   }
   return g;
 }
+// The knee: the shin's top is as wide as the thigh's end and reaches a few centimetres up inside it, and the thigh
+// tapers gently into the shin. A thigh wider than the shin, ending in a short cap, left a hard ring at every knee
 function figureShapes(crowd){
   const profile=(rows,segments=16)=>tailoredShape(rows,crowd?8:segments);
   return {
   shirt:profile([[.902,0,0],[.902,.193,.141],[.92,.194,.14],[1.02,.18,.12],[1.12,.165,.107],[1.24,.179,.116,.005],[1.355,.206,.122,.006],[1.407,.21,.106],[1.447,.159,.084],[1.482,.065,.061]],32),
-  thigh:profile([[-.46,.051,.053],[-.438,.069,.073,.004],[-.377,.074,.081],[-.23,.085,.094],[-.09,.091,.1,-.004],[.026,.087,.095,-.005],[.047,.067,.071]]),
-  shin:profile([[-.413,0,0],[-.413,.054,.061],[-.396,.058,.064],[-.33,.052,.058],[-.185,.065,.082,-.012],[-.1,.069,.082,-.012],[-.038,.062,.068],[.008,.067,.072,.004],[.027,.051,.052]]),
+  thigh:profile([[-.475,.058,.062],[-.445,.068,.075,.004],[-.38,.073,.08],[-.23,.085,.094],[-.09,.091,.1,-.004],[.026,.087,.095,-.005],[.047,.067,.071]]),
+  shin:profile([[-.413,0,0],[-.413,.054,.061],[-.396,.058,.064],[-.33,.052,.058],[-.185,.065,.082,-.012],[-.1,.069,.082,-.012],[-.04,.066,.074,-.004],[0,.069,.077,.004],[.03,.067,.074,.004],[.05,.05,.052]]),
   shoe:profile([[-.475,0,0,.043],[-.475,.059,.129,.046],[-.461,.063,.133,.047],[-.434,.063,.131,.048],[-.409,.057,.108,.033],[-.385,.05,.068,.004],[-.38,.047,.061]],20),
   sleeve:profile([[-.19,0,0],[-.19,.06,.064],[-.173,.062,.067],[-.085,.065,.072],[-.018,.071,.075],[.014,.061,.067],[.036,.038,.049],[.043,0,0]]),
   upperArm:profile([[-.287,.04,.043],[-.256,.046,.049],[-.197,.05,.055],[-.124,.056,.061],[-.095,.049,.054]]),
@@ -6480,31 +6484,41 @@ function faceGeometry(segments,rings){
   for(let i=0;i<p.count;i++){
     const x=p.getX(i),y=p.getY(i),z=p.getZ(i),front=Math.max(0,z);
     const mound=(cx,cy,w,h)=>Math.exp(-(((x-cx)/w)**2+((y-cy)/h)**2));
-    const nose=.155*mound(0,.055,.125,.29)+.185*mound(0,-.15,.18,.13);
-    const cheeks=.075*mound(Math.sign(x)*.51,-.04,.27,.23);
-    const sockets=.10*mound(Math.sign(x)*.39,.105,.17,.105);
-    p.setXYZ(i,x*(1-.21*Math.max(0,-y)),y,z+front*(nose+cheeks-sockets+.31*mound(0,-.73,.53,.24)));
+    // a small nose (a low bridge and a rounded tip), soft cheekbones, shallow eye sockets and a little chin. All kept
+    // low and fading toward the sides (front squared), so the head stays one smooth shape: stronger mounds made a
+    // beak and a muzzle on this many vertices
+    const nose=.045*mound(0,.0,.085,.2)+.085*mound(0,-.165,.11,.085);
+    const cheeks=.035*mound(Math.sign(x)*.45,-.12,.25,.2);
+    const sockets=.035*mound(Math.sign(x)*.36,.11,.16,.09);
+    const chin=.06*mound(0,-.8,.32,.14);
+    p.setXYZ(i,x*(1-.15*Math.max(0,-y)**1.5),y,z+front*front*(nose+cheeks-sockets+chin));
   }
   geo.computeVertexNormals();return geo;
 }
 const faceHeadGeo=faceGeometry(40,28),crowdHead=faceGeometry(20,14);
 // A single swept hair mass follows the temples and nape. Its part and
 // ridges are in the surface itself, so the silhouette works from behind too.
-function hairGeometry(segments,rings){
+function hairGeometry(segments,rings,burns){
   const geo=new THREE.SphereGeometry(1,segments,rings,0,Math.PI*2,0,Math.PI*.65);
   const p=geo.attributes.position,uv=geo.attributes.uv;
   for(let i=0;i<p.count;i++){
     const t=1-uv.getY(i),phi=uv.getX(i)*2*Math.PI,side=-Math.cos(phi),front=Math.sin(phi);
-    const temple=Math.exp(-(((Math.abs(side)-.88)/.14)**2));
-    const line=1.68-.71*front+.19*temple+.10*side*Math.max(0,front);
+    // where the hair stops, measured down from the crown: high on the forehead, a notch over each ear so the ears
+    // show, lowest at the nape; a side part lets the fringe fall lower on one side
+    const fringe=Math.exp(-(((side-.42)/.32)**2))*Math.max(0,front);
+    // sideburns down in front of each ear (left off the crowd's coarser hair, where they would come out jagged)
+    const line=1.45-.5*front-.15*Math.exp(-(((front-.05)/.28)**2))+.24*fringe+burns*Math.exp(-(((front-.3)/.12)**2));
     const angle=t*line,sin=Math.sin(angle),x=side*sin,y=Math.cos(angle),z=front*sin;
-    const lift=Math.max(0,y)*(.075-.045*x),part=Math.exp(-(((x-.32+.13*z)/.095)**2));
-    const ridge=.012*Math.cos(18*x-5*z)*Math.max(0,y);
-    p.setXYZ(i,x*(1.035+ridge)-.046*y*y,y+lift*(1-part),z*(1.035+ridge)+.055*y*y);
+    // volume on top, swept up at the front and fuller at the back (a cap that sat on the skull read as a helmet), the
+    // part on one side, fine ridges along the sweep. Toward its edge the hair lies flat on the head, so no rim stands off
+    const top=Math.max(0,y),part=Math.exp(-(((x+.36-.12*z)/.09)**2)),hug=Math.min(1,(line-angle)/.45);
+    const lift=top**1.5*(.16+.05*x+.05*Math.max(0,-z))+.07*top*Math.max(0,z)*(1-part);
+    const ridge=.014*Math.cos(16*x+7*z)*top,grow=1.006+hug*(.044+ridge+.03*top);
+    p.setXYZ(i,x*grow,y+lift*(1-.55*part),z*grow+hug*(.06*top*Math.max(0,z)+.04*y*y));
   }
   geo.computeVertexNormals();return geo;
 }
-const sweptHair=hairGeometry(40,16),crowdHair=hairGeometry(16,8);
+const sweptHair=hairGeometry(64,18,.34),crowdHair=hairGeometry(16,8,0);
 function footModel(){
   if(FOOT.m)return FOOT.m;
   const G=new THREE.Group(),mat=(c,r=.88)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:0});
@@ -6512,7 +6526,8 @@ function footModel(){
   const ball=new THREE.SphereGeometry(1,16,12);
   const part=(par,g,m,x,y,z,sx=1,sy=sx,sz=sx)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;par.add(o);return o};
   const pivot=(par,x,y,z)=>{const p=new THREE.Group();p.position.set(x,y,z);par.add(p);return p};
-  part(G,ball,trousers,0,.938,-.009,.168,.071,.089);
+  // the seat sits up under the shirt's hem: lower, it showed as a pale lump between the legs
+  part(G,ball,trousers,0,.955,-.009,.168,.05,.089);
   const cloth=document.createElement("canvas");cloth.width=512;cloth.height=256;
   const weave=new THREE.CanvasTexture(cloth);weave.encoding=THREE.sRGBEncoding;weave.anisotropy=4;
   const fabric=mat(0xffffff);fabric.map=weave;part(G,figureShape.shirt,fabric,0,0,0);
@@ -7196,7 +7211,7 @@ function pedLook(k){
 function figureLook(top,legs,skin,hair,cap){
   const shoe=0x2a2320;
   const ball=new THREE.SphereGeometry(1,10,8),cyl=(a,b,l)=>new THREE.CylinderGeometry(a,b,l,8);
-  const body=merge([{g:ball,m:mat(0,.938,-.009,0,.168,.071,.089),c:legs},{g:crowdShape.shirt,m:mat(0,0,0),c:top},
+  const body=merge([{g:ball,m:mat(0,.955,-.009,0,.168,.05,.089),c:legs},{g:crowdShape.shirt,m:mat(0,0,0),c:top},
     {g:cyl(.048,.059,.108),m:mat(0,1.518,-.004),c:skin},
     {g:crowdHair,m:mat(0,1.655,.003,0,.101,.12,.113),c:hair},...(cap?[{g:new THREE.CylinderGeometry(.118,.118,.05,12),m:mat(0,1.745,0),c:hair},{g:GEO.box,m:mat(0,1.725,.1,0,.2,.02,.1),c:0x0b0f18}]:[])]);
   const leg=merge([{g:crowdShape.thigh,m:mat(0,0,0),c:legs},{g:crowdShape.shin,m:mat(0,-.44,0),c:legs},{g:crowdShape.shoe,m:mat(0,-.44,0),c:shoe}]);
