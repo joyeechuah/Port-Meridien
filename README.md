@@ -14,10 +14,6 @@ Race the coastal roads, explore Old Quay on foot, or take a boat across the harb
 4. Stop near the harbour and select **Get out** to walk. Follow the pier to the motorboat and use the boarding prompt. To return to your car, walk up to it and select **Get in**.
 5. Open **Map** to plan a route. For a delivery or a race series, open **Pause → Contracts** or **Pause → Championships**. For car customisation or a free repair, choose **Pause → Go home**.
 
-<img src="docs/images/harbour-arrival.jpg" alt="Phone gameplay showing the opening flyover above the Old Quay pier and coastal road" width="235">
-
-*Old Quay from the opening flyover, captured on Android.*
-
 ### Graphics and saved settings
 
 In the pause menu, select **GRAPHICS** to cycle through the three modes.
