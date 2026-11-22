@@ -9,6 +9,7 @@ Each step ships as its own pull requests, with tests. Earlier steps are playable
 | 2 | The city at full size: more districts, pedestrians on the pavements | Started: people walk Old Quay's pavements and cross on its zebra crossings (first version). More districts not started |
 | 3 | Police and a wanted level: patrol cars chase you, and losing them clears it | Done on the island: patrols, one to five stars, chases by car and on foot, fines, losing them. No roadblocks or arrest yet |
 | 4 | Weapons: pick up guns, shoot on foot, health, being arrested or taken out. One setting controls how violence is shown | First part done: the pistol on foot, health, knock-out, arrest, VIOLENCE and FLASHES settings (working decisions in `docs/STEP4_DECISIONS.md`). More weapons and shooting from vehicles not decided |
+| 5 | Life: the people of the city have names and personalities; you talk to them, make friends and enemies, and they remember you. Later: needs, moods, a home to run, a job | Started: talking to the people of Old Quay and friendships kept in the save (working decisions in `docs/LIFE_DESIGN.md`) |
 
 ## How the new city arrives (decided 13 Nov 2026)
 
@@ -41,4 +42,5 @@ Not legal advice: a list of things to check and record.
 - **A new city, arriving in two stages.** See "How the new city arrives" above.
 - **Original content only.** No names, places, characters or layouts from other games.
 - **Mature violence, behind one setting**, so a no-gore version can ship without rework.
+- **A mix of GTA 6 and The Sims 4.** You choose what to do: drive, shoot and go places, and also talk to people and build friendships. See `docs/LIFE_DESIGN.md`.
 - **Racing features stay for now** (events, championships, contracts). Whether they belong in this game is decided in step 2.

@@ -471,6 +471,36 @@ test.describe("cloud save", () => {
     expect(await game.eval(() => __T.save.found.retired_lookout)).toBe(1);
   });
 
+  test("no friendships yet is the same progress as a save from before they existed; a friendship is progress", async ({ game }) => {
+    await game.open();
+    const r = await game.eval(() => {
+      const T = __T,
+        now = T.clProg(T.save),
+        old = JSON.parse(JSON.stringify(T.save));
+      delete old.rel;
+      const friend = JSON.parse(JSON.stringify(T.save));
+      friend.rel = { 0: { f: 40, n: 2 } };
+      return { same: now === T.clProg(old), differs: now !== T.clProg(friend) };
+    });
+    expect(r).toEqual({ same: true, differs: true });
+  });
+
+  test("when the two saves differ only in a friendship, each choice card says with whom and where you stand", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await progress(game, 300000);
+    await game.eval(() => {
+      __T.save.rel = { 0: { f: 50, n: 3 }, 3: { f: 10, n: 1 } };
+      __T.persist();
+    });
+    await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.rel={0:{f:-20,n:2},3:{f:10,n:1}};
+      s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()};`);
+    await signIn(page, game);
+    await expect(page.locator("#cloudPick")).toBeVisible();
+    await expect(page.locator("#cpkDev")).toContainText("2 people met · 1 friend · Maya: Friend");
+    await expect(page.locator("#cpkAcc")).toContainText("2 people met · 0 friends · Maya: Dislikes you");
+  });
+
   test("the ghost car switch is a setting, not progress", async ({ game }) => {
     await game.open();
     const r = await game.eval(() => {

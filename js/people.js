@@ -375,6 +375,8 @@ function footTarget(){
   for(const l of LEFT)see(l.x,l.z,{t:"Get in · "+carById(l.id).mk+" "+carById(l.id).md,a:()=>takeLeft(l)});
   for(const t of TRAFFIC)if(t.e&&t.v<=1.5&&!t.cop)see(t.wx,t.wz,{t:"Take this car",a:()=>takeTraffic(t)});
   if(BOAT.m&&onPier(FOOT.x,FOOT.z))see(BOAT.x,BOAT.z,{t:"Board the boat",a:boatBoard});
+  // the people of Old Quay (js/life.js): walk up to someone to talk
+  for(const p of PEDS)if(talkable(p))see(p.x,p.z,{t:"Talk · "+personOf(p).name,a:()=>talkOpen(p)});
   return best;
 }
 // why you can't get out just now, or null if you can
@@ -410,7 +412,7 @@ function footEnter(){
 }
 // back in the driving seat (also when the car is moved from under you: map travel, back to road, the garage)
 function footEnd(){
-  if(!FOOT.on)return;FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
+  if(!FOOT.on)return;talkClose();FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
   promptAct=null;show("prompt",false);footHud(false);autoHold=true;if(pc)snapCam();
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
@@ -430,7 +432,7 @@ function footHud(on){
   const b=$("bB");if(on){b.textContent="BACK";b.classList.remove("rev")}
 }
 // the prompt for whichever car is within reach: "Get in" for yours and those left standing, "Take this car" for traffic
-function footPrompt(){const tg=footTarget();promptAct=tg?tg.a:null;show("prompt",!!tg);if(tg)$("promptTxt").textContent=tg.t}
+function footPrompt(){const tg=TALK.p?null:footTarget();promptAct=tg?tg.a:null;show("prompt",!!tg);if(tg)$("promptTxt").textContent=tg.t}
 function footPlace(dt,speed=Math.abs(FOOT.v)){
   const m=FOOT.m,sw=Math.sin(FOOT.ph)*Math.min(.95,speed*.34);
   m.G.position.set(FOOT.x,FOOT.y,FOOT.z);m.G.rotation.y=FOOT.h;
@@ -461,10 +463,10 @@ function footUpdate(dt){
   if(FOOT.m&&FOOT.m.face)faceBlink(FOOT.m.face,dt);
   if(state!=="DRIVE")return;
   const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||kH());
-  const want=go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
+  const want=TALK.p?0:go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
   FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
   // right turns right, as in the car: the heading decreases (it was the wrong way round, on foot and on the boat)
-  FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
+  if(!TALK.p)FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
   let strideSpeed=0;
   if(Math.abs(FOOT.v)>.01){
     let nx=FOOT.x+Math.sin(FOOT.h)*FOOT.v*dt,nz=FOOT.z+Math.cos(FOOT.h)*FOOT.v*dt;
@@ -846,7 +848,7 @@ function gunFire(){
     seen(q.k==="cop"?"shootCop":"shoot",q.x,q.z)}
   // the same in every violence setting: down for 6 s. The setting only changes what you see (on LOW they stand still
   // instead of falling)
-  else if(q.k==="ped"){const p=q.o;p.st="down";p.t=6;p.v=0;gunMark(p.x,p.z);seen("shootPed",p.x,p.z)}
+  else if(q.k==="ped"){const p=q.o;p.st="down";p.t=6;p.v=0;gunMark(p.x,p.z);seen("shootPed",p.x,p.z);lifeHurt(p,25)}
   else{const O=q.o;O.down=6;O.caughtT=0;gunMark(O.x,O.z);seen("shootCop",O.x,O.z)}
   return true;
 }
@@ -860,8 +862,10 @@ function gunCar(dt){
 // on foot, every frame: the pistol in your hand, the lock, firing, the right arm raised to aim
 function gunFoot(dt){
   const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0&&save.flash;
-  GUN.lock=on?gunPick():null;
-  if(on&&gunWant()&&GUN.cool<=0)gunFire();
+  // talking (js/life.js) holds the pistol: no aim and no fire, and a fire button still held at goodbye waits to be let go
+  const talking=!!TALK.p;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
+  GUN.lock=on&&!talking?gunPick():null;
+  if(on&&!talking&&!TALK.fireHold&&gunWant()&&GUN.cool<=0)gunFire();
   const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,(q.k==="car"||q.k==="cop"?footGround(q.x,q.z)+2.1:footGround(q.x,q.z)+2.05),q.z);GUN.ring.rotation.z+=dt*2}
   if(on&&(q||GUN.aimT>0)){const m=FOOT.m;m.arms[0].rotation.x=-1.45;m.elbows[0].rotation.x=-.05;
     // turn a little towards the target while aiming, so the arm points at it
@@ -1070,10 +1074,10 @@ function pedUpdate(dt){
     const[sx,sz,sh]=pedSpot(p);
     // your car running into someone: they stagger and stand a while, and it is a crime if the police see it
     if(driving&&psp>3&&copClock-(p.hitAt||-9)>3){const dx=sx-P.x,dz=sz-P.z,cs=Math.cos(P.h),sn=Math.sin(P.h);
-      if(Math.abs(dx*cs-dz*sn)<1.25&&Math.abs(dx*sn+dz*cs)<2.6){p.hitAt=copClock;p.st="idle";p.t=4;p.v=0;crime("ped",sx,sz)}}
+      if(Math.abs(dx*cs-dz*sn)<1.25&&Math.abs(dx*sn+dz*cs)<2.6){p.hitAt=copClock;p.st="idle";p.t=4;p.v=0;crime("ped",sx,sz);lifeHurt(p,15)}}
     // never inside a wall, a post or a car: whatever is there pushes them out, as it does you
     const c=footClear(sx,sz);p.x=c[0];p.z=c[1];
-    p.h+=wrapA(sh-p.h)*Math.min(1,dt*8);p.y=footGround(p.x,p.z);
+    p.h+=wrapA((p.st==="talk"?Math.atan2(FOOT.x-p.x,FOOT.z-p.z):sh)-p.h)*Math.min(1,dt*8);p.y=footGround(p.x,p.z);
     const G=p.m.G,vis=Math.hypot(p.x-me.x,p.z-me.z)<PED_V.see;G.visible=vis;
     if(vis){p.ph+=p.v*dt*3.3;if(p.v<.05)p.ph+=(Math.round(p.ph/Math.PI)*Math.PI-p.ph)*Math.min(1,dt*10);
       const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
@@ -1082,6 +1086,7 @@ function pedUpdate(dt){
       G.position.set(p.x,p.y+Math.abs(Math.cos(p.ph))*Math.min(.04,p.v*.012)+p.fall*.12,p.z);G.rotation.set(-Math.PI/2*p.fall,p.h,0,"YXZ");
       p.m.legs[0].rotation.x=sw;p.m.legs[1].rotation.x=-sw;p.m.arms[0].rotation.x=-sw*.7;p.m.arms[1].rotation.x=sw*.7}
   }
+  lifeUpdate(dt);
 }
 /* ================================================================ HARBOUR + BOAT */
 // A pier on the east coast, out from the town, and a motorboat moored beside it. Walk onto the pier and board; the

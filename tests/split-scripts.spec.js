@@ -22,6 +22,6 @@ test("without the 3D engine the loading screen says so, and nothing else runs or
 
 test("every script the page loads has an up-to-date stamp", () => {
   const files = scriptFiles();
-  expect(files.map((f) => f.rel)).toEqual(["js/core.js", "js/world.js", "js/cars.js", "js/play.js", "js/media.js", "js/progress.js", "js/screens.js", "js/people.js", "js/net.js", "js/main.js"]);
+  expect(files.map((f) => f.rel)).toEqual(["js/core.js", "js/world.js", "js/cars.js", "js/play.js", "js/media.js", "js/progress.js", "js/screens.js", "js/people.js", "js/life.js", "js/net.js", "js/main.js"]);
   for (const f of files) expect(f.stamp, `${f.rel}: run npm run stamp`).toBe(stampOf(f.text));
 });

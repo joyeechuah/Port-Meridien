@@ -106,7 +106,7 @@ const OUTFITS=[
   {id:"stripe",name:"Boardwalk stripe",detail:"Coral striped tee · dark denim",shirt:0xaf5a53,pants:0x394c59,trim:0xffcfaa},
   {id:"club",name:"Night shift",detail:"Ink jacket · ivory trousers",shirt:0x323958,pants:0xd9ccae,trim:0xcaa57f}
 ];
-const save={v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{}};
+const save={v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{}};
 let loadedV=0;
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
@@ -159,6 +159,12 @@ try{
        else if(Number.isInteger(x)&&x>=0&&x<MOD_OPTS[k].o.length)c[k]=x}
      if(Object.keys(c).length)o[id]=c}
    save.mods=o}
+  // friendships with the people of Old Quay (js/life.js), by person 0 to 15: between -100 and 100, and how many times
+  // you've talked
+  {const r=save.rel&&typeof save.rel==="object"&&!Array.isArray(save.rel)?save.rel:{},o={};
+   for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
+     o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
+   save.rel=o}
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};
    for(const k of ["A1","A2","A3","A4","A5","A6","A7"]){const v=c[k];if(!v||typeof v!=="object")continue;
@@ -219,11 +225,13 @@ addEventListener("resize",()=>{
   W=innerWidth;H=innerHeight;
   // Browser zoom and moving the window between screens can change the pixel density during play.
   const density=Math.min(devicePixelRatio||1,2);
-  if(RES.baseline){prNow=RES.previous;renderer.setPixelRatio(prNow)}
-  resetResolutionSample();
+  // A phone can resize the page while the later scripts are still loading, as its viewport settles: resolution sampling
+  // (js/main.js) and the HUD layout (js/play.js) join in once they exist. This threw before the canvas was resized,
+  // which left it at the old size until the next resize
+  if(typeof resetResolutionSample==="function"){if(RES.baseline){prNow=RES.previous;renderer.setPixelRatio(prNow)}resetResolutionSample()}
   if(density!==PR_DEV){const atMax=prNow===PR_MAX;PR_DEV=density;gfxLimits();
     prNow=atMax?PR_MAX:clamp(prNow,PR_MIN,PR_MAX);renderer.setPixelRatio(prNow)}
-  renderer.setSize(W,H,false);camera.aspect=W/H;fitZoom();camera.updateProjectionMatrix();layoutHUD()
+  renderer.setSize(W,H,false);camera.aspect=W/H;fitZoom();camera.updateProjectionMatrix();if(typeof layoutHUD==="function")layoutHUD()
 });
 
 /* ================================================================ SKY + DAY/NIGHT */
