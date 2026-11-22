@@ -373,5 +373,26 @@ for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone l
       expect(r.miniHit, "the panel over the minimap").toBe(false);
       expect(r.headOn, "the person is in view " + JSON.stringify(r.at)).toBe(true);
       expect(r.headAbove, "their head (and the reaction bubble) above the panel " + JSON.stringify(r.at)).toBe(true);
+      // the longest line there is: a friend's tip about the landmark with the longest passport hint
+      const long = await game.eval(() => {
+        const T = __T,
+          L = T.LANDMARKS.reduce((a, b) => (b.hint.length > a.hint.length ? b : a));
+        for (const x of T.LANDMARKS) T.save.found[x.id] = x === L ? 0 : 1;
+        T.save.rel[0] = { f: 50, n: 3 };
+        T.TALK.busy = 0;
+        T.talkPick("tip");
+        T.camera.updateMatrixWorld();
+        const box = (e) => e.getBoundingClientRect(),
+          t = box(document.getElementById("talk")),
+          bs = [...document.querySelectorAll("#tkActs .btn")].map(box),
+          p = T.PEDS[0],
+          v = new THREE.Vector3(p.x, p.y + 1.75 * p.m.G.scale.y, p.z).project(T.camera),
+          headY = ((1 - v.y) / 2) * innerHeight;
+        return { line: document.getElementById("tkLine").textContent, hint: L.hint, inside: t.top >= 0 && t.bottom <= innerHeight && bs.every((b) => b.bottom <= innerHeight),
+          headAbove: headY < t.top, at: [Math.round(headY), Math.round(t.top), Math.round(t.bottom)] };
+      });
+      expect(long.line).toContain(long.hint);
+      expect(long.inside, "the panel and its buttons still fit " + JSON.stringify(long.at)).toBe(true);
+      expect(long.headAbove, "their head still above the panel " + JSON.stringify(long.at)).toBe(true);
     });
   });
