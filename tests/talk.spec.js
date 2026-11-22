@@ -342,6 +342,8 @@ for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone l
     test(`${name}: the talk panel fits the screen below the person you're talking to, clear of the minimap, with buttons big enough to tap`, async ({ game }) => {
       await inTown(game);
       await meet(game, 0);
+      // the camera follows you round; give it a second to settle behind you
+      await steps(game, 60);
       expect(await game.eval(() => __T.talkOpen(__T.PEDS[0]))).toBe(true);
       const r = await game.eval(() => {
         const box = (e) => e.getBoundingClientRect(),
@@ -392,6 +394,7 @@ for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone l
           headAbove: headY < t.top, at: [Math.round(headY), Math.round(t.top), Math.round(t.bottom)] };
       });
       expect(long.line).toContain(long.hint);
+      expect(long.line, "the tip ends its sentence").toMatch(/[.!?]”$/);
       expect(long.inside, "the panel and its buttons still fit " + JSON.stringify(long.at)).toBe(true);
       expect(long.headAbove, "their head still above the panel " + JSON.stringify(long.at)).toBe(true);
     });

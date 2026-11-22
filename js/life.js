@@ -172,7 +172,7 @@ const TIPS=[
 // anyone else tells you something useful about the city
 function talkTip(who){
   const r=rel(who.id),todo=LANDMARKS.filter(L=>!save.found[L.id]);
-  if(todo.length&&r.f>=15){const L=todo[(who.id+r.n)%todo.length];return"Have you been "+compass(L.x-FOOT.x,L.z-FOOT.z)+" of here? "+L.hint}
+  if(todo.length&&r.f>=15){const L=todo[(who.id+r.n)%todo.length];return"Have you been "+compass(L.x-FOOT.x,L.z-FOOT.z)+" of here? "+L.hint+(/[.!?]$/.test(L.hint)?"":".")}
   return TIPS[(who.id+r.n+TALK.n)%TIPS.length];
 }
 function talkShow(line){
