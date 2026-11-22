@@ -86,13 +86,71 @@ function talkPick(k){
   talkShow(line);persist();
   return true;
 }
+// Spoken lines follow the existing friendship reaction. Tip introductions lead straight
+// into the actual hint. Use the saved encounter count and this line's use count so
+// repeats rotate even when the player alternates actions. Reading a line changes no state.
+const QUAY_LINES={
+  cheerful:{
+    hello:["There's a face I know now!","Lovely to see you out here."],
+    chat:["I like this end of the quay.","I could watch the boats all day."],
+    joke:["It's the way you tell it.","I know who needs to hear that one."],
+    compliment:["You've made my afternoon.","That's going home with me."],
+    tip:["brightens and points down the street.","turns to share a favourite tip."],
+    rude:["I was enjoying our chat.","Can we start that bit again?"]
+  },
+  grumpy:{
+    hello:["What is it?","Morning. Or whatever it is."],
+    chat:["They've moved my usual crate.","Quieter here before the cars come through."],
+    joke:["I'd keep that one to yourself.","Was that the funny part?"],
+    compliment:["These shoes? Had them for years.","Suppose you mean it."],
+    tip:["gives the shortest answer possible.","offers a tip with a shrug."],
+    rude:["Didn't ask for your opinion.","We're done with that subject."]
+  },
+  joker:{
+    hello:["My audience is here.","Look who made the guest list."],
+    chat:["Ever seen a gull steal someone's lunch?","I've got a story about that pier."],
+    joke:["Wait till I tell the gulls.","You've been saving that one."],
+    compliment:["Finally, a decent review.","I'll put that on my poster."],
+    tip:["drops the comedy voice.","pauses for once and points."],
+    rude:["Tough crowd.","That one needs a rewrite."]
+  },
+  chatty:{
+    hello:["I've been meaning to catch you.","Oh, good. Got a minute?"],
+    chat:["Where was I? Right, the ferry.","My neighbour tells it differently."],
+    joke:["That reminds me of another one.","I have to tell my neighbour."],
+    compliment:["There's a story behind this jacket.","My sister picked it out, actually."],
+    tip:["leans closer to share a tip.","breaks off mid-story to explain."],
+    rude:["Let me finish, at least.","You could have just said goodbye."]
+  },
+  shy:{
+    hello:["Oh. Hi there.","I wondered if you'd stop."],
+    chat:["I like it when the harbour goes quiet.","I usually sit by the fountain."],
+    joke:["It took me a second.","I was trying to keep a straight face."],
+    compliment:["You noticed?","I never know what to say to that."],
+    tip:["lowers their voice.","offers a quiet suggestion."],
+    rude:["I heard you.","I'd rather you didn't."]
+  },
+  busy:{
+    hello:["Got a minute? Just the one.","Hi. I'm due down at the quay."],
+    chat:["I've a parcel waiting.","I've only got a moment."],
+    joke:["Tell me the short version.","I'll catch the next one."],
+    compliment:["Thanks, I'd better get back.","That's kind. Watch the time."],
+    tip:["points without breaking eye contact.","checks the time before answering."],
+    rude:["I stopped for this?","My time's worth something."]
+  }
+};
 function talkReaction(who,k,d){
+  const lines=QUAY_LINES[who.trait][k];
+  const line=lines[(who.id+rel(who.id).n+TALK.used[k])%lines.length];
+  if(k==="tip")return who.name+" "+line;
+  return talkCue(who,k,d)+" “"+line+"”";
+}
+function talkCue(who,k,d){
   const n=who.name;
   if(k==="hello")return d>=3?n+" waves back.":d>0?n+" nods.":n+" barely looks up.";
   if(k==="chat")return d>=6?n+" chats happily.":d>0?n+" chats a little.":n+" isn't in the mood to chat.";
   if(k==="joke")return d>=4?n+" laughs.":d>0?n+" chuckles.":d===0?n+" doesn't get it.":n+" doesn't laugh.";
   if(k==="compliment")return d>=6&&who.trait==="shy"?n+" blushes.":d>0?n+" smiles.":n+" isn't impressed.";
-  if(k==="tip")return d>=0?n+" thinks for a moment.":n+" sighs.";
   return d<=-15?n+" looks hurt.":d>-8?n+" shrugs it off.":n+" glares at you.";
 }
 const COMPASS=["north","north-east","east","south-east","south","south-west","west","north-west"];
@@ -104,13 +162,17 @@ const TIPS=[
   "The police give up once you've been out of their sight for a while.",
   "The Auto Gallery lets you test-drive a car before you buy it.",
   "The boat at the harbour pier will take you round the coast.",
-  "Contracts pay well if you're quick about them."
+  "Contracts pay well if you're quick about them.",
+  "Heading home? They'll repair your car there for free.",
+  "Get out during a timed delivery and the clock keeps ticking.",
+  "You can pick up a first-aid kit by driving over it, too.",
+  "Look under Contracts in the pause menu to see the jobs."
 ];
 // a friend points you at a landmark you haven't found yet, with its passport hint and which way it is from here;
 // anyone else tells you something useful about the city
 function talkTip(who){
   const r=rel(who.id),todo=LANDMARKS.filter(L=>!save.found[L.id]);
-  if(todo.length&&r.f>=15){const L=todo[(who.id+r.n)%todo.length];return"Have you been "+compass(L.x-FOOT.x,L.z-FOOT.z)+" of here? "+L.hint}
+  if(todo.length&&r.f>=15){const L=todo[(who.id+r.n)%todo.length];return"Have you been "+compass(L.x-FOOT.x,L.z-FOOT.z)+" of here? "+L.hint+(/[.!?]$/.test(L.hint)?"":".")}
   return TIPS[(who.id+r.n+TALK.n)%TIPS.length];
 }
 function talkShow(line){
