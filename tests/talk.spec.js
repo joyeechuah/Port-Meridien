@@ -208,6 +208,125 @@ test.describe("talking to people", () => {
     expect(r.upset, "an angry bubble once they're back up").toBe(true);
   });
 
+  test("the pause menu ends a conversation too, and the person carries on", async ({ game, page }) => {
+    await inTown(game);
+    await meet(game, 0);
+    await page.locator("#prompt").click();
+    await page.keyboard.press("p");
+    expect(await game.state()).toBe("PAUSE");
+    expect((await panel(game)).open).toBe(false);
+    expect(await game.eval(() => [__T.TALK.p, __T.PEDS[0].st])).toEqual([null, "idle"]);
+    expect(game.errors).toEqual([]);
+  });
+
+  test("someone waiting at the kerb waits for the traffic again after talking, and crosses once it's clear", async ({ game }) => {
+    await inTown(game);
+    const r = await game.eval(() => {
+      const T = __T,
+        F = T.FOOT,
+        P = T.P,
+        ce = T.PED_EDGES.find((e) => e.cross),
+        p = T.PEDS[0],
+        home = [P.x, P.z];
+      T.PEDS.forEach((q, k) => {
+        if (k) {
+          q.st = "idle";
+          q.t = 999;
+        }
+      });
+      // your car standing on the stripes keeps the crossing unsafe (moving the car with it, so you stay on foot)
+      P.x = (ce.a.x + ce.b.x) / 2;
+      P.z = (ce.a.z + ce.b.z) / 2;
+      F.car = [P.x, P.z];
+      p.e = ce;
+      p.from = ce.a;
+      p.s = 0;
+      p.st = "wait";
+      p.t = 0;
+      T.driveUpdate(1 / 60);
+      const ux = (ce.b.x - ce.a.x) / ce.len,
+        uz = (ce.b.z - ce.a.z) / ce.len;
+      F.x = p.x - ux * 1.8;
+      F.z = p.z - uz * 1.8;
+      F.y = T.footGround(F.x, F.z);
+      T.driveUpdate(1 / 60);
+      const opened = T.talkOpen(p);
+      for (let i = 0; i < 30; i++) T.driveUpdate(1 / 60);
+      T.talkClose();
+      const after = [];
+      for (let i = 0; i < 180; i++) {
+        T.driveUpdate(1 / 60);
+        if (i % 60 === 59) after.push(p.st);
+      }
+      // the car moves off the crossing
+      P.x = home[0];
+      P.z = home[1];
+      F.car = [P.x, P.z];
+      let crossed = false;
+      for (let i = 0; i < 120 && !crossed; i++) {
+        T.driveUpdate(1 / 60);
+        crossed = p.st === "cross";
+      }
+      return { opened, after, crossed };
+    });
+    expect(r.opened).toBe(true);
+    expect(r.after, "still waiting at the kerb, 1, 2 and 3 s after goodbye").toEqual(["wait", "wait", "wait"]);
+    expect(r.crossed).toBe(true);
+  });
+
+  test("the pistol neither aims nor fires while you talk, and fire held through goodbye waits to be let go", async ({ game }) => {
+    await inTown(game, { gun: true });
+    await meet(game, 0, 2);
+    const r = await game.eval(() => {
+      const T = __T,
+        p = T.PEDS[0],
+        G = T.GUN,
+        a0 = G.ammo;
+      T.talkOpen(p);
+      T.keys.g = true;
+      for (let i = 0; i < 60; i++) T.driveUpdate(1 / 60);
+      const talking = { ammo: a0 - G.ammo, lock: !!G.lock, st: p.st };
+      T.talkClose();
+      for (let i = 0; i < 40; i++) T.driveUpdate(1 / 60);
+      const held = a0 - G.ammo;
+      T.keys.g = false;
+      for (let i = 0; i < 6; i++) T.driveUpdate(1 / 60);
+      T.keys.g = true;
+      for (let i = 0; i < 12; i++) T.driveUpdate(1 / 60);
+      T.keys.g = false;
+      return { talking, held, after: a0 - G.ammo };
+    });
+    expect(r.talking).toEqual({ ammo: 0, lock: false, st: "talk" });
+    expect(r.held, "no shot from a fire button held since the conversation").toBe(0);
+    expect(r.after, "a fresh press fires").toBe(1);
+  });
+
+  test("a controller's pick follows the D-pad and keyboard focus, and starts on the first line each time", async ({ game }) => {
+    await inTown(game);
+    await meet(game, 0);
+    const r = await game.eval(() => {
+      const T = __T,
+        p = T.PEDS[0],
+        bs = () => [...document.querySelectorAll("#tkActs .btn")],
+        sel = () => bs().map((b, i) => (b.classList.contains("sel") ? i : -1)).filter((i) => i >= 0);
+      T.talkOpen(p);
+      T.talkPad((k) => k === 13);
+      T.talkPad((k) => k === 13);
+      const moved = { sel: T.TALK.sel, marked: sel(), focus: bs().indexOf(document.activeElement) };
+      T.talkPad((k) => k === 1);
+      T.talkOpen(p);
+      const reopened = { sel: T.TALK.sel, marked: sel() };
+      bs()[3].focus();
+      const tabbed = { sel: T.TALK.sel, marked: sel() };
+      T.talkPad((k) => k === 0);
+      return { moved, reopened, tabbed, said: T.TALK.used.compliment || 0 };
+    });
+    expect(r.moved).toEqual({ sel: 2, marked: [2], focus: 2 });
+    expect(r.reopened).toEqual({ sel: 0, marked: [0] });
+    expect(r.tabbed).toEqual({ sel: 3, marked: [3] });
+    expect(r.said, "A says the line that has focus (Compliment)").toBe(1);
+  });
+
   test("a save's friendships are cleaned on loading: only the sixteen people, with numbers in range", async ({ game }) => {
     await game.open({ save: { v: 3, rel: { 0: { f: 999, n: -3 }, 2: { f: -40.6, n: 2.4 }, x: { f: 5, n: 1 }, 20: { f: 5, n: 1 }, 3: "bad" } } });
     expect(await game.eval(() => __T.save.rel)).toEqual({ 0: { f: 100, n: 0 }, 2: { f: -41, n: 2 } });

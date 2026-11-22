@@ -39,27 +39,30 @@ const TAKES={
   shy:{hello:1.2,chat:.8,joke:.8,compliment:1.5,tip:1,rude:2},
   busy:{hello:.8,chat:.5,joke:.7,compliment:.8,tip:1.2,rude:1}
 };
-/** @type {{p:any,person:any,used:Object<string,number>,n:number,busy:number,end:number,sel:number}} */
-const TALK={p:null,person:null,used:{},n:0,busy:0,end:0,sel:0};
+/** @type {{p:any,person:any,used:Object<string,number>,n:number,busy:number,end:number,sel:number,fireHold:boolean}} */
+const TALK={p:null,person:null,used:{},n:0,busy:0,end:0,sel:0,fireHold:false};
 const LIFE={t:0};
 // who you can talk to: someone near you on the pavement, not lying down, crossing the road or still shaken by your car
 const talkable=p=>FOOT.on&&!TALK.p&&!!personOf(p)&&p.m.G.visible&&p.st!=="down"&&p.st!=="cross"&&!(copClock-(p.hitAt??-99)<4);
 function talkOpen(p){
   if(!talkable(p))return false;
   const who=personOf(p),r=rel(who.id);
-  Object.assign(TALK,{p,person:who,used:{},n:0,busy:0,end:0,sel:0});
-  p.st="talk";p.v=0;
+  // the pistol is held while you talk (gunFoot): no aim, no fire, and a fire button held through goodbye waits to be let go
+  Object.assign(TALK,{p,person:who,used:{},n:0,busy:0,end:0,sel:0,fireHold:true});
+  // what they were doing, to go back to: someone waiting at the kerb waits for the traffic again (they used to walk
+  // straight onto the crossing after a goodbye)
+  p.was=p.st;p.st="talk";p.v=0;
   // you turn to face them, and they turn to face you (pedUpdate)
   FOOT.h=Math.atan2(p.x-FOOT.x,p.z-FOOT.z);FOOT.v=0;
   emote(p,"talk",1.6);
   talkShow(r.n?(r.f>=35?who.name+" is glad to see you.":r.f<=-15?who.name+" doesn't look pleased to see you.":who.name+" remembers you."):"You walk up to "+who.name+".");
   promptAct=null;show("prompt",false);
-  const b=$("tkActs").children[0];if(b&&!isTouch)/** @type {HTMLElement} */(b).focus({preventScroll:true});
+  talkSel(0);const b=$("tkActs").children[0];if(b&&!isTouch)/** @type {HTMLElement} */(b).focus({preventScroll:true});
   return true;
 }
 function talkClose(){
   const p=TALK.p;if(!p)return;
-  if(p.st==="talk"){p.st="idle";p.t=1.2}
+  if(p.st==="talk"){if(p.was==="wait"){p.st="wait";p.t=0}else{p.st="idle";p.t=1.2}}
   TALK.p=TALK.person=null;show("talk",false);document.body.classList.remove("talking");
 }
 // say something: the friendship moves by the line's weight, times how this person takes it, less each time you repeat
@@ -124,13 +127,15 @@ function talkKey(k){
   const i="123456".indexOf(k);if(k.length===1&&i>=0){talkPick(TALKS[i].id);return true}
   return false;
 }
+// the line picked for a controller: its outline and the index A uses move together, and with keyboard focus (focusin)
+function talkSel(i){TALK.sel=i;[...$("tkActs").children].forEach((b,k)=>b.classList.toggle("sel",k===i))}
 // a controller: the D-pad moves between the lines, A says the one picked, B or X says goodbye, Start pauses
 function talkPad(hit){
   const bs=/** @type {HTMLElement[]} */([...$("tkActs").children]);
   if(hit(1)||hit(2)){talkClose();return}
   if(hit(9)){pauseOn();return}
   const d=hit(12)||hit(14)?-1:hit(13)||hit(15)?1:0;
-  if(d){TALK.sel=(TALK.sel+d+bs.length)%bs.length;bs.forEach((b,i)=>b.classList.toggle("sel",i===TALK.sel));bs[TALK.sel].focus({preventScroll:true})}
+  if(d){talkSel((TALK.sel+d+bs.length)%bs.length);bs[TALK.sel].focus({preventScroll:true})}
   else if(hit(0))bs[TALK.sel].click();
 }
 // knocking someone down, or running into them: they like you a good deal less, and they let you see it once they're up
@@ -194,4 +199,5 @@ function lifeUpdate(dt){
 {const box=$("tkActs");
   TALKS.forEach((t,i)=>{const b=document.createElement("button");b.className="btn tkAct"+(t.id==="rude"?" bad":"");b.dataset.k=t.id;
     b.innerHTML=t.label+" <kbd>"+(i+1)+"</kbd>";b.onclick=()=>talkPick(t.id);box.appendChild(b)});
-  const bye=document.createElement("button");bye.className="btn ghost tkAct";bye.dataset.k="bye";bye.innerHTML="Goodbye <kbd>Esc</kbd>";bye.onclick=talkClose;box.appendChild(bye)}
+  const bye=document.createElement("button");bye.className="btn ghost tkAct";bye.dataset.k="bye";bye.innerHTML="Goodbye <kbd>Esc</kbd>";bye.onclick=talkClose;box.appendChild(bye);
+  box.addEventListener("focusin",e=>{const i=[...box.children].indexOf(/** @type {Element} */(e.target));if(i>=0)talkSel(i)})}

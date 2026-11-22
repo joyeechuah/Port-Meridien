@@ -862,8 +862,10 @@ function gunCar(dt){
 // on foot, every frame: the pistol in your hand, the lock, firing, the right arm raised to aim
 function gunFoot(dt){
   const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0&&save.flash;
-  GUN.lock=on?gunPick():null;
-  if(on&&gunWant()&&GUN.cool<=0)gunFire();
+  // talking (js/life.js) holds the pistol: no aim and no fire, and a fire button still held at goodbye waits to be let go
+  const talking=!!TALK.p;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
+  GUN.lock=on&&!talking?gunPick():null;
+  if(on&&!talking&&!TALK.fireHold&&gunWant()&&GUN.cool<=0)gunFire();
   const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,(q.k==="car"||q.k==="cop"?footGround(q.x,q.z)+2.1:footGround(q.x,q.z)+2.05),q.z);GUN.ring.rotation.z+=dt*2}
   if(on&&(q||GUN.aimT>0)){const m=FOOT.m;m.arms[0].rotation.x=-1.45;m.elbows[0].rotation.x=-.05;
     // turn a little towards the target while aiming, so the arm points at it

@@ -15,7 +15,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(s==="GARAGE")gunSync();if(s!=="DRIVE"&&s!=="PAUSE"&&s!=="PHOTO")talkClose();   // a conversation ends with any other screen (js/life.js)
+function setState(s){if(s==="GARAGE")gunSync();if(s!=="DRIVE")talkClose();   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js)
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
@@ -946,7 +946,10 @@ function fbLoad(f){
 const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
-const clProg=sv=>{const o={};for(const k in sv)if(!CL_PREFS.includes(k))o[k]=sv[k];return clHash(clCanon(o))};
+const clProg=sv=>{const o={};for(const k in sv)if(!CL_PREFS.includes(k))o[k]=sv[k];
+  // no friendships yet (js/life.js) is the same progress as a save from before they existed, so the new empty field
+  // doesn't make two devices disagree
+  if(o.rel&&typeof o.rel==="object"&&!Object.keys(o.rel).length)delete o.rel;return clHash(clCanon(o))};
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
@@ -1096,8 +1099,17 @@ function clSignOut(){if(!CL.ad||CL.signingOut||CL.applying)return;
   });
   clRender();
 }
-function clRow(sv,at){const m=clSummary(sv),li=t=>"<li>"+t+"</li>";
-  return li("<b>"+fmtCr(m.cr)+"</b> credits")+li(m.cars+" car"+(m.cars===1?"":"s")+(m.mods?" · "+m.mods+" customised":""))+li("Driver level "+m.lvl)+li(m.found+" landmark"+(m.found===1?"":"s")+" · "+m.cups+" cup"+(m.cups===1?"":"s")+" won")+(at?li("Saved "+clAgo(at)):"")}
+function clRow(sv,at,other){const m=clSummary(sv),li=t=>"<li>"+t+"</li>",p=clPeople(sv,other);
+  return li("<b>"+fmtCr(m.cr)+"</b> credits")+li(m.cars+" car"+(m.cars===1?"":"s")+(m.mods?" · "+m.mods+" customised":""))+li("Driver level "+m.lvl)+li(m.found+" landmark"+(m.found===1?"":"s")+" · "+m.cups+" cup"+(m.cups===1?"":"s")+" won")+(p?li(p):"")+(at?li("Saved "+clAgo(at)):"")}
+// the people met and friends made (js/life.js) on a choice card; where the two saves' friendships differ, the first
+// person they differ on and where you stand with them, since the rest of the two cards can be the same
+function clPeople(sv,other){
+  const r=sv.rel&&typeof sv.rel==="object"?sv.rel:{},o=other&&other.rel&&typeof other.rel==="object"?other.rel:{},vs=Object.values(r);
+  const met=vs.filter(v=>v&&v.n>0).length,fr=vs.filter(v=>v&&v.f>=35).length;
+  const id=other?PEOPLE.findIndex((x,i)=>(r[i]?.f??0)!==(o[i]?.f??0)||(r[i]?.n??0)!==(o[i]?.n??0)):-1;
+  if(!met&&id<0)return"";
+  return met+(met===1?" person":" people")+" met · "+fr+" friend"+(fr===1?"":"s")+(id>=0?" · "+PEOPLE[id].name+": "+relLabel(r[id]):"");
+}
 function clPickShow(){if(!CL.pick)return;
   // not over a race or a drive: it waits for the pause menu or the garage, and a message says so
   if(state!=="GARAGE"&&state!=="PAUSE"&&state!=="LOAD"&&state!=="ARRIVAL"){toast("CLOUD SAVE","Your account has different progress. Pause to choose which to keep");return}
@@ -1107,7 +1119,7 @@ function clPickShow(){if(!CL.pick)return;
   $("cpkP").textContent=ot?"This device's progress was last backed up to another Google account. Use it for this account too, or start new here. Starting new doesn't touch the other account's backup.":
     "This device and your Google account have different progress. The one you don't keep is replaced. Credits aren't added together.";
   $("cpkKeepDev").textContent=ot?"USE THIS DEVICE'S":"KEEP THIS DEVICE'S";$("cpkKeepAcc").textContent=ot?"START NEW":"KEEP THE ACCOUNT'S";
-  $("cpkDev").innerHTML=clRow(save,0);$("cpkAcc").innerHTML=ot?"<li>No progress saved yet</li>":clRow(CL.pick.cloud,clAt(CL.pick.doc));show("cloud",false);show("cloudPick",true)}
+  $("cpkDev").innerHTML=clRow(save,0,CL.pick.cloud);$("cpkAcc").innerHTML=ot?"<li>No progress saved yet</li>":clRow(CL.pick.cloud,clAt(CL.pick.doc),save);show("cloud",false);show("cloudPick",true)}
 // a new game in this account: this device's save goes (its progress stays in the other account, up to its last backup)
 function clStartNew(doc){CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   try{localStorage.removeItem(SAVE_KEY)}catch(e){CL.applying=false;CL.pick={doc,cloud:null};clSet("error","This browser won't let the game start new progress.");return}
