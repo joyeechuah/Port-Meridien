@@ -5,6 +5,7 @@ const { scriptFiles } = require("./support/source");
 
 test.describe("smoke", () => {
   test("the shipping page loads three.js with its integrity hash, shows START and opens Old Quay @webgl", async ({ game, page }) => {
+    await page.clock.install();
     // record Content Security Policy violations, which the browser reports as events
     await page.addInitScript(() => {
       window.__csp = [];
@@ -14,9 +15,17 @@ test.describe("smoke", () => {
     await expect(page).toHaveTitle(/Port Meridien/);
     await expect(page.locator("#lstart")).toBeVisible({ timeout: 180_000 });
     expect(await page.evaluate(() => window.THREE && THREE.REVISION)).toBe("128");
+    // Hold the intro clock on the start screen so a slow WebGL frame cannot expire Skip intro.
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 60_000));
     await page.locator("#lstart").click();
+    // Start defers the scene by one frame, then removes the loading cover after its fade.
+    await page.clock.runFor(16);
+    await page.clock.fastForward(650);
+    await expect(page.locator("#arrivalPlace")).toBeVisible();
     await expect(page.locator("#arrivalPlace")).toHaveText("Old Quay");
     await page.locator("#arrivalSkip").click();
+    await expect(page.locator("#wardrobe")).toBeVisible();
+    await page.clock.resume();
     await page.getByRole("button", { name: /Boardwalk stripe/ }).click();
     await page.getByRole("button", { name: "Turn around" }).click();
     await page.locator("#wardWear").click();

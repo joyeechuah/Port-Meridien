@@ -4,9 +4,9 @@ for (const [width, height] of [[392, 731], [844, 390]]) {
   test.describe(`on-foot framing at ${width} × ${height}`, () => {
     test.use({ viewport: { width, height }, hasTouch: true });
     test("the get-in button clears the rendered character @webgl", async ({ game, page }, info) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
       await game.open({ autostart: false, render: true });
       await page.locator("#lstart").click({ timeout: 180000 });
-      await page.locator("#arrivalSkip").click();
       await page.getByRole("button", {name: /Night shift/}).click();
       await page.locator("#wardTurn").click();
       await game.frames(2);
