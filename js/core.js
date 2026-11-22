@@ -225,11 +225,13 @@ addEventListener("resize",()=>{
   W=innerWidth;H=innerHeight;
   // Browser zoom and moving the window between screens can change the pixel density during play.
   const density=Math.min(devicePixelRatio||1,2);
-  if(RES.baseline){prNow=RES.previous;renderer.setPixelRatio(prNow)}
-  resetResolutionSample();
+  // A phone can resize the page while the later scripts are still loading, as its viewport settles: resolution sampling
+  // (js/main.js) and the HUD layout (js/play.js) join in once they exist. This threw before the canvas was resized,
+  // which left it at the old size until the next resize
+  if(typeof resetResolutionSample==="function"){if(RES.baseline){prNow=RES.previous;renderer.setPixelRatio(prNow)}resetResolutionSample()}
   if(density!==PR_DEV){const atMax=prNow===PR_MAX;PR_DEV=density;gfxLimits();
     prNow=atMax?PR_MAX:clamp(prNow,PR_MIN,PR_MAX);renderer.setPixelRatio(prNow)}
-  renderer.setSize(W,H,false);camera.aspect=W/H;fitZoom();camera.updateProjectionMatrix();layoutHUD()
+  renderer.setSize(W,H,false);camera.aspect=W/H;fitZoom();camera.updateProjectionMatrix();if(typeof layoutHUD==="function")layoutHUD()
 });
 
 /* ================================================================ SKY + DAY/NIGHT */
