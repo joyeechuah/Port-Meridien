@@ -60,7 +60,7 @@ function talkOpen(p){
 function talkClose(){
   const p=TALK.p;if(!p)return;
   if(p.st==="talk"){p.st="idle";p.t=1.2}
-  TALK.p=TALK.person=null;show("talk",false);
+  TALK.p=TALK.person=null;show("talk",false);document.body.classList.remove("talking");
 }
 // say something: the friendship moves by the line's weight, times how this person takes it, less each time you repeat
 // it in one conversation, and less as a friendship nears its top
@@ -115,7 +115,7 @@ function talkShow(line){
   $("tkName").textContent=who.name;$("tkTrait").textContent=TRAIT_LABEL[who.trait];$("tkRelLbl").textContent=relLabel(r);
   bar.style.width=Math.abs(f)/2+"%";bar.style.left=(f<0?50-Math.abs(f)/2:50)+"%";bar.classList.toggle("neg",f<0);
   if(line!==undefined)$("tkLine").textContent=line;
-  show("talk",true);
+  show("talk",true);document.body.classList.add("talking");
 }
 // keys while talking: 1 to 6 say the lines, Escape, E or Backspace says goodbye. True when the key was used
 function talkKey(k){

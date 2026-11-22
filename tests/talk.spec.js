@@ -215,10 +215,10 @@ test.describe("talking to people", () => {
   });
 });
 
-for (const [name, w, h] of [["portrait", 390, 844], ["landscape", 844, 390]])
-  test.describe(`talking on a phone, ${name}`, () => {
-    test.use({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true });
-    test(`${name}: the talk panel fits the screen, clear of the touch controls and the minimap, with buttons big enough to tap`, async ({ game }) => {
+for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone landscape", 844, 390, true], ["computer", 1280, 720, false]])
+  test.describe(`talking on a ${name}`, () => {
+    test.use({ viewport: { width: w, height: h }, isMobile: phone, hasTouch: phone });
+    test(`${name}: the talk panel fits the screen below the person you're talking to, clear of the minimap, with buttons big enough to tap`, async ({ game }) => {
       await inTown(game);
       await meet(game, 0);
       expect(await game.eval(() => __T.talkOpen(__T.PEDS[0]))).toBe(true);
@@ -227,14 +227,22 @@ for (const [name, w, h] of [["portrait", 390, 844], ["landscape", 844, 390]])
           over = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
         const bs = [...document.querySelectorAll("#tkActs .btn")].map(box),
           t = box(document.getElementById("talk")),
-          pads = [...document.querySelectorAll("#pads .pz")].filter((e) => e.offsetParent).map(box),
+          pads = [...document.querySelectorAll("#pads .pz")].filter((e) => e.offsetParent && getComputedStyle(e).visibility !== "hidden").map(box),
           mini = box(document.getElementById("minWrap"));
+        // the top of their head, on screen
+        __T.camera.updateMatrixWorld();
+        const p = __T.PEDS[0],
+          v = new THREE.Vector3(p.x, p.y + 1.75 * p.m.G.scale.y, p.z).project(__T.camera),
+          headY = ((1 - v.y) / 2) * innerHeight;
         return {
           n: bs.length,
           minH: Math.min(...bs.map((b) => b.height)),
           inside: t.left >= 0 && t.right <= innerWidth && t.top >= 0 && t.bottom <= innerHeight,
           padHit: bs.filter((b) => pads.some((p) => over(b, p))).length,
-          miniHit: over(t, mini)
+          miniHit: over(t, mini),
+          headAbove: headY < t.top,
+          headOn: v.x > -1 && v.x < 1 && v.y > -1 && v.y < 1,
+          at: [+v.x.toFixed(2), +v.y.toFixed(2), Math.round(headY), Math.round(t.top)]
         };
       });
       expect(r.n).toBe(7);
@@ -242,5 +250,7 @@ for (const [name, w, h] of [["portrait", 390, 844], ["landscape", 844, 390]])
       expect(r.inside).toBe(true);
       expect(r.padHit, "buttons under the touch controls").toBe(0);
       expect(r.miniHit, "the panel over the minimap").toBe(false);
+      expect(r.headOn, "the person is in view " + JSON.stringify(r.at)).toBe(true);
+      expect(r.headAbove, "their head (and the reaction bubble) above the panel " + JSON.stringify(r.at)).toBe(true);
     });
   });
