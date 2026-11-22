@@ -17,7 +17,7 @@ function walker(peds, footClear) {
   const input = { gas: 1, brake: 0 };
   const step = gameFunction("people.js", "footUpdate", {
     FOOT: F, P: { x: 0, z: 0 }, FOOT_V: { walk: 1.9, run: 5.4, back: 1.2, turn: 2.5 },
-    PEDS: peds, keys: {}, locked: false, state: "DRIVE", pc: {},
+    PEDS: peds, keys: {}, locked: false, state: "DRIVE", pc: {}, TALK: { p: null },
     clamp: (v, lo, hi) => Math.max(lo, Math.min(hi, v)), wrapA: v => v,
     footClear, footGround: () => 0, steerIn: () => 0, kH: () => false,
     gasIn: () => input.gas, brakeIn: () => input.brake,

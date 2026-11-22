@@ -15,7 +15,8 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(s==="GARAGE")gunSync();if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
+function setState(s){if(s==="GARAGE")gunSync();if(s!=="DRIVE"&&s!=="PAUSE"&&s!=="PHOTO")talkClose();   // a conversation ends with any other screen (js/life.js)
+  if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
@@ -817,6 +818,8 @@ addEventListener("keydown",e=>{
   // Enter would press it as well (CAM switching camera while starting a race, NEXT changing the garage pick)
   if(k==="enter"){if(kbFocusedButton())return;e.preventDefault()}
   if(e.repeat)return;
+  // talking to someone (js/life.js): its keys come first
+  if(state==="DRIVE"&&talkKey(k))return;
   if(state==="DRIVE"){
     if(k==="escape"||k==="p")pauseOn();else if(k==="m")openMap();else if(k==="c"){if(!FOOT.on&&!BOAT.on)cycleCam()}else if(k==="v")photoEnter();
     else if(k==="e"||k==="enter"){if(promptAct)promptAct()}
@@ -947,7 +950,7 @@ const clProg=sv=>{const o={};for(const k in sv)if(!CL_PREFS.includes(k))o[k]=sv[
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
-  return(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&!sv.passBonus&&
+  return(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
     (!sv.jobs||!Object.values(sv.jobs).some(v=>typeof v==="number"?v>0:!e(v)))}
 function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:foundCount(sv.found||{}),
   cups:Object.values(champ).filter(c=>c&&c.won).length,mods:Object.keys(sv.mods||{}).length}}

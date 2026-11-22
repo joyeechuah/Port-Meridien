@@ -189,6 +189,25 @@ body.touch #lhint{display:none}
 #speedo{position:absolute;right:calc(14px + var(--sr));bottom:calc(10px + var(--sb))}
 #prompt{position:absolute;left:50%;bottom:calc(120px + var(--sb));transform:translateX(-50%);background:var(--panel2);border:1px solid rgba(255,255,255,.3);border-radius:4px;padding:10px 18px;font-size:13px;font-weight:700;letter-spacing:.08em;pointer-events:auto;cursor:pointer;white-space:nowrap}
 #prompt:hover{border-color:#fff}
+/* talking to someone (js/life.js): who they are, how they feel about you, what just happened, and what you can say */
+#talk{position:absolute;left:50%;bottom:calc(120px + var(--sb));transform:translateX(-50%);width:min(440px,calc(100% - 28px));box-sizing:border-box;background:var(--panel2);border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:12px 14px 14px;pointer-events:auto}
+#talk .tkHead{display:flex;align-items:baseline;gap:10px}
+#tkName{font-size:17px;font-weight:800;letter-spacing:.04em}
+#tkTrait{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+#talk .tkRel{display:flex;align-items:center;gap:10px;margin:8px 0 4px;font-size:12px;font-weight:700;letter-spacing:.06em}
+#tkRelLbl{min-width:92px}
+#talk .tkBar{position:relative;flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.16)}
+#talk .tkBar::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:rgba(255,255,255,.55)}
+#tkBarFill{position:absolute;top:0;bottom:0;left:50%;width:0;border-radius:4px;background:#47c27a;transition:width .3s,left .3s}
+#tkBarFill.neg{background:#e2483d}
+#tkLine{min-height:18px;font-size:13px;line-height:1.35;margin:6px 0 10px}
+#tkActs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#tkActs .btn{min-height:44px;padding:8px 10px;font-size:12px;letter-spacing:.06em;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px}
+#tkActs .btn.bad{color:#a3261c}
+#tkActs .btn.sel{outline:2px solid #f2b33d;outline-offset:1px}
+#tkActs kbd{opacity:.55;font-size:10px}
+body.touch #tkActs kbd{display:none}
+body.touch #talk{bottom:calc(150px + var(--sb))}
 #keys{position:absolute;left:50%;bottom:calc(18px + var(--sb));transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,.55);white-space:nowrap;transition:opacity 1s;text-shadow:0 1px 4px #000}
 #chips{position:fixed;top:calc(14px + var(--st));right:calc(14px + var(--sr));z-index:26;display:flex;gap:6px}
 .chip{background:var(--panel);border:1px solid var(--line);padding:8px 12px;font-size:10px;letter-spacing:.18em;border-radius:3px;cursor:pointer;font-weight:700;backdrop-filter:blur(8px)}
@@ -333,6 +352,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   #count{top:58%;font-size:96px}
   #wrong{top:48%}
   #prompt,body.touch #prompt{bottom:calc(250px + var(--sb));white-space:normal;text-align:center;width:max-content;max-width:calc(100% - 32px)}
+  #talk,body.touch #talk{bottom:calc(250px + var(--sb))}
   #gtitle .t,#dTitle .t{font-size:22px}
   #gtitle .k,#ghint{max-width:calc(100vw - 220px);letter-spacing:.3em;line-height:1.5}
   #ghint{letter-spacing:.12em}
@@ -387,6 +407,10 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   #dPrice{font-size:20px}
   #count{top:54%;font-size:88px}
   body.touch #prompt{bottom:calc(92px + var(--sb))}
+  /* landscape phones: the lines in one or two rows of four, so the panel stays low */
+  #talk,body.touch #talk{bottom:calc(92px + var(--sb));width:min(560px,calc(100% - 28px));padding:8px 12px 10px}
+  #tkActs{grid-template-columns:repeat(4,1fr)}
+  #tkLine{margin:4px 0 6px}
 }
 @media (max-width:900px),(max-height:520px){
   #gpick{top:45%;left:0;right:0;transform:translateY(-50%);background:none;border:0;backdrop-filter:none;justify-content:space-between;padding:0 max(12px,var(--sr)) 0 max(12px,var(--sl));pointer-events:none}
@@ -577,6 +601,12 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <div id="minWrap"><canvas id="mini"></canvas><div id="gpsTxt"></div></div>
   <canvas id="speedo"></canvas>
   <button id="prompt" class="hide"><kbd>E</kbd> <span id="promptTxt"></span></button>
+  <div id="talk" class="hide" role="dialog" aria-label="Talking to someone">
+    <div class="tkHead"><span id="tkName"></span><span id="tkTrait"></span></div>
+    <div class="tkRel"><span id="tkRelLbl"></span><div class="tkBar"><i id="tkBarFill"></i></div></div>
+    <div id="tkLine" aria-live="polite"></div>
+    <div id="tkActs"></div>
+  </div>
   <div id="keys"><kbd>W</kbd><kbd>S</kbd> gas / brake, reverse &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>Space</kbd> handbrake &nbsp; <kbd>M</kbd> map &nbsp; <kbd>C</kbd> camera &nbsp; <kbd>B</kbd> hold to look behind &nbsp; <kbd>V</kbd> photo &nbsp; <kbd>R</kbd> back to road &nbsp; <kbd>Esc</kbd> pause</div>
 </div>
 
@@ -780,11 +810,11 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <!-- Shared helpers, the car list, the save, the renderer, the sky and the day and night -->
-<script src="js/core.js?v=55edcd2147"></script>
+<script src="js/core.js?v=0d37ea8e06"></script>
 <!-- The island: terrain, the road network, scenery, the house, the dealership, plants, the sea and the roadside -->
 <script src="js/world.js?v=2524a0a028"></script>
 <!-- Car models and their looks, input, the player's car physics and traffic -->
-<script src="js/cars.js?v=cdc5d67339"></script>
+<script src="js/cars.js?v=d74f5add66"></script>
 <!-- Free-ride streaks, races and time trials, speed radars, the GPS, money and messages, the HUD canvases and the full map -->
 <script src="js/play.js?v=9068c2d05c"></script>
 <!-- Sound effects, music and Photo Mode -->
@@ -792,9 +822,11 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 <!-- The Explorer Passport, contracts and class championships -->
 <script src="js/progress.js?v=904c0e3f24"></script>
 <!-- Game states, the garage, the dealership, menus and prompts, one game tab at a time, and the cloud save -->
-<script src="js/screens.js?v=5a0a55792b"></script>
+<script src="js/screens.js?v=90e080b9dc"></script>
 <!-- The HUD, on foot, the police, the pistol and health, pedestrians, and the harbour boat -->
-<script src="js/people.js?v=34c2713c66"></script>
+<script src="js/people.js?v=da96e7598e"></script>
+<!-- The life side: the people of Old Quay, talking to them, and the friendships they remember -->
+<script src="js/life.js?v=71dd6b1101"></script>
 <!-- Playing together: rooms with a code, friends drawn where they are, the Play together panel -->
 <script src="js/net.js?v=1a3a095c19"></script>
 <!-- Each frame: the drive update, adaptive resolution, the ?perf panel and the main loop, and the boot that builds the world -->
