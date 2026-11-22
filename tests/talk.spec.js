@@ -127,12 +127,14 @@ test.describe("talking to people", () => {
     const joke = async (i) => {
       await meet(game, i);
       await page.locator("#prompt").click();
-      const f = [];
+      const f = [], lines = [];
       for (let k = 0; k < 2; k++) {
         await page.keyboard.press("3");
         await steps(game, 50);
+        lines.push((await panel(game)).line);
         f.push(await game.eval((i) => __T.save.rel[i].f, i));
       }
+      expect(lines[0].split("“")[1]).not.toBe(lines[1].split("“")[1]);
       const { line, rel } = await panel(game);
       await page.keyboard.press("Escape");
       await steps(game, 10);
