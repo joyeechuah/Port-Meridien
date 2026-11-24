@@ -182,6 +182,7 @@ npm run lint                                  # must be 0 errors, 0 warnings; it
 npx playwright install chromium               # once
 npx playwright test --project=chromium        # logic tests (about an hour on two workers, as on GitHub Actions)
 npx playwright test --project=webgl           # drawn tests, slow with a software GPU
+npm run test:physics                          # the driving assist scenarios in Node: about 10 s, no browser
 ```
 
 GitHub Actions runs lint and both test projects on every pull request. The drawn tests can also be run on their own: Actions → **Drawn browser tests (WebGL)** → Run workflow.
