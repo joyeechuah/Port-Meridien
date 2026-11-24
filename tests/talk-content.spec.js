@@ -8,6 +8,8 @@ function dialogue() {
   const save = { rel: {}, found: {} };
   const globals = {
     window: {}, save, LANDMARKS: [], document: { createElement: () => ({ dataset: {} }) },
+    // the needs (in the same file) start from these
+    NEEDS_START: { energy: 80, hunger: 75, fun: 65, social: 65 }, needsClean: (n) => Object.assign({ v: 1, energy: 80, hunger: 75, fun: 65, social: 65 }, n),
     $: () => ({ appendChild() {}, addEventListener() {} })
   };
   return vm.runInNewContext(source + "\n;({ PEOPLE, TALKS, TALK, talkReaction, talkTip, TIPS, save })", globals);

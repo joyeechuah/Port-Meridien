@@ -6,6 +6,7 @@ if(window.__gameOff)throw window.__gameOff;
 const TOAST_AT={};
 function toastOnce(k,[t,m]){const now=performance.now();if(TOAST_AT[k]!==undefined&&now-TOAST_AT[k]<6000)return;TOAST_AT[k]=now;toast(t,m,"bad")}
 function driveUpdate(dt){
+  needsTick(dt);   // your needs fall while you play, whether you drive, walk or sail (js/life.js)
   if(BOAT.on){boatUpdate(dt);return}
   if(FOOT.on){footUpdate(dt);return}
   tickDamage(P,dt);

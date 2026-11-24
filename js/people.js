@@ -369,6 +369,8 @@ function streetReset(){
 }
 // the car within reach to get into, nearest first: the one you got out of, one left standing, or stopped traffic
 function footTarget(){
+  // sat on a bench (js/life.js): the one thing to do is get up
+  if(SIT.on)return{t:sitText(),a:sitEnd};
   let best=null,bd=FOOT_V.reach;
   const see=(x,z,o)=>{const d=Math.hypot(FOOT.x-x,FOOT.z-z);if(d<=bd){bd=d;best=o}};
   see(P.x,P.z,{t:"Get in · "+carById(curId).mk+" "+carById(curId).md,a:footEnter});
@@ -377,6 +379,10 @@ function footTarget(){
   if(BOAT.m&&onPier(FOOT.x,FOOT.z))see(BOAT.x,BOAT.z,{t:"Board the boat",a:boatBoard});
   // the people of Old Quay (js/life.js): walk up to someone to talk
   for(const p of PEDS)if(talkable(p))see(p.x,p.z,{t:"Talk · "+personOf(p).name,a:()=>talkOpen(p)});
+  // your needs (js/life.js): the benches round the fountain, and the Market Kitchen's counter. Not while the police
+  // are after you
+  for(const b of QUAY.benches)see(b.x,b.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:"Sit on the bench",a:()=>sitDown(b)});
+  const K=QUAY.kitchen;if(K)see(K.x,K.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:kitchenText(),a:needsEat});
   return best;
 }
 // why you can't get out just now, or null if you can
@@ -412,7 +418,7 @@ function footEnter(){
 }
 // back in the driving seat (also when the car is moved from under you: map travel, back to road, the garage)
 function footEnd(){
-  if(!FOOT.on)return;talkClose();FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
+  if(!FOOT.on)return;talkClose();sitEnd();FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
   promptAct=null;show("prompt",false);footHud(false);autoHold=true;if(pc)snapCam();
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
@@ -463,12 +469,15 @@ function footUpdate(dt){
   if(FOOT.m&&FOOT.m.face)faceBlink(FOOT.m.face,dt);
   if(state!=="DRIVE")return;
   const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||kH());
-  const want=TALK.p?0:go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
+  // on a bench (js/life.js), walking or turning gets you up first
+  if(SIT.on&&(go||Math.abs(steerIn())>.3))sitEnd();
+  const still=TALK.p||SIT.on,want=still?0:go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
   FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
   // right turns right, as in the car: the heading decreases (it was the wrong way round, on foot and on the boat)
-  if(!TALK.p)FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
+  if(!still)FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
   let strideSpeed=0;
-  if(Math.abs(FOOT.v)>.01){
+  if(SIT.on)FOOT.v=0;
+  else if(Math.abs(FOOT.v)>.01){
     let nx=FOOT.x+Math.sin(FOOT.h)*FOOT.v*dt,nz=FOOT.z+Math.cos(FOOT.h)*FOOT.v*dt;
     [nx,nz]=footClear(nx,nz);
     // Pedestrians already yield when approaching a walker. Also stop the walker
@@ -492,7 +501,7 @@ function footUpdate(dt){
   const g=footGround(FOOT.x,FOOT.z);
   FOOT.y=Math.max(g,FOOT.y+(g-FOOT.y)*Math.min(1,dt*14));
   FOOT.ph+=strideSpeed*dt*3.1;if(strideSpeed<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
-  footPlace(dt,strideSpeed);
+  if(SIT.on)sitPose();else footPlace(dt,strideSpeed);
   gunFoot(dt);
   footPrompt();
   // the car you left is switched off: its engine and tyres are silent (they used to hum on at whatever they were
@@ -862,8 +871,9 @@ function gunCar(dt){
 // on foot, every frame: the pistol in your hand, the lock, firing, the right arm raised to aim
 function gunFoot(dt){
   const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0&&save.flash;
-  // talking (js/life.js) holds the pistol: no aim and no fire, and a fire button still held at goodbye waits to be let go
-  const talking=!!TALK.p;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
+  // talking or sitting on a bench (js/life.js) holds the pistol: no aim and no fire, and a fire button still held at
+  // goodbye (or on getting up) waits to be let go
+  const talking=!!TALK.p||SIT.on;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
   GUN.lock=on&&!talking?gunPick():null;
   if(on&&!talking&&!TALK.fireHold&&gunWant()&&GUN.cool<=0)gunFire();
   const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,(q.k==="car"||q.k==="cop"?footGround(q.x,q.z)+2.1:footGround(q.x,q.z)+2.05),q.z);GUN.ring.rotation.z+=dt*2}

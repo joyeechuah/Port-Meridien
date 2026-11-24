@@ -1,6 +1,6 @@
 # Step 5, part 2: needs and moods
 
-**Status: working decisions for Jo Yee's approval.** Needs give free play a reason to stop at home, spend time at the quay or call on a friend. All numbers below are starting values for playtesting.
+**Status: approved by Jo Yee (23 Nov 2026) and built** (`js/life.js`). Needs give free play a reason to stop at home, spend time at the quay or call on a friend. All numbers below are starting values for playtesting. How the build settled the points this page left open is under [Built](#built) at the end.
 
 | Need (100 is full) | Start | Loss per active game hour | Recovery |
 | --- | ---: | ---: | --- |
@@ -34,3 +34,16 @@
 - World and multiplayer: render the counter and benches on a phone, approach from both sides and walk past them. Compare route fixtures and colliders with main; verify a second room client earns no local recovery.
 
 Approval covers the table as a unit. Venue implementation and dialogue content ship separately.
+
+## Built
+
+| Point | As built |
+| --- | --- |
+| Rest at the house | **REST** in the garage, beside MUSIC and PISTOL: +40 energy, then RESTED until 30 s of play have passed. A controller's X does the same. Arriving home by GO HOME, a knock-out or an arrest gives nothing by itself |
+| The bench | The six benches round the civic square's fountain. On foot the prompt says "Sit on the bench"; you sit facing the fountain and the prompt becomes "Stand up · energy". Walking, turning, E, getting hurt or the police get you up. The pistol is held while you sit, as while talking |
+| The food counter | The Market Kitchen: the market stall nearest the avenue's arch on the east side, with a yellow and white awning, a pot, bowls and bread, and KITCHEN boards facing the aisle and the arch. Its counter, posts and collider are the stall's own. The prompt is "Eat at the Market Kitchen · free", and it serves at any balance |
+| Races | Time trials count as well as races: both end at the same result |
+| The map | The map shows the Market Kitchen and the benches, with a line each in its key, so a hint can be followed |
+| Hints | A short message in the usual message column, only when no other message is showing |
+| Pause menu | **NEEDS · <mood>** under PHOTO MODE. The screen lists the four needs, each with its bar, number and a word for its colour (Very low, Low, Okay, Good), then the mood and one suggestion. A controller's D-pad now moves through the pause menu and the screens opened from it, and A presses the button picked |
+| Cloud | `CL_PREFS` includes `needs`. The cloud note keeps the needs this device last synced, to tell whether its own changed since |

@@ -647,3 +647,93 @@ test.describe("one game tab at a time", () => {
     await page2.close();
   });
 });
+
+// Needs (js/life.js) go with the save but aren't progress: a difference only there is never a question, an old copy
+// never goes back over a newer one from another device, and a choice between two saves takes one whole set of needs
+test.describe("cloud save: needs", () => {
+  const N = (energy, hunger, fun, social) => ({ v: 1, energy, hunger, fun, social });
+  const accNeeds = async (game) => JSON.parse((await cloud(game)).docs.u1.save).needs;
+  const hereNeeds = (game) => game.eval(() => Object.assign({ v: 1 }, ...["energy", "hunger", "fun", "social"].map((k) => ({ [k]: Math.round(__T.NEEDS[k]) }))));
+  // another device saved different needs to the account, and nothing else
+  const elsewhere = (game, n) => setCloud(game, `const sv=JSON.parse(s.docs.u1.save);sv.needs=${JSON.stringify(n)};s.docs.u1.save=JSON.stringify(sv);s.docs.u1.rev++;s.docs.u1.at=Date.now();`);
+
+  test("needs aren't progress: a save that differs only there is the same progress, a save from before needs has the starting values, and a new save stays new", async ({ game }) => {
+    await game.open();
+    const r = await game.eval(() => {
+      const T = __T, a = JSON.parse(JSON.stringify(T.save)), b = JSON.parse(JSON.stringify(T.save)), old = JSON.parse(JSON.stringify(T.save));
+      b.needs = { v: 1, energy: 3, hunger: 4, fun: 5, social: 6 };
+      delete old.needs;
+      return { prog: T.clProg(a) === T.clProg(b), fresh: T.clFresh(b), legacy: T.needsKey(old) === T.needsKey(a), differs: T.needsKey(a) !== T.needsKey(b) };
+    });
+    expect(r).toEqual({ prog: true, fresh: true, legacy: true, differs: true });
+  });
+
+  test("the same progress, different needs, and this device hasn't changed its own since the last backup: it takes the account's, and asks nothing", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await progress(game, 300000);
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await elsewhere(game, N(20, 30, 40, 50));
+    await game.reload();
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await expect(page.locator("#cloudPick")).toBeHidden();
+    expect(await hereNeeds(game)).toEqual(N(20, 30, 40, 50));
+    expect(await game.eval(() => __T.save.needs)).toEqual(N(20, 30, 40, 50));
+    expect(await accNeeds(game)).toEqual(N(20, 30, 40, 50));
+    expect(await game.eval(() => __T.save.cr)).toBe(300000);
+  });
+
+  test("a setting changed on an older copy goes up, and the account's newer needs stay", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await progress(game, 300000);
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await elsewhere(game, N(20, 30, 40, 50));
+    // here: sound off, needs as they were
+    await game.eval(() => { __T.save.sound = false; __T.persist(); });
+    await expect.poll(async () => JSON.parse((await cloud(game)).docs.u1.save).sound, { timeout: 20000 }).toBe(false);
+    expect(await accNeeds(game)).toEqual(N(20, 30, 40, 50));
+    expect(await hereNeeds(game)).toEqual(N(20, 30, 40, 50));
+    await expect(page.locator("#cloudPick")).toBeHidden();
+  });
+
+  test("needs this device changed since its last backup are the newer: they go up", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await progress(game, 300000);
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    await elsewhere(game, N(20, 30, 40, 50));
+    await game.eval(() => { __T.needsLoad({ v: 1, energy: 60, hunger: 61, fun: 62, social: 63 }); __T.persist(); });
+    await expect.poll(() => accNeeds(game), { timeout: 20000 }).toEqual(N(60, 61, 62, 63));
+    expect(await hereNeeds(game)).toEqual(N(60, 61, 62, 63));
+    await expect(page.locator("#cloudPick")).toBeHidden();
+  });
+
+  for (const keep of ["device", "account"])
+    test(`two saves with different progress, friendships and needs: keeping the ${keep}'s takes its needs, whole`, async ({ game, page }) => {
+      await page.addInitScript(FAKE_CLOUD);
+      await game.open();
+      await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.cr=500000;sv.xp=90000;sv.rel={0:{f:-20,n:2}};sv.needs=${JSON.stringify(N(10, 90, 10, 90))};delete sv.ghost;s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()};`);
+      await progress(game, 300000);
+      await game.eval(() => { __T.save.rel = { 0: { f: 50, n: 3 } }; __T.needsLoad({ v: 1, energy: 90, hunger: 10, fun: 90, social: 10 }); __T.persist(); });
+      await signIn(page, game);
+      await expect(page.locator("#cloudPick")).toBeVisible();
+      if (keep === "device") {
+        await page.locator("#cpkKeepDev").click();
+        await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+        expect(await accNeeds(game)).toEqual(N(90, 10, 90, 10));
+        expect(await hereNeeds(game)).toEqual(N(90, 10, 90, 10));
+      } else {
+        await page.locator("#cpkKeepAcc").click();
+        await page.waitForEvent("load");
+        await game.boot();
+        expect(await hereNeeds(game)).toEqual(N(10, 90, 10, 90));
+        expect(await game.eval(() => [__T.save.cr, __T.save.rel[0].f])).toEqual([500000, -20]);
+        await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+        expect(await accNeeds(game)).toEqual(N(10, 90, 10, 90));
+      }
+    });
+});

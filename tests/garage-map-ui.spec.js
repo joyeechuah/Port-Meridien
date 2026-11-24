@@ -23,8 +23,10 @@ for (const [layout, width, height] of [
       await expect(page.locator("#gprev")).toBeInViewport({ ratio: 1 });
       if (height < 400) {
         const next = await page.locator("#gnext").boundingBox();
-        const equipment = await page.locator("#gGun").boundingBox();
-        expect(equipment.y + equipment.height, "equipment clears the next-car touch target").toBeLessThanOrEqual(next.y);
+        for (const id of ["#gGun", "#gRest"]) {
+          const equipment = await page.locator(id).boundingBox();
+          expect(equipment.y + equipment.height, `${id} clears the next-car touch target`).toBeLessThanOrEqual(next.y);
+        }
       }
       await testInfo.attach(`garage-${layout}`, { body: await page.screenshot(), contentType: "image/png" });
 

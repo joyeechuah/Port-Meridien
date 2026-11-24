@@ -37,6 +37,7 @@ html,body{touch-action:none;margin:0;height:100%;overflow:hidden;background:var(
 .hide{display:none!important}
 button{font-family:inherit;color:inherit}
 button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.mbtn.padSel:focus{outline:2px solid var(--acc);outline-offset:2px}
 kbd{font-family:var(--f-num);font-size:12px;border:1px solid rgba(255,255,255,.35);border-radius:3px;padding:0 6px;margin-right:2px}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 
@@ -87,7 +88,9 @@ body.touch #lhint{display:none}
 #gCloud{position:absolute;top:calc(104px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink);max-width:260px;text-align:right}
 #gCloud:hover{border-color:#fff}
 #gGun{position:absolute;top:calc(144px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
-#gGun:hover{border-color:#fff}#gGun[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}#gCloud.warn{border-color:var(--acc);color:var(--acc)}
+#gGun:hover{border-color:#fff}
+#gRest{position:absolute;top:calc(184px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
+#gRest:hover:not(:disabled){border-color:#fff}#gRest:disabled{opacity:.55;cursor:default}#gGun[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}#gCloud.warn{border-color:var(--acc);color:var(--acc)}
 .clp{font-size:13px;line-height:1.5;color:var(--mute);margin:10px 0 0}.clp b{color:var(--ink)}
 #clStat{font-size:12px;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:6px}#clStat.bad{border-color:var(--acc);color:var(--acc)}
 .clw{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.clw>div{border:1px solid var(--line);border-radius:8px;padding:12px}
@@ -421,7 +424,8 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 }
 /* Short landscape screens put the equipment row above the car-selection arrows. */
 @media (min-width:561px) and (max-height:520px){
-  #garageOptions{position:absolute;top:calc(60px + var(--st));right:calc(22px + var(--sr));display:flex;align-items:center;gap:8px}
+  /* REST (your needs, js/life.js) goes on a second line when the row would reach the garage's name */
+  #garageOptions{position:absolute;top:calc(60px + var(--st));right:calc(22px + var(--sr));display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:480px}
   #garageOptions .pill{position:static;min-height:36px}
 }
 /* photo mode: a gesture layer over the whole screen, the controls along the top and bottom edges */
@@ -462,6 +466,27 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 #mapPop .note{display:block;color:var(--acc);margin-top:6px}
 /* contracts */
 #jobs{z-index:62}
+/* needs (js/life.js): four bars, each with its number and a word for its colour, the mood and one suggestion */
+#needs{z-index:62;padding:max(16px,var(--st)) max(16px,var(--sr)) max(16px,var(--sb)) max(16px,var(--sl))}
+.ndc{width:min(440px,100%);max-height:100%;overflow:auto}
+.ndMood{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px;margin:-6px 0 8px}
+.ndMood span{font-size:10px;letter-spacing:.3em;color:var(--mute);font-weight:700}
+.ndMood b{font-family:var(--f-num);font-size:26px;font-weight:800}
+.ndr{display:grid;grid-template-columns:5.2em 1fr 2.1em 4.6em;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.ndl{font-weight:700}
+.ndb{height:10px;border-radius:5px;background:rgba(255,255,255,.14);overflow:hidden}
+.ndb i{display:block;height:100%;border-radius:5px;background:#dfe4e8}
+.ndr b{font-family:var(--f-num);font-size:18px;text-align:right}
+.ndr em{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--mute)}
+.ndr.good .ndb i{background:#3fe0a0}.ndr.good em{color:#3fe0a0}
+.ndr.low .ndb i{background:#f2b33d}.ndr.low em{color:#f2b33d}
+.ndr.vlow .ndb i{background:#ff7a6b}.ndr.vlow em{color:#ff7a6b}
+#ndTip{font-size:13px;line-height:1.5;margin:12px 0 2px;padding:9px 12px;border-left:3px solid #7fd1c7;background:rgba(255,255,255,.05)}
+#needs .mbtn{min-height:44px}
+/* narrow (a small phone, or large text): the name, the word and the number on one line, the bar under them */
+@media (max-width:380px){.ndc{padding:20px 18px}.ndr{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"l w n" "b b b";gap:6px 8px}
+  .ndl{grid-area:l}.ndr em{grid-area:w;text-align:right}.ndr b{grid-area:n}.ndb{grid-area:b}}
+@media (max-height:520px){.ndc{padding:14px 20px}.ndc h2{font-size:22px;margin-bottom:6px}.ndMood b{font-size:22px}.ndr{padding:5px 0}#ndTip{margin:8px 0 2px;padding:6px 10px}}
 .jbc{width:min(560px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column}
 /* Play together */
 .plc{width:min(440px,100%)}
@@ -553,6 +578,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
     <button id="gMus" class="pill">MUSIC: ON</button>
     <button id="gCloud" class="pill">SAVE MY PROGRESS</button>
     <button id="gGun" class="pill" aria-pressed="false">PISTOL: LEFT HERE</button>
+    <button id="gRest" class="pill">REST · ENERGY 80</button>
   </div>
   <div id="gpick"><button class="gnav" id="gprev" aria-label="Previous car">&#10094;</button><div id="gdots" role="group" aria-label="Choose a car"></div><button class="gnav" id="gnext" aria-label="Next car">&#10095;</button></div>
   <div id="gbar">
@@ -645,6 +671,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn pri" id="pRes">RESUME</button>
   <button class="mbtn" id="pMap">MAP &amp; GPS</button>
   <button class="mbtn" id="pPhoto">PHOTO MODE</button>
+  <button class="mbtn" id="pNeeds">NEEDS · OKAY</button>
   <button class="mbtn" id="pPass">EXPLORER PASSPORT</button>
   <button class="mbtn" id="pJobs">CONTRACTS</button>
   <button class="mbtn" id="pCups">CHAMPIONSHIPS</button>
@@ -678,6 +705,8 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
     <div class="lg"><i style="background:#ffffff;border:3px solid #0d1a22;box-shadow:0 0 0 1px #fff"></i>Events</div>
     <div class="lg"><i style="background:#9aa1a8;border-radius:2px"></i>Speed radars</div>
     <div class="lg"><i style="background:#7fd1c7;border-radius:2px;transform:rotate(45deg) scale(.8)"></i>Landmarks you've found</div>
+    <div class="lg"><i style="background:#e8846b"></i>Market Kitchen: a free meal</div>
+    <div class="lg"><i style="background:#8fc7e8"></i>Benches: sit down to rest</div>
     <button class="mbtn" id="mapPass">EXPLORER PASSPORT</button>
     <p>Drag to move. Scroll, pinch or use + and − to zoom. Select a marker for directions or fast travel. Select a road to drop a waypoint.</p>
   </div>
@@ -773,6 +802,14 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn pri" id="cpClose">CLOSE</button>
 </div></div>
 
+<div id="needs" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="ndTitle">
+  <h3>YOU</h3><h2 id="ndTitle">Needs</h2>
+  <div class="ndMood"><span>MOOD</span><b id="ndMood">Okay</b></div>
+  <div id="ndList"></div>
+  <p id="ndTip"></p>
+  <button class="mbtn pri" id="ndClose">CLOSE</button>
+</div></div>
+
 <div id="intro" class="ov hide"><div class="card">
   <h3 id="iType">TIME TRIAL</h3><h2 id="iName"></h2>
   <div id="iRows"></div>
@@ -812,26 +849,26 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <!-- Shared helpers, the car list, the save, the renderer, the sky and the day and night -->
-<script src="js/core.js?v=bcb6db9da9"></script>
+<script src="js/core.js?v=f7e6ca6f98"></script>
 <!-- The island: terrain, the road network, scenery, the house, the dealership, plants, the sea and the roadside -->
-<script src="js/world.js?v=2524a0a028"></script>
+<script src="js/world.js?v=2da9805524"></script>
 <!-- Car models and their looks, input, the player's car physics and traffic -->
-<script src="js/cars.js?v=d74f5add66"></script>
+<script src="js/cars.js?v=7e70ddfac3"></script>
 <!-- Free-ride streaks, races and time trials, speed radars, the GPS, money and messages, the HUD canvases and the full map -->
-<script src="js/play.js?v=9068c2d05c"></script>
+<script src="js/play.js?v=a167eddf4e"></script>
 <!-- Sound effects, music and Photo Mode -->
 <script src="js/media.js?v=839a84c0e2"></script>
 <!-- The Explorer Passport, contracts and class championships -->
 <script src="js/progress.js?v=904c0e3f24"></script>
 <!-- Game states, the garage, the dealership, menus and prompts, one game tab at a time, and the cloud save -->
-<script src="js/screens.js?v=b53996ee8d"></script>
+<script src="js/screens.js?v=afc83c6335"></script>
 <!-- The HUD, on foot, the police, the pistol and health, pedestrians, and the harbour boat -->
-<script src="js/people.js?v=dc75849a55"></script>
+<script src="js/people.js?v=e2d1a810cf"></script>
 <!-- The life side: the people of Old Quay, talking to them, and the friendships they remember -->
-<script src="js/life.js?v=9302fa77d4"></script>
+<script src="js/life.js?v=5d1167f62f"></script>
 <!-- Playing together: rooms with a code, friends drawn where they are, the Play together panel -->
 <script src="js/net.js?v=1a3a095c19"></script>
 <!-- Each frame: the drive update, adaptive resolution, the ?perf panel and the main loop, and the boot that builds the world -->
-<script src="js/main.js?v=20e85de87d"></script>
+<script src="js/main.js?v=4085876d35"></script>
 </body>
 </html>
