@@ -62,6 +62,7 @@ function carShared(){
 }
 function disposeHeroCar(c){
   const sh=carShared(),done=new Set();
+  for(const guest of [...c.G.children])if(guest.userData.rider)scene.add(guest);
   c.G.traverse(o=>{if(!o.isMesh)return;if(o.geometry&&!sh.G.has(o.geometry)&&!done.has(o.geometry)){done.add(o.geometry);o.geometry.dispose()}
     (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(!m||sh.M.has(m)||done.has(m))return;done.add(m);
       for(const t of [m.map,m.roughnessMap,m.metalnessMap,m.emissiveMap,m.alphaMap])if(t&&!sh.T.has(t)&&!done.has(t)){done.add(t);t.dispose()}
@@ -652,7 +653,7 @@ function rebuildCar(id,mods){
     wheel.userData.spokes.forEach((spoke,j)=>spoke.visible=old.userData.spokes[j].visible);
   });
   n.front.forEach((mount,i)=>mount.rotation.y=o.front[i].rotation.y);
-  if(id===curId)attachCar(id,id!==save.cur);
+  if(id===curId){attachCar(id,id!==save.cur);if(RIDE.st==="ride"&&RIDE.car===id)rideSeat()}
   n.G.visible=o.G.visible;
   if(showMeshes[id]){disposeHeroCar(showMeshes[id]);delete showMeshes[id]}
   return n;
@@ -752,14 +753,25 @@ function parkAll(except){
 /* ================================================================ INPUT */
 const keys={},pad={};
 const PAD_OWN=[];   // touch pointers held on each group of on-screen pads (set up with the pads)
-function clearInput(){for(const k in keys)keys[k]=false;for(const k in pad)pad[k]=false;PAD_OWN.forEach(m=>m.clear());document.querySelectorAll(".pb.on").forEach(e=>e.classList.remove("on"))}
+function clearInput(){if(typeof workClose==="function")workClose();for(const k in keys)keys[k]=false;for(const k in pad)pad[k]=false;PAD_OWN.forEach(m=>m.clear());document.querySelectorAll(".pb.on").forEach(e=>e.classList.remove("on"))}
 let locked=false,autoHold=false;
 // a game controller (the first one connected, standard layout): left stick steers, right trigger is the gas, left
 // trigger the brake, A the handbrake; Start pauses, View/Back opens the map, Y changes camera, X is the prompt key
 const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,index:null,prev:[]};
 // screens opened from the pause menu, and how each closes
 /** @type {[string, () => void][]} */
-const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()]];
+const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()],["needs",()=>needsClose()],["play",()=>netClose()]];
+// a controller in the pause menu: the D-pad moves between the buttons of the menu (or of the screen opened from it),
+// with an outline on the one picked, and A presses it
+function padMenu(hit){
+  const sub=PAUSE_SUBS.map(([id])=>$(id)).find(e=>!e.classList.contains("hide")),box=sub||$("pause");
+  const bs=/** @type {HTMLElement[]} */([...box.querySelectorAll("button,a.mbtn,input")]).filter(b=>b.offsetParent&&!(/** @type {HTMLButtonElement} */(b).disabled));
+  if(!bs.length)return;
+  const i=bs.indexOf(/** @type {HTMLElement} */(document.activeElement)),d=hit(12)||hit(14)?-1:hit(13)||hit(15)?1:0;
+  if(d){const b=bs[i<0?(d>0?0:bs.length-1):(i+d+bs.length)%bs.length];document.querySelectorAll(".padSel").forEach(e=>e.classList.remove("padSel"));
+    b.classList.add("padSel");b.focus({preventScroll:true});b.scrollIntoView({block:"nearest"})}
+  else if(hit(0)&&i>=0)bs[i].click();
+}
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
   if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GP.index=null;GO.stick[0]=GO.stick[1]=0;return}
@@ -772,6 +784,7 @@ function pollPad(){
   if(tabIdle||clOverlayOpen())GO.stick[0]=GO.stick[1]=0;
   if(tabIdle)return;
   if(clOverlayOpen()){if(hit(1))clEscape();return}
+  if(WORK.panel){GP.steer=GP.gas=GP.brake=0;GP.fire=GP.hb=false;workPad(hit);return}
   const inputState=state;
   if(state==="ARRIVAL"){if(hit(0)||hit(1)||hit(9))finishArrival();return}
   else if(state==="WARDROBE"){
@@ -784,7 +797,7 @@ function pollPad(){
   else if(state==="DRIVE"&&TALK.p)talkPad(hit);
   else if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on&&!BOAT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on&&!BOAT.on)footExit()}
   // in the pause menu, B or Start closes a screen opened from it (passport, contracts) before the menu itself
-  else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}}
+  else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}else padMenu(hit)}
   else if(state==="LOAD"){if(hit(0)&&!$("lstart").classList.contains("hide"))$("lstart").click()}
   else if(state==="MAP"){if(hit(8)||hit(1)){if(!$("passport").classList.contains("hide"))passportClose();else closeMap()}}
   // B closes the picture just taken first, as Escape does; from Photo Mode itself it goes back
@@ -795,7 +808,7 @@ function pollPad(){
   // times as fast at 120 fps as at 30)
   {const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8;GO.stick[0]=state==="GARAGE"?dz(g.axes[2]||0):0;GO.stick[1]=state==="GARAGE"?dz(g.axes[3]||0):0}
   if(state==="GARAGE"&&cuOpen()){if(hit(1))custClose(false);else if(hit(0))custClose(true)}
-  else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick()}
+  else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(2))needsRest();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick()}
   // in the dealership A buys the car shown (or drives it, if it's yours), X takes it for a test drive
   else if(state==="DEALER"){const on=id=>{const b=$(id);return !b.classList.contains("hide")&&!b.disabled};
     if(hit(1))closeDealer();else if(hit(12)||hit(14))dPick(dSel-1);else if(hit(13)||hit(15))dPick(dSel+1);
@@ -864,16 +877,27 @@ function kphNow(){return Math.abs(speedF())*3.6}
 // Out of the tightest hairpin that stronger pull (and the throttle) still took the car across the centre line, 2 m
 // off its lane, because the tyres were already at their limit: now, while the assist is turning as hard as grip
 // allows and the road wants more (satAt), the car lifts off and brakes gently (satLift) instead. Worst case 0.8 m
+// Junction turns with the assist (Jo Yee's video, 24 Nov 2026): a right-angle turn is planned as an arc of jR m. A
+// steering key held into a junction sets how much room the turn has from where it began (its distance to the
+// junction's middle plus jIn, at least jMin) and brakes at up to csTurn m/s² to suit
 const STEER_SENS=[.7,1,1.35];
 const HD={latBase:1.2,latGrip:.6,latLow:.25,rUp:6,rUpHi:2,rBack:10,rBackHi:7,rCounter:14,steerEase:25,expHi:1.6,steerV:39,
-  asK:2.6,asLim:.9,csGrip:.83,csBrake:5,csPlan:4,csBand:3,thrUp:3.2,pBase:3.7,pAcc:9.2,offDrag:2.2,offDragV:.035,yawResp:10,rMin0:5,rMinV:.7,laneK:3,laneMax:.15,antT:.15,antMax:12,satAt:.97,satLift:2,brk0:6,brk1:13,brkUp:1,revMax:8,thrUp0:9};
+  asK:2.6,asLim:.9,csGrip:.83,csBrake:5,csPlan:4,csBand:3,thrUp:3.2,pBase:3.7,pAcc:9.2,offDrag:2.2,offDragV:.035,yawResp:10,rMin0:5,rMinV:.7,laneK:3,laneMax:.15,antT:.15,antMax:12,satAt:.97,satLift:2,brk0:6,brk1:13,brkUp:1,revMax:8,thrUp0:9,jR:18,jIn:4,jMin:10,csTurn:10};
 // fastest speed for a bend of curvature k: limited by grip, and in tight
 // corners by the smallest circle the car turns at that speed
 const vCorner=(k,aC)=>Math.min(Math.sqrt(aC/k),Math.max(4,(.92/k-HD.rMin0)/HD.rMinV));
-function limitFromAngles(ang,sp,aC){
+// jn: the samples that cross a junction. There the roads' centre lines meet at a point, so the turn looks much sharper
+// than the arc a car drives across the junction: it counts as an arc of HD.jR m for a right angle (tighter for a sharper
+// turn). Counted as the kink it was, a right-angle turn asked for about 22 km/h, and the car braked from 130 km/h to
+// a crawl 120 m before an Old Quay T-junction with only the throttle held (Jo Yee's video, 24 Nov 2026)
+function limitFromAngles(ang,sp,aC,jn){
   let lim=1e9;
   for(let i=1;i<ang.length-1;i++){
-    const k=Math.abs(wrapA(ang[i+1]-ang[i-1]))/16+1e-4,vc=vCorner(k,aC),dd=i*8;
+    let k=Math.abs(wrapA(ang[i+1]-ang[i-1]))/16+1e-4;
+    if(jn&&jn.length)for(const j of jn)if(i>=j-1&&i<=j+2){
+      const turn=Math.abs(wrapA(ang[Math.min(ang.length-1,j+3)]-ang[Math.max(0,j-2)]));
+      k=Math.min(k,Math.max(turn,.2)/(Math.PI/2)/HD.jR+1e-4);break}
+    const vc=vCorner(k,aC),dd=i*8;
     lim=Math.min(lim,Math.sqrt(vc*vc+2*HD.csPlan*Math.max(0,dd-sp*.35)));
   }
   return lim;
@@ -884,13 +908,13 @@ function cornerLimit(nr,dir,sp,aC){
   // braking at a comfortable rate before each one. The look-ahead carries on
   // through junctions along the straightest way out (at a T-junction that is
   // the turn itself). Also reports how far ahead the next junction is.
-  const look=lookAhead(sp),ang=[];let e=nr.e,s=nr.s,d=0,jD=1e9;
+  const look=lookAhead(sp),ang=[],jn=[];let e=nr.e,s=nr.s,d=0,jD=1e9,jN=null;
   while(d<=look+16){
     const q=edgePos(e,s),h=Math.atan2(q.dx*dir,q.dz*dir);ang.push(h);
     let ns=s+dir*8;d+=8;
     if(ns>e.len||ns<0){
       const over=ns>e.len?ns-e.len:-ns,node=ns>e.len?e.b:e.a;
-      if(node.adj.length>2)jD=Math.min(jD,d-over);
+      if(node.adj.length>2){if(d-over<jD){jD=d-over;jN=node}jn.push(ang.length)}
       let best=null,bd=9;
       for(const a of node.adj){if(a.e===e||(a.e.type==="drive"&&e.type!=="drive"))continue;
         const d2=a.end==="a"?1:-1,q2=edgePos(a.e,d2>0?0:a.e.len),dd=Math.abs(wrapA(Math.atan2(q2.dx*d2,q2.dz*d2)-h));
@@ -899,13 +923,14 @@ function cornerLimit(nr,dir,sp,aC){
       e=best.e;dir=best.dir;s=dir>0?Math.min(over,e.len):Math.max(0,e.len-over);
     }else s=ns;
   }
-  return{lim:limitFromAngles(ang,sp,aC),jD};
+  return{lim:limitFromAngles(ang,sp,aC,jn),jD,jN};
 }
 // the same along a known route (an event, or the GPS line), which knows which way it turns at junctions
 function pathLimit(R,s0,sp,aC){
-  const look=lookAhead(sp),ang=[];
-  for(let d=0;d<=look+16&&s0+d<=R.len;d+=8){const q=edgePos(R,s0+d);ang.push(Math.atan2(q.dx,q.dz))}
-  return limitFromAngles(ang,sp,aC);
+  const look=lookAhead(sp),ang=[],jn=[];let last=null;
+  for(let d=0;d<=look+16&&s0+d<=R.len;d+=8){const q=edgePos(R,s0+d);ang.push(Math.atan2(q.dx,q.dz));
+    const n=junctionAt(q.x,q.z);if(n&&n!==last&&n.adj.length>2)jn.push(ang.length-1);last=n}
+  return limitFromAngles(ang,sp,aC,jn);
 }
 // the middle of the nearest lane, on either side of the road, for a position across it (0 = the centre line);
 // a position beyond the road's edge is left as it is
@@ -924,7 +949,10 @@ function stepPlayer(dt){
   const th=groundH(P.x,P.z),sand=!onRoad&&th<3.4;
   const surf=onRoad?1:sand?.55:.72;
   // past the finish line the car brakes itself to a stop (the controls are locked) before the result shows
-  const gas=kG(),brake=kB()||(!!ev&&ev.phase==="finish"&&vF>.5),hb=kH(),sp0=Math.abs(vF),gA=gas?gasAmt():0,bA=kB()?brakeIn():1;
+  // stopping to get out (FOOT.stop, js/people.js) takes over both pedals and brakes the car to rest, going forwards or
+  // backwards (Codex's review of #79: reversing with S held, it waited 4 s and gave up, still going at 28.8 km/h)
+  const stopping=FOOT.stop>0,pedB=kB()&&!stopping;
+  const gas=kG()&&!stopping,brake=pedB||(!!ev&&ev.phase==="finish"&&vF>.5)||(stopping&&Math.abs(vF)>.5),hb=kH(),sp0=Math.abs(vF),gA=gas?gasAmt():0,bA=pedB?brakeIn():1;
   const vMax=onRoad?cd.top/3.6:sand?Math.min(cd.top/3.6*.35,20):Math.min(cd.top/3.6*.45,30),power=(HD.pBase+cd.acc*HD.pAcc)*damagePower(P);
   // tyre grip: arcade-strong on asphalt, a bit more at low speed
   const vN=clamp(sp0/55,0,1),aLatRoad=9.81*(HD.latBase+cd.grip*HD.latGrip)*(1+HD.latLow*(1-vN)),aLat=aLatRoad*surf;
@@ -935,15 +963,24 @@ function stepPlayer(dt){
   // and holding a steering key into a junction slows the car enough to make the turn
   const si=steerIn(),tgt0=Math.abs(si)>.5?Math.sign(si):0;
   P.holdT=tgt0&&tgt0===P.holdDir?(P.holdT||0)+dt:0;P.holdDir=tgt0;
-  let over=0;P.aBrk=false;
+  let over=0,brkMax=HD.csBrake;P.aBrk=false;
+  if(!P.holdT)P.turnRoom=null;
   if(save.assist&&vF>12&&!brake&&!hb&&nr&&nr.d<nr.e.half+5){
-    const aC=aLatRoad*HD.csGrip;let jD=1e9,path=null,ps=0;
+    const aC=aLatRoad*HD.csGrip;let jD=1e9,jN=null,path=null,ps=0;
     if(ev&&ev.phase==="run"&&ev.d<14){path=ev.R;ps=ev.sNow}
     else if(!ev&&gps.route&&gps.route.len>40){const tr=trackRoute(gps.route,P.x,P.z,0);if(tr.d<14){path=gps.route;ps=tr.s}}
     if(path){const q=edgePos(path,ps);if(q.dx*f0.x+q.dz*f0.z<.5)path=null}
     if(path)over=vF-pathLimit(path,ps,vF,aC);
-    else if(alongRoad){const c=cornerLimit(nr,rdir,vF,aC);over=vF-c.lim;jD=c.jD}
-    if(!path&&P.holdT>.2&&Math.abs(P.steer)>.7&&(jD<32||junctionAt(P.x,P.z)))over=Math.max(over,vF-vCorner(1/16,aC));
+    else if(alongRoad){const c=cornerLimit(nr,rdir,vF,aC);over=vF-c.lim;jD=c.jD;jN=c.jN}
+    // a steering key held into a junction: slow enough to make the turn from where it began. Begun about a turning
+    // circle out, the car goes round on an arc of HD.jR m; begun later it needs a tighter one, so it brakes harder,
+    // up to HD.csTurn, since the junction ahead was planned for that arc and a late turn has more speed to lose.
+    // It was a 16 m arc wherever the turn began: late turns ran wide, so the plan ahead had to be a crawl
+    const jx=P.holdT>.2&&Math.abs(P.steer)>.7?junctionAt(P.x,P.z)||(jD<32?jN:null):null;
+    if(jx){
+      if(P.turnRoom==null)P.turnRoom=clamp((jx.x-P.x)*f0.x+(jx.z-P.z)*f0.z+HD.jIn,HD.jMin,HD.jR);
+      over=Math.max(over,vF-vCorner(1/P.turnRoom,aC));brkMax=HD.csTurn;
+    }else P.turnRoom=null;
   }
   // the assist is already turning the car as hard as the tyres allow and the road wants more: lift off rather than
   // accelerate wide (out of a hairpin the car used to power across the centre line)
@@ -956,7 +993,7 @@ function stepPlayer(dt){
   // and pulling back afterwards let a light trigger build up to full throttle at a crawl, where the ramp is quickest
   const tT=Math.min(thrCap,gA),t0=P.thr||0;P.thr=t0<tT?Math.min(tT,t0+thrUp*dt):Math.max(tT,t0-8*dt);
   // Holding the brake from a crawl must stop the car. Check motion before this step's slope force.
-  const bHeld=kB();if(!bHeld)P.brkHold=false;else if(vF>REVERSE_STOP)P.brkHold=true;
+  const bHeld=pedB;if(!bHeld)P.brkHold=false;else if(vF>REVERSE_STOP)P.brkHold=true;
   if(!P.air){const sl=(surfH(P.x+fx*2,P.z+fz*2)-surfH(P.x-fx*2,P.z-fz*2))/4;vF-=9.81*sl*.75*dt}
   // the brake builds up while it's held: gentle at first (6 m/s²), full (13 m/s²) after a second, so a quick press
   // slows the car instead of stopping it dead. Nov 2026: was 9 to 22 m/s² in 0.7 s, which threw away speed into bends.
@@ -969,7 +1006,7 @@ function stepPlayer(dt){
   else if(brake){if(vF>.5)vF-=bF*bA*dt;else if(P.brkHold||!bHeld){const d=Math.max(bF,6)*dt;vF=Math.abs(vF)<=d?0:vF-Math.sign(vF)*d}else vF=Math.max(vF-5*bA*dt,-HD.revMax)}
   else if(P.thr>0&&!P.air)vF+=power*P.thr*Math.max(0,1-(vF/vMax)**2)*dt;
   if(!gas&&!brake||over>0){const dec=(.7+.00042*vF*vF)*dt;vF=Math.abs(vF)<=dec?0:vF-Math.sign(vF)*dec}
-  if(over>.6){vF-=Math.min(HD.csBrake,(over-.6)*3)*dt;P.aBrk=true}
+  if(over>.6){vF-=Math.min(brkMax,(over-.6)*3)*dt;P.aBrk=true}
   if(!onRoad){const d=((sand?3:HD.offDrag)+HD.offDragV*Math.abs(vF))*dt;vF=Math.abs(vF)<=d?0:vF-Math.sign(vF)*d}
   if(vF>vMax)vF-=7*dt;
   if(hb){const d=6*dt;vF=Math.abs(vF)<=d?0:vF-Math.sign(vF)*d}

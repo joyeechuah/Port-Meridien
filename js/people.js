@@ -35,8 +35,10 @@ function updateHUD(dt){
 // Getting out of the car and walking. The game stays in the DRIVE state: while FOOT.on, driveUpdate runs footUpdate
 // in place of the car's physics, the car stays where it was left, and the camera follows the walker.
 // Controls are the driving ones: gas walks, brake steps back, steering turns, the handbrake (or Shift) runs.
-const FOOT={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,m:null,cy:0,car:[0,0],hudT:0,cp:new THREE.Vector3(),cl:new THREE.Vector3()};
-const FOOT_V={walk:1.9,run:5.4,back:1.2,turn:2.5,r:.35,reach:3.4,exitMax:6};
+// stop: seconds left of braking to a stop before getting out (GET OUT pressed while the car was still rolling)
+const FOOT={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,m:null,cy:0,car:[0,0],hudT:0,stop:0,cp:new THREE.Vector3(),cl:new THREE.Vector3()};
+// exitMax: the fastest the car may be rolling as you get out. Up to stopMax, GET OUT stops the car for you first
+const FOOT_V={walk:1.9,run:5.4,back:1.2,turn:2.5,r:.35,reach:3.4,exitMax:6,stopMax:60};
 // a simple figure, 1.76 m tall, standing on the group's origin and facing +z; legs and arms swing from hip and shoulder
 /* Faces: painted onto the front of the head, the eyes with whites, a coloured iris, a pupil and a catchlight, so a
    face reads as a person at phone size (built from tiny shapes it read as a mannequin: Jo Yee, 19 Nov). Stylized:
@@ -334,6 +336,7 @@ function leftClear(){LEFT.length=0;for(const id of[...STREET.keys()])if(id!==cur
 function streetFree(id){const c=carMeshes[id];if(c){disposeHeroCar(c);delete carMeshes[id]}STREET.delete(id)}
 // puts you in the driving seat of a car standing at (x,z), facing h
 function driveCar(id,x,z,h,damage){
+  workCancel();
   FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;promptAct=null;show("prompt",false);footHud(false);
   attachCar(id,isStreet(id));
   P.x=x;P.z=z;P.h=h;P.vx=P.vz=P.vy=0;P.r=0;P.steer=P.steerS=0;P.thr=0;P.brkHold=false;P.air=false;P.y=P.ty=surfH(x,z);
@@ -369,6 +372,8 @@ function streetReset(){
 }
 // the car within reach to get into, nearest first: the one you got out of, one left standing, or stopped traffic
 function footTarget(){
+  // sat on a bench (js/life.js): the one thing to do is get up
+  if(SIT.on)return{t:sitText(),a:sitEnd};
   let best=null,bd=FOOT_V.reach;
   const see=(x,z,o)=>{const d=Math.hypot(FOOT.x-x,FOOT.z-z);if(d<=bd){bd=d;best=o}};
   see(P.x,P.z,{t:"Get in · "+carById(curId).mk+" "+carById(curId).md,a:footEnter});
@@ -377,19 +382,32 @@ function footTarget(){
   if(BOAT.m&&onPier(FOOT.x,FOOT.z))see(BOAT.x,BOAT.z,{t:"Board the boat",a:boatBoard});
   // the people of Old Quay (js/life.js): walk up to someone to talk
   for(const p of PEDS)if(talkable(p))see(p.x,p.z,{t:"Talk · "+personOf(p).name,a:()=>talkOpen(p)});
+  // your needs (js/life.js): the benches round the fountain, and the Market Kitchen's counter. Not while the police
+  // are after you
+  for(const b of QUAY.benches)see(b.x,b.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:"Sit on the bench",a:()=>sitDown(b)});
+  const K=QUAY.kitchen;if(K)see(K.x,K.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:kitchenText(),a:needsEat});
   return best;
 }
 // why you can't get out just now, or null if you can
 function footBlocked(){
   if(ev)return "Finish or quit the event first";
   if(testDrive)return "Return the test car first";
-  if(kphNow()>FOOT_V.exitMax)return "Stop the car first";
+  if(kphNow()>FOOT_V.exitMax)return kphNow()>FOOT_V.stopMax?"Slow down first":"Stop the car first";
   if(P.water)return "Not in the water";
   return null;
 }
+// GET OUT while the car is still rolling (up to stopMax): it brakes itself to a stop and you get out then. It used to
+// say "Stop the car first" and do nothing, at 11 km/h too (Jo Yee's video, 24 Nov 2026)
+function footStopTick(dt){
+  FOOT.stop=Math.max(0,FOOT.stop-dt);
+  if(state!=="DRIVE"||FOOT.on||BOAT.on){FOOT.stop=0;return}
+  if(kphNow()<=FOOT_V.exitMax){FOOT.stop=0;footExit()}
+}
 function footExit(){
   if(state!=="DRIVE"||FOOT.on||BOAT.on)return false;
-  const why=footBlocked();if(why){toast("CAN'T GET OUT",why,"bad");return false}
+  const why=footBlocked();
+  if(why==="Stop the car first"){if(!FOOT.stop)toast("GETTING OUT","Stopping the car");FOOT.stop=4;return false}
+  if(why){toast("CAN'T GET OUT",why,"bad");return false}
   // beside the driver's door if there's room (the driver sits on the side nearest the middle of the road), otherwise
   // the other side, otherwise behind: wherever is clear of walls and out of the sea
   const rx=Math.cos(P.h),rz=-Math.sin(P.h),fx=Math.sin(P.h),fz=Math.cos(P.h),d=SIDE();let spot=null;
@@ -412,7 +430,7 @@ function footEnter(){
 }
 // back in the driving seat (also when the car is moved from under you: map travel, back to road, the garage)
 function footEnd(){
-  if(!FOOT.on)return;talkClose();FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
+  if(!FOOT.on)return;workCancel();talkClose();sitEnd();FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
   promptAct=null;show("prompt",false);footHud(false);autoHold=true;if(pc)snapCam();
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
@@ -446,11 +464,25 @@ function footPlace(dt,speed=Math.abs(FOOT.v)){
   m.G.rotation.x=amp*.06;
   m.G.position.y+=Math.abs(Math.cos(FOOT.ph))*Math.min(.05,speed*.012);
 }
-// behind and above the walker, coming in closer when a wall or tree is in the way
+// the lowest the on-foot camera may be at (x,z) to stay clear of the cars standing there (yours, the ones you left,
+// traffic): over a car, or within a metre of one, it rises above the roof. It used to swing down through your parked
+// car as you turned beside it, and the screen filled with its bodywork from inside (Jo Yee's video, 24 Nov 2026)
+function carClearY(x,z){
+  let y=-1e9;
+  const car=(ox,oz,h,hx,hz)=>{
+    const dx=x-ox,dz=z-oz;if(Math.abs(dx)>hz+2||Math.abs(dz)>hz+2)return;
+    const cs=Math.cos(h),sn=Math.sin(h),lx=Math.abs(dx*cs-dz*sn)-hx,lz=Math.abs(dx*sn+dz*cs)-hz,d=Math.hypot(Math.max(lx,0),Math.max(lz,0));
+    if(d<1.2)y=Math.max(y,footGround(ox,oz)+2.75-d*.45)};
+  car(P.x,P.z,P.h,.95,2.3);
+  for(const l of LEFT)car(l.x,l.z,l.h,.95,2.3);
+  for(const t of TRAFFIC)if(t.e)car(t.wx,t.wz,t.yaw,.95,t.c.len);
+  return y;
+}
+// behind and above the walker, coming in closer when a wall or tree is in the way, and over a car standing there
 function footCam(dt,snap){
   FOOT.cy+=wrapA(FOOT.h-FOOT.cy)*(snap?1:1-Math.exp(-dt*5));
   const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),back=boomClear(FOOT.x,FOOT.z,fx,fz,3.9),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
-  const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,camFloor(px,pz,p));
+  const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,camFloor(px,pz,p),carClearY(px,pz));
   const k=snap?1:1-Math.exp(-dt*10);
   FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*2.3,FOOT.y+1.1,FOOT.z+fz*2.3),k);
   camera.position.copy(FOOT.cp);camera.lookAt(FOOT.cl);
@@ -463,12 +495,16 @@ function footUpdate(dt){
   if(FOOT.m&&FOOT.m.face)faceBlink(FOOT.m.face,dt);
   if(state!=="DRIVE")return;
   const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||kH());
-  const want=TALK.p?0:go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
+  // on a bench (js/life.js), walking or turning gets you up first
+  if(SIT.on&&(go||Math.abs(steerIn())>.3))sitEnd();
+  if(SIT.on&&!document.hidden)sitTick(dt);   // movement and danger interrupt the final fraction of a rest interval too
+  const still=TALK.p||SIT.on,want=still?0:go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
   FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
   // right turns right, as in the car: the heading decreases (it was the wrong way round, on foot and on the boat)
-  if(!TALK.p)FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
+  if(!still)FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
   let strideSpeed=0;
-  if(Math.abs(FOOT.v)>.01){
+  if(SIT.on)FOOT.v=0;
+  else if(Math.abs(FOOT.v)>.01){
     let nx=FOOT.x+Math.sin(FOOT.h)*FOOT.v*dt,nz=FOOT.z+Math.cos(FOOT.h)*FOOT.v*dt;
     [nx,nz]=footClear(nx,nz);
     // Pedestrians already yield when approaching a walker. Also stop the walker
@@ -492,7 +528,7 @@ function footUpdate(dt){
   const g=footGround(FOOT.x,FOOT.z);
   FOOT.y=Math.max(g,FOOT.y+(g-FOOT.y)*Math.min(1,dt*14));
   FOOT.ph+=strideSpeed*dt*3.1;if(strideSpeed<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
-  footPlace(dt,strideSpeed);
+  if(SIT.on)sitPose();else footPlace(dt,strideSpeed);
   gunFoot(dt);
   footPrompt();
   // the car you left is switched off: its engine and tyres are silent (they used to hum on at whatever they were
@@ -756,6 +792,7 @@ function copClear(){
   wantedHud();
 }
 function copCaught(){
+  workCancel();
   const fine=Math.min(save.cr,COP_V.fine*WANTED.lvl),armed=save.armed;
   save.cr-=fine;if(armed)save.armed=false;persist();updateMoney();copClear();
   if(armed){gunArrest(fine);return}
@@ -817,7 +854,7 @@ function gunFrom(){if(FOOT.on)return{x:FOOT.x,z:FOOT.z,h:FOOT.h,y:FOOT.y+1.3};co
 function gunPick(){
   const F=gunFrom(),fx=Math.sin(F.h),fz=Math.cos(F.h),list=[];
   for(const t of TRAFFIC)if(t.e&&t.c.G.visible&&(t.damage||0)<100)list.push({k:t.cop?"cop":"car",x:t.wx,z:t.wz,y:1,o:t,stop:2.8});
-  if(pedOn)for(const p of PEDS)if(p.m.G.visible&&p.st!=="down")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
+  if(pedOn)for(const p of PEDS)if(p.m.G.visible&&p.st!=="down"&&p.st!=="ride")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
   if(OFFICER.on&&!(OFFICER.down>0))list.push({k:"officer",x:OFFICER.x,z:OFFICER.z,y:1.2,o:OFFICER,stop:.6});
   for(const p of VERGE)if(p.m.G.visible&&p.st!=="down")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
   let best=null,bs=1e9;
@@ -863,8 +900,9 @@ function gunCar(dt){
 // on foot, every frame: the pistol in your hand, the lock, firing, the right arm raised to aim
 function gunFoot(dt){
   const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0&&save.flash;
-  // talking (js/life.js) holds the pistol: no aim and no fire, and a fire button still held at goodbye waits to be let go
-  const talking=!!TALK.p;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
+  // talking or sitting on a bench (js/life.js) holds the pistol: no aim and no fire, and a fire button still held at
+  // goodbye (or on getting up) waits to be let go
+  const talking=!!TALK.p||SIT.on||WORK.panel;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
   GUN.lock=on&&!talking?gunPick():null;
   if(on&&!talking&&!TALK.fireHold&&gunWant()&&GUN.cool<=0)gunFire();
   const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,(q.k==="car"||q.k==="cop"?footGround(q.x,q.z)+2.1:footGround(q.x,q.z)+2.05),q.z);GUN.ring.rotation.z+=dt*2}
@@ -893,7 +931,7 @@ function kitTick(dt){
       toast("FIRST AID","+50 health · this one is back in 2 minutes","gold")}}
 }
 function hurt(n){
-  const H=HEALTH;if(H.hp<=0||n<=0)return;H.hp=Math.max(0,H.hp-n);H.calm=0;H.hurtT=.5;
+  const H=HEALTH;if(H.hp<=0||n<=0)return;workCancel();H.hp=Math.max(0,H.hp-n);H.calm=0;H.hurtT=.5;
   if(H.hp<=0)knockedOut();
 }
 // out cold: home, a little poorer; nothing you were doing carries on (a chase, a contract, a taken car)
@@ -1085,10 +1123,11 @@ function pedUpdate(dt){
   vergeTick(dt);
   if(!PEDS.length)return;
   const me=BOAT.on?BOAT:FOOT.on?FOOT:P,on=Math.hypot(me.x-660,me.z-36)<PED_V.near;
-  if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)p.m.G.visible=false}
+  if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)if(p!==RIDE.p)p.m.G.visible=false}
   if(!on)return;
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of PEDS){
+    if(p===RIDE.p)continue;   // a friend with you, following or riding (js/life.js: rideTick)
     if(p.m.G.visible)faceBlink(p.m.face,dt);
     pedStep(p,dt,me,driving,psp);
   }
@@ -1214,6 +1253,7 @@ function boatLandSpot(){
 function boatHud(){footHud(true);keysShown="";$("keys").innerHTML="<kbd>W</kbd><kbd>S</kbd> power / reverse &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>E</kbd> land";$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
 function boatBoard(){
   if(!FOOT.on||BOAT.on||!BOAT.m)return false;
+  workCancel();
   FOOT.on=false;FOOT.m.G.visible=false;BOAT.on=true;BOAT.v=0;BOAT.steer=0;BOAT.car=[P.x,P.z];BOAT.cy=BOAT.h;
   promptAct=null;show("prompt",false);boatHud();boatCam(0,true);
   toast("ABOARD",isTouch?"POWER to sail, REVERSE to back up. Come back beside the pier to step off.":"W sails, S reverses, A and D steer. Come back beside the pier to step off.");

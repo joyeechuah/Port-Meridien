@@ -7,10 +7,12 @@ const source = readFileSync(join(__dirname, "../js/life.js"), "utf8");
 function dialogue() {
   const save = { rel: {}, found: {} };
   const globals = {
-    window: {}, save, LANDMARKS: [], document: { createElement: () => ({ dataset: {} }) },
+    window: {}, save, WANTED: { lvl: 0 }, LANDMARKS: [], document: { createElement: () => ({ dataset: {} }) },
+    // the needs (in the same file) start from these
+    NEEDS_START: { energy: 80, hunger: 75, fun: 65, social: 65 }, needsClean: (n) => Object.assign({ v: 1, energy: 80, hunger: 75, fun: 65, social: 65 }, n),
     $: () => ({ appendChild() {}, addEventListener() {} })
   };
-  return vm.runInNewContext(source + "\n;({ PEOPLE, TALKS, TALK, talkReaction, talkTip, TIPS, save })", globals);
+  return vm.runInNewContext(source + "\n;({ PEOPLE, TALKS, TALK, talkReaction, talkTip, TIPS, save, NEEDS, needsLoad, WANTED })", globals);
 }
 
 test("every resident has two repeatable reactions per action without changing the friendship", () => {
@@ -44,4 +46,25 @@ test("general tips can all be reached before befriending a resident", () => {
   }
   expect(seen.size).toBeGreaterThan(6);
   expect([...seen].sort()).toEqual([...g.TIPS].sort());
+});
+
+test("each personality gives two repeatable remedies per low mood and falls back during a chase", () => {
+  const g = dialogue(), cases = { hunger: /kitchen|meal|food|stall/i, energy: /bench|rest|seat|sit by/i,
+    fun: /race|boat|time trial/i, social: /chat|hello|talk|kind word|friendly word|compliment|joke|ask someone/i };
+  for (const who of g.PEOPLE) {
+    for (const [need, remedy] of Object.entries(cases)) {
+      g.needsLoad({ v: 1, [need]: 10 });
+      const lines = [1, 2].map(count => {
+        g.TALK.used.tip = count;
+        const line = g.talkTip(who);
+        expect(g.talkTip(who)).toBe(line);
+        expect(line).toMatch(remedy);
+        return line;
+      });
+      expect(new Set(lines).size).toBe(2);
+      g.WANTED.lvl = 1;
+      expect(g.TIPS).toContain(g.talkTip(who));
+      g.WANTED.lvl = 0;
+    }
+  }
 });

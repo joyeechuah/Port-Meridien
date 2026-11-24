@@ -10,7 +10,7 @@ Race the coastal roads, explore Old Quay on foot, or take a boat across the harb
 
 1. Open the game and choose **Play as guest**. Progress saves in this browser. Watch the harbour flyover or select **Skip intro** to go straight to the wardrobe. Reduced motion also skips the flyover.
 2. Choose **Harbour palms**, **Boardwalk stripe** or **Night shift**. Use **Turn around** to inspect the fit, then **Wear outfit & drive** to start in Old Quay. Left and right arrows or the controller D-pad change outfits. On a controller, Y turns the preview and A confirms.
-3. Try a coastal drive. Accelerate with W, steer with A and D, and brake with S. To reverse after braking, stop, release the brake and press it again. On a phone, use the steering and pedal pads.
+3. Try a coastal drive. Accelerate with W, steer with A and D, and brake with S. To reverse after braking, stop, release the brake and press it again. On a phone, use the steering and pedal pads. The [driving assist](#driving-assist) is on at first: it keeps you in your lane and slows for bends and junctions.
 4. Stop near the harbour and select **Get out** to walk. Follow the pier to the motorboat and use the boarding prompt. To return to your car, walk up to it and select **Get in**.
 5. Open **Map** to plan a route. For a delivery or a race series, open **Pause → Contracts** or **Pause → Championships**. For car customisation or a free repair, choose **Pause → Go home**.
 
@@ -25,6 +25,12 @@ In the pause menu, select **GRAPHICS** to cycle through the three modes.
 | SMOOTH | Caps rendering at one game pixel per CSS pixel to reduce the graphics workload on high-density screens. |
 
 The browser remembers your graphics mode, FLASHES setting, VIOLENCE level and pistol selection when you reload.
+
+### Driving assist
+
+**DRIVING ASSIST** in the pause menu is on until you turn it off. It keeps the car in its lane, turns with you through bends, and, with only the throttle held, eases off and brakes before a bend or a junction the car can't take at that speed.
+
+At a T-junction you have to turn one way or the other, so it slows for the turn. From 130 km/h it brings the car to about 70 km/h by the junction, and the turn itself goes at 50 to 60 km/h if you start steering just before the zebra crossing. Start the turn on the crossing itself and it brakes harder, down to about 30 km/h, to make it. Turned off, the car never brakes or lifts by itself.
 
 ## Controls
 
@@ -48,9 +54,28 @@ On smaller screens, **Map Key** opens the legend and Explorer Passport. Open the
 
 ## On foot
 
-Stop the car and get out. Gas walks forward, brake steps back, steering turns, and holding `Shift`, `Space`, the RUN pad or controller `A` makes you run forward. Walk back to the car and get in. Traffic stops for you if you stand in the road. The car you got out of falls silent while you're away from it.
+Select **Get out** to walk. If the car is still rolling, up to 60 km/h, it brakes to a stop first and then you get out; faster than that, slow down first. Gas walks forward, brake steps back, steering turns, and holding `Shift`, `Space`, the RUN pad or controller `A` makes you run forward. Walk back to the car and get in. Traffic stops for you if you stand in the road. The car you got out of falls silent while you're away from it.
 
 On foot you can also take any traffic car that has stopped: stand in its lane so it stops, walk to it and get in. The car you came from stays where you left it, and you can walk back and drive it again. Up to three taken cars stay where you left them. A taken car isn't yours: it is not saved, and it's gone when you go home.
+
+## Needs
+
+At the Market Kitchen, choose **Eat** for a free meal or **Work a shift**. Serve bread, bowl and stew for 300 CR, with ten seconds between orders and two minutes of play before the next shift.
+
+Energy, hunger, fun and social each run from 0 to 100 and fall slowly while you play (not in menus, the garage or Photo Mode). See them, and your mood, under **NEEDS** in the pause menu. Low needs never slow or stop you: they only set your mood, a suggestion and a short hint.
+
+| Need | What puts it back |
+| --- | --- |
+| Energy | **REST** in your garage (+40), or sit on a bench by the fountain in Old Quay's civic square (+3 every 5 seconds, up to +15) |
+| Hunger | A free meal at the Market Kitchen, the yellow and white stall in Old Quay's market (+35) |
+| Fun | Finishing a race or time trial (+15), and driving at 80 km/h or more (or 3 m/s on the boat) |
+| Social | A friendly word with someone in Old Quay (+8 a conversation) |
+
+The map shows the Market Kitchen and the benches. Nothing can be done about your needs while the police are after you.
+
+## Friends who ride with you
+
+Once someone in Old Quay is your friend, the conversation offers **Come for a ride** (key `7`). They walk with you to your car and get in beside you, chat as you drive, and sometimes ask for a lift somewhere: the GPS takes you, and they thank you with a little money for the fuel. Company lifts your Social and the friendship. Fast driving, crashes and the police get a word, and the police cost some friendship. Stop and choose **Drop off**, get out, or go home to end the ride.
 
 ## The harbour and the boat
 
@@ -75,7 +100,9 @@ You can walk or drive into the market, the square, the garden and the lanes.
 
 ### People
 
-Up to ten people (six on a phone) walk the pavements round the six blocks. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. A car can't hurt them yet: drive at one and they step in towards the houses, or hurry off the crossing. They're only there while you're near the town.
+Up to ten people (six on a phone) walk the pavements round the six blocks. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. Drive at one and they step in towards the houses, or hurry off the crossing; run into someone and they stagger and stand a while, and it's a crime if a patrol sees it. They're only there while you're near the town.
+
+Only Old Quay has people walking so far. The rest of the island is countryside, and walkers for its roads are being designed (see [What's next](#whats-next)).
 
 ## The police
 
@@ -125,6 +152,7 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 - **The police:** patrols, a wanted level of one to five stars, chases by car and on foot, fines, and losing them.
 - **The pistol:** lock-on aiming, health, being knocked out, arrest, and settings for violence and flashes.
 - **Things to do:** races, time trials, championships, delivery contracts, speed radars and an explorer passport of 18 landmarks.
+- **Life:** the sixteen people of Old Quay, each with a name and a personality, to talk to and make friends with; friends who come for a ride and ask for lifts; and four needs of your own with a mood (see [Needs](#needs)).
 - **Playing together:** **PLAY TOGETHER** in the pause menu starts a room with a four-letter code. Up to three friends join with it from their own phones or computers, and everyone sees each other drive, walk and take the boat, with a name above each player. Traffic, the police, races and the time of day stay each player's own.
 - **Saves** in the browser, with an optional cloud backup through Google sign-in on the game's own site (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
 
@@ -132,6 +160,7 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 
 | Step | What you'll be able to do | State |
 | --- | --- | --- |
+| 2 | People beyond Old Quay, starting with walkers on the country roads | Being designed |
 | 4 | More weapons, shooting from the boat, police cars that shoot, health pickups | Not decided yet |
 | Later | The full city as its own world, with the island kept as a second place to drive | Planned |
 
@@ -151,7 +180,7 @@ Open [the local game](http://127.0.0.1:4173/index.html). The page loads Three.js
 ```
 npm run lint                                  # must be 0 errors, 0 warnings; it also type-checks js/ with TypeScript
 npx playwright install chromium               # once
-npx playwright test --project=chromium        # logic tests (about 25 min)
+npx playwright test --project=chromium        # logic tests (about an hour on two workers, as on GitHub Actions)
 npx playwright test --project=webgl           # drawn tests, slow with a software GPU
 ```
 

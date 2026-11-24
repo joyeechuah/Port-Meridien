@@ -99,17 +99,87 @@ test.describe("on foot", () => {
     expect([r.actionReady, r.backInCar]).toEqual([true, true]);
   });
 
-  test("you get out only from a car that has stopped, and not during a race", async ({ game }) => {
+  test("GET OUT while the car rolls stops it first, up to 60 km/h; faster, or in a race, you stay in", async ({ game }) => {
     await parked(game);
-    await game.steps(90, { w: true });
-    expect(await game.eval(() => __T.footExit())).toBe(false);
-    expect((await foot(game)).on).toBe(false);
+    // at about 40 km/h, with W still held: the car brakes itself to a stop, then you're out (Jo Yee's video, 24 Nov
+    // 2026: at 11 km/h it said "Stop the car first" and did nothing)
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P;
+      for (let i = 0; i < 90; i++) {
+        T.keys.w = true;
+        T.driveUpdate(1 / 60);
+      }
+      const kmh = T.kphNow(),
+        now = T.footExit();
+      let t = 0;
+      for (; t < 6 && !T.FOOT.on; t += 1 / 60) T.driveUpdate(1 / 60);
+      T.keys.w = false;
+      return { kmh, now, out: T.FOOT.on, t, stop: T.FOOT.stop };
+    });
+    expect(r.kmh, "km/h when GET OUT was pressed").toBeGreaterThan(20);
+    expect(r.kmh).toBeLessThan(60);
+    expect(r.now, "not out at once").toBe(false);
+    expect(r.out, "out once stopped").toBe(true);
+    expect(r.t, "seconds to stop and get out").toBeLessThan(3);
+    expect(r.stop).toBe(0);
+    await game.eval(() => __T.footEnter());
+    // faster than 60 km/h it only says so, and the car drives on
+    const f = await game.eval(() => {
+      const T = __T;
+      for (let i = 0; i < 900 && T.kphNow() < 75; i++) {
+        T.keys.w = true;
+        T.driveUpdate(1 / 60);
+      }
+      const now = T.footExit(),
+        stop = T.FOOT.stop;
+      for (let i = 0; i < 120; i++) T.driveUpdate(1 / 60);
+      T.keys.w = false;
+      return { now, stop, out: T.FOOT.on, kmh: T.kphNow() };
+    });
+    expect(f).toEqual({ now: false, stop: 0, out: false, kmh: expect.any(Number) });
+    expect(f.kmh).toBeGreaterThan(60);
     await game.park();
     await game.eval(() => __T.startEvent(__T.EVENTS.find((E) => E.type === "race")));
     expect(await game.eval(() => __T.footExit())).toBe(false);
     await game.eval(() => __T.endEvent());
     await game.park();
     expect(await game.eval(() => __T.footExit())).toBe(true);
+  });
+
+  test("the camera never dips into a car beside you: turning on the spot, it rises over the roof", async ({ game }) => {
+    await parked(game);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        F = T.FOOT,
+        cam = T.camera,
+        cs = Math.cos(P.h),
+        sn = Math.sin(P.h);
+      T.footExit();
+      // stand against the car's side, level with its back wheels, and turn round twice
+      F.x = P.x + cs * 1.35 - Math.sin(P.h) * 1.2;
+      F.z = P.z - sn * 1.35 - Math.cos(P.h) * 1.2;
+      let over = 0,
+        worst = 9;
+      for (let i = 0; i < 400; i++) {
+        T.keys.a = true;
+        T.driveUpdate(1 / 60);
+        const dx = cam.position.x - P.x,
+          dz = cam.position.z - P.z,
+          lx = Math.abs(dx * cs - dz * sn),
+          lz = Math.abs(dx * sn + dz * cs);
+        if (lx < 0.95 && lz < 2.3) {
+          over++;
+          worst = Math.min(worst, cam.position.y - P.y);
+        }
+      }
+      T.keys.a = false;
+      return { over, worst: +worst.toFixed(2) };
+    });
+    expect(r.over, "frames with the camera over the car").toBeGreaterThan(10);
+    // a car's roof is 1.3 to 1.9 m up; the camera used to pass through it at about 2 m (Jo Yee's video, 24 Nov 2026)
+    expect(r.worst, "lowest the camera came over the car, m").toBeGreaterThan(2.3);
   });
 
   test("walls and parked traffic stop you, and so does the sea", async ({ game }) => {

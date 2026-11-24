@@ -802,8 +802,10 @@ const ROOF_GEO=(()=>{const a=[-.5,0,-.5],b=[.5,0,-.5],c=[0,1,-.5],d=[-.5,0,.5],e
   g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute([a,d,f,a,f,c,b,c,f,b,f,e,a,c,b,d,e,f].flat(),3));g.computeVertexNormals();return g})();
 const DRUM_GEO=new THREE.CylinderGeometry(.5,.5,1,14);
 // what was built, for the map, the tests and anything that later needs to know where the town's places are
+// (benches: where you can sit, round the fountain; kitchen: the market stall that serves a meal, and the spot in the
+// aisle in front of it where you ask for one. Both are for js/life.js's needs)
 const QUAY={floors:[],houses:0,tower:[655,-41],fountain:[655,135],hall:[655,70,20,12],market:[639,671,-101,18],plaza:[629,681,90,181],
-  gaps:[["w",629,-41],["e",681,-41],["s",655,29]],sheds:[]};
+  gaps:[["w",629,-41],["e",681,-41],["s",655,29]],sheds:[],benches:[],kitchen:null};
 function buildOldQuay(){
   const WARM=[0xf2d49a,0xeeb38c,0xf3e3c2,0xe9c7a0,0xf6efdd,0xe2a98f],MARKET=[0xf3e3c2,0xf0c987,0xd9dfc2,0xf6efdd,0xe8b89a],
     PASTEL=[0xcfdcc0,0xc4d9e2,0xf3e3c2,0xf0d2c4,0xf6efdd,0xe6d9a8],TILE_C=[0xb05a3c,0x9c4f38,0xc0714a,0xa8553a],TRIM=0xe9e2d2,STONE=0xd9cdb4,WOOD=0x7d5c3e;
@@ -855,11 +857,13 @@ function buildOldQuay(){
     addBox(tx,tz,2.7,2.7,0);
     const AWN=[[0xb8312f,0xf2efe8],[0x2b5d87,0xf2efe8],[0x2f6b4f,0xe9e2cf],[0xc47a2c,0xf2efe8]];let k=0;
     for(const x of[cx-8,cx+8])for(let z=mz0+8;z<=mz1-6;z+=8){if(Math.abs(z-tz)<9)continue;
-      const aw=AWN[k++%AWN.length],f=x<cx?1:-1;
+      // the stall on the east side nearest the avenue arch is the Market Kitchen: a free meal for anyone hungry (js/life.js)
+      const aw=AWN[k++%AWN.length],f=x<cx?1:-1,kitchen=x>cx&&z+8>mz1-6;
       box(x,y+.5,z,1.3,.95,3.2,WOOD);box(x,y+1.02,z,1.5,.08,3.4,0xd9c9a8);
       for(const[px,pz]of[[-.8,-1.6],[.8,-1.6],[-.8,1.6],[.8,1.6]])box(x+px,y+1.2,z+pz,.1,2.4,.1,0x5d6268);
-      for(let q=0;q<4;q++)box(x+f*.25,y+2.45,z-1.35+q*.9,2.6,.07,.9,aw[q%2]);
-      for(const[cxx,cc]of[[-.3,0xd9662e],[.25,0x7fa63a],[.0,0xd8b23a]])box(x+cxx,y+1.14,z+(cc===0xd8b23a?1:cc===0x7fa63a?0:-1),.5,.18,.7,cc);
+      for(let q=0;q<4;q++)box(x+f*.25,y+2.45,z-1.35+q*.9,2.6,.07,.9,kitchen?(q%2?0xf6efdd:0xd9a032):aw[q%2]);
+      if(kitchen)kitchenStall(box,x,y,z,f);
+      else for(const[cxx,cc]of[[-.3,0xd9662e],[.25,0x7fa63a],[.0,0xd8b23a]])box(x+cxx,y+1.14,z+(cc===0xd8b23a?1:cc===0x7fa63a?0:-1),.5,.18,.7,cc);
       addBox(x,z,.8,1.7,0)}
   }
   // 3. the workshops, north-east: four old warehouses with wide doors, and lanes between them you can walk or drive
@@ -899,7 +903,8 @@ function buildOldQuay(){
     addCircle(fx,fz,4.85);
     // benches facing the fountain, palms at the corners, lamps, and planters along the two streets
     for(let q=0;q<6;q++){const a=q/6*TAU+TAU/12,bx=fx+Math.sin(a)*9.5,bz=fz+Math.cos(a)*9.5;
-      box(bx,py+.5,bz,2.2,.1,.6,WOOD,a);box(bx,py+.25,bz,2,.42,.12,0x5d6268,a);addBox(bx,bz,1.1,.35,a)}
+      box(bx,py+.5,bz,2.2,.1,.6,WOOD,a);box(bx,py+.25,bz,2,.42,.12,0x5d6268,a);addBox(bx,bz,1.1,.35,a);
+      QUAY.benches.push({x:bx,z:bz,a,y:py+.55})}   // a: the bench's back faces away from the fountain along this angle; y: the seat
     for(const[x,z]of[[px0+7,pz0+9],[px1-7,pz0+9],[px0+7,pz1-9],[px1-7,pz1-9]])palm(x,z,gy(x,z),1.15);
     for(const[x,z,ax]of[[px0+6,fz,1],[px1-6,fz,-1]])lamp(x,z,py+.07,ax,0,9);
     for(const x of[px0+1.2,px1-1.2])for(let z=pz0+6;z<pz1-4;z+=13){
@@ -917,6 +922,35 @@ function buildOldQuay(){
   // 6. beside the Auto Gallery, south-east: a short ring of houses south of its forecourt
   ring(699,751,130,181,{dep:11,w:[8,12],fl:[2,3],pal:WARM,pitch:.7,gaps:[["n",720,730]]});
   palm(725,155,gy(725,155),1.1);
+}
+// The Market Kitchen, dressed onto an ordinary market stall: its counter, posts, awning and collider are the stall's
+// own, so nothing new stands in the way. On the counter a pot of stew, a stack of bowls and bread; over the awning's
+// front edge a painted board that reads from the aisle. f is the side the aisle is on (-1, the west). The board's
+// lettering is the one extra draw in the market
+function kitchenStall(box,x,y,z,f){
+  const top=y+1.06,b=x-f*.2;
+  box(b,top+.21,z-.8,.62,.42,.62,0x3c4246,0,DRUM_GEO);box(b,top+.44,z-.8,.68,.05,.68,0x2c3135,0,DRUM_GEO);box(b,top+.5,z-.8,.1,.08,.1,0x2c3135,0,DRUM_GEO);
+  box(b+f*.36,top+.32,z-.8,.05,.05,.5,0x8a6a48,.5);   // a ladle resting across it
+  for(let i=0;i<4;i++)box(x+f*.25,top+.025+i*.05,z+.3,.4-i*.02,.05,.4-i*.02,0xf3efe6,0,DRUM_GEO);
+  for(const[dz,ry]of[[.95,.3],[1.22,-.25],[1.08,.9]])box(x+f*.05,top+.08,z+dz,.14,.08,.26,0xb7793e,ry,GEO.ball);
+  // the boards: one along the awning's front edge, read from the aisle, and one across its south end, read from the
+  // avenue's arch and from up the aisle. Dark frames in the town's batch, the painted faces in front of them
+  const bx=x+f*1.5,by=y+2.86,ex=x+f*.62,ez=z+1.72;box(bx-f*.03,by,z,.05,.66,2.56,0x2e2a24);box(ex,by,ez,1.86,.52,.05,0x2e2a24);
+  const c=document.createElement("canvas");c.width=512;c.height=128;const g=c.getContext("2d");
+  g.fillStyle="#24493d";g.fillRect(0,0,512,128);g.strokeStyle="#e8d6a8";g.lineWidth=5;g.strokeRect(9,9,494,110);
+  g.fillStyle="#f4e7c4";g.font="800 66px Arial,Helvetica,sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillText("KITCHEN",270,68);
+  // a steaming bowl beside the word
+  g.beginPath();g.arc(70,62,26,0,Math.PI);g.closePath();g.fill();g.fillRect(52,88,36,6);
+  g.lineWidth=4;g.strokeStyle="#f4e7c4";for(const sx of[60,72,84]){g.beginPath();g.moveTo(sx,50);g.bezierCurveTo(sx-8,40,sx+8,32,sx,22);g.stroke()}
+  const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  // the three faces as one mesh: one draw
+  const faces=[[bx+f*.005,z,f*Math.PI/2,2.4],[ex,ez+.03,0,1.74],[ex,ez-.03,Math.PI,1.74]].map(([px,pz,ry,w])=>
+    new THREE.PlaneGeometry(w,w*.25).applyMatrix4(mat(px,by,pz,ry)));
+  const geo=new THREE.BufferGeometry(),pos=[],nor=[],uv=[],idx=[];
+  for(const q of faces){const n=pos.length/3;pos.push(...q.attributes.position.array);nor.push(...q.attributes.normal.array);uv.push(...q.attributes.uv.array);idx.push(...[...q.index.array].map(i=>i+n));q.dispose()}
+  geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));geo.setAttribute("normal",new THREE.Float32BufferAttribute(nor,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));geo.setIndex(idx);
+  scene.add(new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:t,roughness:.85,metalness:0})));
+  QUAY.kitchen={x:x+f*1.75,z,h:Math.atan2(-f,0),sx:x,sz:z};
 }
 function buildScenery(){
   buildOldQuay();

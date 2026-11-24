@@ -231,4 +231,24 @@ test.describe("class championships", () => {
     await game.waitState("GARAGE");
     await expect(page.locator("#gcups")).toHaveText(" · CUPS WON: A1");
   });
+
+  test("a won cup isn't reset by AGAIN while the police are after you: it says why and keeps its last result", async ({ game }) => {
+    await game.open();
+    await game.driveOut();
+    await game.park();
+    const r = await game.eval(() => {
+      const T = __T, cls = T.curCar().cls;
+      T.save.champ[cls] = { r: 3, pts: [10, 10, 6], won: true };
+      T.WANTED.lvl = 1;
+      const why = T.cupBlocked(cls), started = T.cupStart(cls);
+      return { why, started, champ: JSON.parse(JSON.stringify(T.save.champ[cls])), ev: !!T.ev, state: T.state };
+    });
+    expect(r).toEqual({ why: "Lose the police first", started: false, champ: { r: 3, pts: [10, 10, 6], won: true }, ev: false, state: "DRIVE" });
+    // in the menu the button is greyed out with the reason
+    await game.eval(() => { __T.pauseOn(); __T.cupsOpen(); });
+    const b = await game.eval(() => { const g = [...document.querySelectorAll("#cpList .mbtn")].find((x) => /AGAIN/.test(x.textContent)); return { disabled: g.disabled, text: document.getElementById("cpList").textContent }; });
+    expect(b.disabled).toBe(true);
+    expect(b.text).toContain("Lose the police first");
+    await game.eval(() => __T.copClear());
+  });
 });
