@@ -7,7 +7,8 @@ const path = require("path");
 const crypto = require("crypto");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const TAG = /<script src="(js\/[A-Za-z0-9_-]+\.js)(?:\?v=([0-9a-f]+))?"><\/script>/g;
+// the stamp is ten hex digits, or "dev" in a repository that leaves the stamps to the published copy (stage-site.js)
+const TAG = /<script src="(js\/[A-Za-z0-9_-]+\.js)(?:\?v=([0-9a-f]+|dev))?"><\/script>/g;
 
 const readPage = () => fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 const stampOf = (text) => crypto.createHash("sha256").update(text).digest("hex").slice(0, 10);
