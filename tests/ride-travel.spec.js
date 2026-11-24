@@ -6,7 +6,7 @@ test("travelling to the Auto Gallery by map ends a requested lift before moving 
   const src = fs.readFileSync(path.join(__dirname,"../js/screens.js"),"utf8");
   const P={x:10,z:0}, RIDE={dest:{x:500,z:0}}, exits=[];
   const travel=vm.runInNewContext(src.slice(src.indexOf("function fastTravel("),src.indexOf("/* ---------- cameras"))+"\nfastTravel", {
-    P,RIDE,closeMap(){},fadeThen:(_ms,done)=>done(),resetToRoad(){},
+    P,RIDE,closeMap(){},fadeThen:(_ms,done)=>done(),resetToRoad(){},workCancel(){},   // a kitchen shift ends too (js/work.js)
     rideEnd:()=>{exits.push(P.x);RIDE.dest=null}
   });
   travel({act:"dealer",x:500,z:0});
