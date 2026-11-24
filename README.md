@@ -102,7 +102,7 @@ You can walk or drive into the market, the square, the garden and the lanes.
 
 Up to ten people (six on a phone) walk the pavements round the six blocks. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. Drive at one and they step in towards the houses, or hurry off the crossing; run into someone and they stagger and stand a while, and it's a crime if a patrol sees it. They're only there while you're near the town.
 
-Only Old Quay has people walking so far. The rest of the island is countryside, and walkers for its roads are being designed (see [What's next](#whats-next)).
+Out in the country, a few people walk the verges beside the country roads: four at a time on a phone, eight on a computer. They appear out of sight, between 120 and 300 m from you, and step further off the road when a car comes. Running into one is a crime if a patrol sees it, and the pistol treats them like anyone on foot. They don't have names or friendships: those are Old Quay's people.
 
 ## The police
 
@@ -148,7 +148,7 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 - **Driving:** 24 cars with made-up names, paint and customisation; collision damage and roadside repairs; keyboard, touch pads, tilt and game controllers.
 - **On foot:** walking and running, getting in and out, taking stopped traffic cars, and going back to cars you left.
 - **The boat:** a motorboat from the pier, with its own sound.
-- **The world:** an island with roads, traffic, day and night, a map with GPS, Photo Mode, and the Old Quay district with people walking its streets.
+- **The world:** an island with roads, traffic, day and night, a map with GPS, Photo Mode, the Old Quay district with people walking its streets, and walkers on the country roads.
 - **The police:** patrols, a wanted level of one to five stars, chases by car and on foot, fines, and losing them.
 - **The pistol:** lock-on aiming, health, being knocked out, arrest, and settings for violence and flashes.
 - **Things to do:** races, time trials, championships, delivery contracts, speed radars and an explorer passport of 18 landmarks.
@@ -160,7 +160,7 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 
 | Step | What you'll be able to do | State |
 | --- | --- | --- |
-| 2 | People beyond Old Quay, starting with walkers on the country roads | Being designed |
+| 2 | More districts, with people on their pavements | Country-road walkers done; districts not started |
 | 4 | More weapons, shooting from the boat, police cars that shoot, health pickups | Not decided yet |
 | Later | The full city as its own world, with the island kept as a second place to drive | Planned |
 
