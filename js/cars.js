@@ -62,6 +62,7 @@ function carShared(){
 }
 function disposeHeroCar(c){
   const sh=carShared(),done=new Set();
+  for(const guest of [...c.G.children])if(guest.userData.rider)scene.add(guest);
   c.G.traverse(o=>{if(!o.isMesh)return;if(o.geometry&&!sh.G.has(o.geometry)&&!done.has(o.geometry)){done.add(o.geometry);o.geometry.dispose()}
     (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(!m||sh.M.has(m)||done.has(m))return;done.add(m);
       for(const t of [m.map,m.roughnessMap,m.metalnessMap,m.emissiveMap,m.alphaMap])if(t&&!sh.T.has(t)&&!done.has(t)){done.add(t);t.dispose()}
@@ -652,7 +653,7 @@ function rebuildCar(id,mods){
     wheel.userData.spokes.forEach((spoke,j)=>spoke.visible=old.userData.spokes[j].visible);
   });
   n.front.forEach((mount,i)=>mount.rotation.y=o.front[i].rotation.y);
-  if(id===curId)attachCar(id,id!==save.cur);
+  if(id===curId){attachCar(id,id!==save.cur);if(RIDE.st==="ride"&&RIDE.car===id)rideSeat()}
   n.G.visible=o.G.visible;
   if(showMeshes[id]){disposeHeroCar(showMeshes[id]);delete showMeshes[id]}
   return n;
