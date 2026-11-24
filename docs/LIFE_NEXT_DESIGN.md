@@ -1,6 +1,6 @@
-# Step 5, part 3: a shift at the Market Kitchen
+# Step 5, part 4: a shift at the Market Kitchen
 
-**Proposed for Jo Yee's approval.** Give someone exploring Old Quay on foot a short paid job. The free meal already brings players to the counter. A shift gives them a second reason to stay and a way to earn credits without a car.
+**Approved by Jo Yee (24 Nov 2026); to be built by Codex.** Part 3 is friends who ride with you. Give someone exploring Old Quay on foot a short paid job. The free meal already brings players to the counter. A shift gives them a second reason to stay and a way to earn credits without a car.
 
 | Decision | Working recommendation |
 | --- | --- |
