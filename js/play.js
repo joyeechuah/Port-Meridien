@@ -386,13 +386,13 @@ function updateRadars(dt){
   radLast.x=P.x;radLast.z=P.z;radLast.v=v;
   for(const r of RADARS){
     const dx=P.x-r.x,dz=P.z-r.z,al=dx*r.dx+dz*r.dz,side=Math.abs(dx*-r.dz+dz*r.dx);
-    if(r.prev!==null&&Math.sign(al)!==Math.sign(r.prev)&&side<r.half&&Math.abs(al)<15){
+    if(r.prev!==null&&al*r.prev<0&&side<r.half&&Math.abs(al)<15){
       const kph=Math.round(kphNow()),best=save.radar[r.id]||0;
       if(testDrive)toast("SPEED RADAR · "+kph+" KM/H","Test drive · records count in your own cars");
       else if(kph>best){save.radar[r.id]=kph;const cr=Math.round(kph*(best?12:18));earn(cr);toast("SPEED RADAR · "+kph+" KM/H",(best?"New record, was "+best:"First record")+" · +"+fmtCr(cr)+" CR","gold")}
       else toast("SPEED RADAR · "+kph+" KM/H","Record "+best+" km/h");
     }
-    r.prev=Math.abs(al)<60?al:null;
+    if(al!==0)r.prev=Math.abs(al)<60?al:null;
   }
 }
 
