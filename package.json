@@ -8,7 +8,8 @@
     "test": "playwright test",
     "test:report": "playwright show-report",
     "stamp": "node tests/support/stamp.js",
-    "typecheck": "node tests/support/typecheck.js"
+    "typecheck": "node tests/support/typecheck.js",
+    "test:physics": "node --test tests/drive-sim.node.cjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
