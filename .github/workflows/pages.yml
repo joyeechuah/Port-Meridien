@@ -1,10 +1,12 @@
 # Publishes the game to GitHub Pages: the files players load (index.html, 404.html, js/ and audio/), with each script
 # tag stamped from its file's contents by tests/support/stage-site.js (docs/SCRIPT_RELEASES.md, option A).
-# Step 1: run by hand (Actions → Pages → Run workflow) once Settings → Pages → Source is "GitHub Actions". Step 2 adds
-# a run on every push to main, when index.html in the repository moves to fixed ?v=dev tags.
+# It runs on every push to main (the repository's index.html keeps fixed ?v=dev tags), and by hand: Actions → Pages →
+# Run workflow, to publish main again.
 name: Pages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

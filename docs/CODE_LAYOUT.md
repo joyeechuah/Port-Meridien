@@ -33,16 +33,16 @@ $("chFoot").onclick=()=>footExit();    // right: looked up when the button is pr
 
 `npm run lint` checks this rule. It follows what runs at load, including the functions it calls and callbacks that run straight away (`forEach`, `map`, `sort` and the like), and names the file and line.
 
-## Stamps: `npm run stamp`
+## Stamps: written when the site is published
 
-Each script tag in `index.html` carries a stamp of its file's contents, for example `js/play.js?v=ec7f41464c`. A browser that cached an older copy then fetches the new one together with the page that asks for it, so the page and its scripts never come from different versions.
+Players get each script tag stamped with its file's contents, for example `js/play.js?v=ec7f41464c`. A browser that cached an older copy then fetches the new one together with the page that asks for it, so the page and its scripts never come from different versions.
 
-After changing a file in `js/`, run `npm run stamp`, which updates the stamps. `npm run lint` fails while a stamp is out of date. Each script tag has a comment line above it, so two pull requests that change different files don't touch neighbouring lines in `index.html`.
+In the repository every tag keeps a fixed `?v=dev`, so pull requests never conflict over stamps. The Pages workflow (`.github/workflows/pages.yml`) copies the site and stamps that copy with `tests/support/stage-site.js` before publishing it. `npm run lint` fails on a stamped tag in the repository, and `npm run stamp` puts any back to `?v=dev`. The local server sends every file uncached, so `?v=dev` never serves a stale script while you work.
 
 ## Adding code
 
 - **New code:** put it in the file whose section it belongs to, next to the code it works with.
-- **A new file:** add its script tag (with a comment line above it) to `index.html` at the point in the order where it belongs. Start the file with the same three-line header as the others, then run `npm run stamp`. Add it to the expected list in `tests/split-scripts.spec.js`.
+- **A new file:** add its script tag (with a comment line above it) to `index.html` at the point in the order where it belongs. Start the file with the same three-line header as the others, and give its tag `?v=dev`. Add it to the expected list in `tests/split-scripts.spec.js`.
 - **If the game can't run** (no three.js or no WebGL), `js/core.js` calls `gameOff()`. That stops it, and every later file stops at its first line (`if(window.__gameOff)throw window.__gameOff;`) without reporting an error. Keep that line at the top of each file after `core.js`.
 
 ## Tests
@@ -51,4 +51,4 @@ After changing a file in `js/`, run `npm run stamp`, which updates the stamps. `
 
 - **Hooks:** the tests serve the real `index.html` and add their hooks to the scripts in memory (`tests/support/instrument.js`). Each hook's text must appear exactly once across all the scripts.
 - **Source text:** tests that read the game's source text use `gameSource()` from `tests/support/source.js` (the page followed by each script), not `index.html` alone.
-- **Load order:** the load-order check is `tests/support/load-order.js`. The stamp helpers are in `tests/support/source.js` and `tests/support/stamp.js`.
+- **Load order:** the load-order check is `tests/support/load-order.js`. The stamp helpers are in `tests/support/source.js` and `tests/support/stage-site.js`.

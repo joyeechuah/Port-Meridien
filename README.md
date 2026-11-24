@@ -189,7 +189,7 @@ GitHub Actions runs lint and both test projects on every pull request, in four s
 
 Run one Playwright instance at a time: the test server uses port 4173 and reads `index.html` and `js/` from disk on each page load, so don't edit them during a run.
 
-- The game is `index.html` and the scripts in `js/`, which share one global scope; [docs/CODE_LAYOUT.md](docs/CODE_LAYOUT.md) says what's where. After changing a file in `js/`, run `npm run stamp`. The five recorded tracks live in `audio/`. `package.json` holds only test tooling.
+- The game is `index.html` and the scripts in `js/`, which share one global scope; [docs/CODE_LAYOUT.md](docs/CODE_LAYOUT.md) says what's where. Script tags in `index.html` keep `?v=dev`: the Pages workflow stamps the copy it publishes. The five recorded tracks live in `audio/`. `package.json` holds only test tooling.
 - Every fix or feature comes with a test that fails without it.
 - Tests reach the game's internals through `window.__T`; add a name to the list in `tests/support/instrument.js` when a test needs one.
 - In tests the police ignore crimes unless a test opens the game with `game.open({ police: true })`, so a crash in an unrelated test never starts a chase.

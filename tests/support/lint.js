@@ -2,14 +2,14 @@
 // any script inside index.html and 404.html, with rules that catch real mistakes (undefined names, duplicate keys,
 // unreachable code and the like). The scripts share one global scope, so each is checked knowing the names the
 // others declare. Two checks of our own: nothing that runs as a file loads uses a name from a later file
-// (load-order.js), and every script tag's ?v= stamp matches its file (`npm run stamp` updates them).
+// (load-order.js), and every script tag keeps ?v=dev: the Pages workflow stamps the published copy (stage-site.js).
 // Errors fail; warnings are listed. Run with `npm run lint`; CI runs it before the browser tests.
 const fs = require("fs");
 const path = require("path");
 const acorn = require("acorn");
 const { ESLint } = require("eslint");
 const globals = require("globals");
-const { scriptFiles, stampOf } = require("./source");
+const { scriptFiles } = require("./source");
 const { checkLoadOrder } = require("./load-order");
 
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -58,7 +58,7 @@ function topNames(text) {
     for (const n of names[i]) delete others[n];
     const [res] = await linter(others).lintText(f.text);
     for (const msg of res.messages) report(f.rel, msg.line, msg.column, msg.severity === 2 ? "error" : "warning", msg.message, msg.ruleId);
-    if (f.stamp !== stampOf(f.text)) report("index.html", 1, 1, "error", `the stamp on ${f.rel} is out of date: run npm run stamp`, "");
+    if (f.stamp !== "dev") report("index.html", 1, 1, "error", `${f.rel} carries a stamp: keep ?v=dev (the Pages workflow stamps the published copy; npm run stamp puts it back)`, "");
   }
   for (const p of checkLoadOrder(files.map((f) => ({ name: f.rel, text: f.text })))) report(p.split(":")[0], +p.split(":")[1].split(" ")[0], 1, "error", p, "load-order");
   for (const file of ["index.html", "404.html"]) {
