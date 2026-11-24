@@ -103,7 +103,7 @@ Automated mobile cases use emulated viewports and touch events, **not physical m
 4. For input/camera changes, test mouse, touch, controllers and short phone landscape layouts.
 5. For save or cloud changes, test migrations, corrupt saves, offline behaviour and multi-tab ownership.
 6. Run lint and relevant targeted tests first, then the complete suite and GitHub Actions before merging.
-7. When multiple PRs touch the same file in `js/`, merge one and update the others against the latest `main`; preserve both sides of the change, then run `npm run stamp`.
+7. When multiple PRs touch the same file in `js/`, merge one and update the others against the latest `main`; preserve both sides of the change. Script tags keep `?v=dev`, so `index.html` no longer conflicts over stamps.
 8. Describe user-visible behaviour in the README and keep implementation status in [ROADMAP.md](../ROADMAP.md) accurate. There is no changelog file in this repository.
 
 ## Known constraints

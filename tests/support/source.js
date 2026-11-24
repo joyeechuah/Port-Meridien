@@ -1,7 +1,7 @@
 // The game's code as players get it: index.html and the scripts it loads from js/, in the order it loads them.
-// The scripts are classic scripts sharing one global scope (docs/CODE_LAYOUT.md). Each script tag carries ?v= and a
-// stamp of the file's contents, so a browser that cached an older copy fetches the new one together with the
-// page that asks for it; `npm run stamp` updates the stamps and `npm run lint` checks them.
+// The scripts are classic scripts sharing one global scope (docs/CODE_LAYOUT.md). In the repository each script tag
+// carries ?v=dev; the copy players get has a stamp of the file's contents instead (stage-site.js), so a browser that
+// cached an older copy fetches the new one together with the page that asks for it.
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");

@@ -1,15 +1,15 @@
-// `npm run stamp`: after changing a file in js/, update the ?v= stamp on its script tag in index.html, so browsers
-// load the new copy together with the page (see source.js). `npm run lint` fails while a stamp is out of date.
+// `npm run stamp`: since 24 Nov 2026 the repository's index.html keeps a fixed ?v=dev on every script tag, and the
+// stamps are written on the published copy by the Pages workflow (tests/support/stage-site.js,
+// docs/SCRIPT_RELEASES.md). This puts any tag carrying a stamp back to ?v=dev, so a branch made before the change, or
+// a habit, can't bring stamps back. `npm run lint` fails on a stamped tag.
 const fs = require("fs");
 const path = require("path");
-const { ROOT, TAG, readPage, stampOf } = require("./source");
+const { ROOT, TAG, readPage } = require("./source");
 
-const html = readPage();
 let changed = 0;
-const out = html.replace(TAG, (tag, rel, old) => {
-  const v = stampOf(fs.readFileSync(path.join(ROOT, rel), "utf8"));
-  if (v !== old) changed++;
-  return `<script src="${rel}?v=${v}"></script>`;
+const out = readPage().replace(TAG, (tag, rel, old) => {
+  if (old !== "dev") changed++;
+  return `<script src="${rel}?v=dev"></script>`;
 });
 if (changed) fs.writeFileSync(path.join(ROOT, "index.html"), out);
-console.log(changed ? `updated ${changed} stamp(s) in index.html` : "all stamps up to date");
+console.log(changed ? `put ${changed} script tag(s) in index.html back to ?v=dev` : "index.html: every script tag is ?v=dev (the published copy is stamped by the Pages workflow)");
