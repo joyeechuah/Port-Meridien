@@ -51,6 +51,57 @@ test.describe("car models", () => {
     expect(r.afterFree).toBe(true);
   });
 
+  test("in the Auto Gallery no body looks off: open cockpits, bodies down over their wheels, square faces, a short hatch bonnet, intakes clear of the sill", async ({
+    game,
+  }) => {
+    await game.open();
+    const r = await game.eval(() => {
+      const T = __T,
+        out = {};
+      // every open-top car carries the Sora 2's low cockpit, so stands as tall as it: the Arc 6 and Ventra S had tall black
+      // boxes for seats with chrome loops on top, 0.3 m above it (Jo Yee, 25 Nov 2026)
+      const tall = (id) => {
+        const c = T.buildHeroCar(T.carById(id), 0x336699),
+          h = new THREE.Box3().setFromObject(c.G).getSize(new THREE.Vector3()).y;
+        T.disposeHeroCar(c);
+        return h;
+      };
+      const sora = tall("mx5");
+      out.open = T.CARS.filter((c) => T.PROF[c.shape].open).map((c) => ({ id: c.id, over: +(tall(c.id) - sora).toFixed(3) }));
+      // between the axles every body comes down below its wheels' centres (the SUVs began at the hubs, 0.44 m up,
+      // and stood on their wheels like stilts)
+      out.low = Object.entries(T.PROF).map(([shape, pr]) => ({ shape, gap: +(T.carShape(pr, shape).bp.bot(0) - pr.wr).toFixed(3) }));
+      // the boxy body types keep most of their width to the nose and tail: 15 cm in, at least 78% (a rounded plan
+      // gave the muscle cars and SUVs a narrow, bulbous face with the lights crowded into the middle)
+      out.square = ["hatch", "muscle", "suv"].map((shape) => {
+        const K = T.carShape(T.PROF[shape], shape),
+          W = K.halfW((K.z0 + K.z1) / 2);
+        return { shape, nose: +(K.halfW(K.z1 - 0.15) / W).toFixed(3), tail: +(K.halfW(K.z0 + 0.15) / W).toFixed(3) };
+      });
+      // a hatchback's windscreen starts within 1.3 m of its nose (the Kest 25 had a 1.55 m sports-car bonnet)
+      const h = T.PROF.hatch;
+      out.bonnet = +(Math.max(...h.body.map((p) => p[0])) - h.ws[0]).toFixed(2);
+      // the side intake behind a supercar's doors stays clear of the sill (it was a black slab from the sill up)
+      const K = T.carShape(T.PROF.super, "super"),
+        paint = T.bodyPaint(K),
+        z = T.LOOK.super.doors[0][1] - 0.3,
+        o = { c: 1, r: 0.36, m: 0.35, l: 0, lr: 1, lg: 1, lb: 1 };
+      paint(K.halfW(z), K.bp.bot(z) + 0.18, z, 1, 0, 0, o, 0.004);
+      out.sill = +o.c.toFixed(2);
+      return out;
+    });
+    test.info().annotations.push({ type: "gallery bodies", description: JSON.stringify(r) });
+    expect(r.open.length, "open-top cars").toBeGreaterThanOrEqual(3);
+    for (const c of r.open) expect(Math.abs(c.over), c.id + ": height over the Sora 2, m").toBeLessThan(0.01);
+    for (const b of r.low) expect(b.gap, b.shape + ": body bottom above the wheel centre, m").toBeLessThan(-0.05);
+    for (const b of r.square) {
+      expect(b.nose, b.shape + ": width 15 cm from the nose").toBeGreaterThanOrEqual(0.78);
+      expect(b.tail, b.shape + ": width 15 cm from the tail").toBeGreaterThanOrEqual(0.78);
+    }
+    expect(r.bonnet, "hatch bonnet length, m").toBeLessThanOrEqual(1.3);
+    expect(r.sill, "paint just above the sill behind a supercar's door").toBeGreaterThan(0.5);
+  });
+
   test("a car's number plates are fitted to its bumpers once per body shape: building the car again casts no rays", async ({ game }) => {
     await game.open();
     const r = await game.eval(() => {
