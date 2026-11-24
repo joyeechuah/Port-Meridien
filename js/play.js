@@ -341,6 +341,7 @@ function showResult(){
 }
 let resNext=null;
 function openIntro(E,cup){
+  if(WORK.active){toast("LEAVE YOUR SHIFT FIRST");return}
   if(WANTED.lvl){wantedBlock();return}
   const rows=[["Distance",(E.route.len/1000).toFixed(1)+" km"]],G=cup&&E.type==="tt"?cupTimes(E,cup.cls):E;
   if(E.type==="tt")rows.push(["Gold / silver / bronze",fmtT(G.gold)+" / "+fmtT(G.silver)+" / "+fmtT(G.bronze)]);else rows.push(["Opponents",cup?"3 rivals in "+cup.cls+" cars":"3 rivals in cars near your class"]);

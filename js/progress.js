@@ -163,7 +163,7 @@ function jobMarker(on){
 }
 function jobAim(){const t=jobTarget();setGPS(t.x,t.z,t.name,true);jobMarker(true);jobHUD()}
 // can a contract start now? the reason if not
-function jobBlocked(){if(WANTED.lvl)return "Lose the police first";if(job)return "Finish or abandon your current contract first";if(ev)return "Not during a race";if(testDrive)return "Not during a test drive";return ""}
+function jobBlocked(){if(WORK.active)return "Leave your kitchen shift first";if(WANTED.lvl)return "Lose the police first";if(job)return "Finish or abandon your current contract first";if(ev)return "Not during a race";if(testDrive)return "Not during a test drive";return ""}
 function jobStart(J){
   if(!J||jobBlocked()||(state!=="DRIVE"&&state!=="PAUSE"))return false;
   // a free-ride streak in progress is paid out now (streaks don't score during a contract, as in a race)
@@ -274,6 +274,7 @@ const cupTotal=c=>c.pts.reduce((a,x)=>a+x,0);
 // can a cup start now? the reason if not
 // (the police first: a won cup played AGAIN during a chase used to wipe its rounds and points, then be refused)
 function cupBlocked(cls){
+  if(WORK.active)return "Leave your kitchen shift first";
   if(WANTED.lvl)return "Lose the police first";if(job)return "Finish or abandon your contract first";if(testDrive)return "Not during a test drive";if(ev)return "Finish or quit this event first";
   const own=save.owned.map(carById).filter(c=>c.cls===cls);
   if(!own.length)return "Opens once you own an "+cls+" car";

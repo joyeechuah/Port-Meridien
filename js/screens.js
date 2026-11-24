@@ -123,6 +123,7 @@ function resetToRoad(fade){
   fadeThen(420,go);
 }
 function fastTravel(m){
+  workCancel();
   closeMap();
   fadeThen(420,()=>{
     if(RIDE.dest)rideEnd("drop");   // a map jump cannot complete a requested lift
@@ -365,6 +366,7 @@ function goGarage(fromFade){
   // every way home goes through here, so one check closes them all while the police are after you (the repair
   // screen's RETURN HOME used to get round the pause menu's)
   if(WANTED.lvl){wantedBlock();return false}
+  workCancel();
   const doIt=()=>{
     endEvent();if(testDrive)finishTestDrive(false);streetReset();
     P.damage=P.damageT=0;repairWarnLevel=0;if(pc)showDamageSmoke(pc,0);
@@ -582,7 +584,7 @@ function closeDealer(){
 
 /* ---------- test drives: 90 s in any car from the dealership ---------- */
 function startTestDrive(id){
-  if(save.owned.includes(id))return;
+  if(WORK.active||save.owned.includes(id))return;
   testDrive={id,prev:curId,t:90,paint:dPaint,damage:P.damage||0};
   if(pc)pc.G.visible=false;   // your own car waits at the dealer
   getCar(id).paint(dPaint);
@@ -804,6 +806,7 @@ addEventListener("keydown",e=>{
   // a focused slider keeps its own arrow, Home, End and Page keys (they moved the photo camera and the slider stood still)
   if(tg&&tg.tagName==="INPUT"&&tg.type==="range"&&/^(arrow(up|down|left|right)|home|end|pageup|pagedown)$/.test(k))return;
   if(clOverlayOpen()){if(k==="escape"&&!e.repeat)clEscape();return}
+  if(workKey(e,k))return;
   if(state==="ARRIVAL"){if(["escape","enter"," "].includes(k)){e.preventDefault();if(!e.repeat)finishArrival()}return}
   if(state==="WARDROBE"){
     if(e.repeat&&(k==="enter"||k===" ")){e.preventDefault();return}
@@ -954,14 +957,15 @@ function fbLoad(f){
 const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn","needs","flash","violence","armed"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
-const clProg=sv=>{const o={};for(const k in sv)if(!CL_PREFS.includes(k))o[k]=sv[k];
+const clProg=sv=>{const o={};for(const k in sv)if(k!=="work"&&!CL_PREFS.includes(k))o[k]=sv[k];
+  const shifts=workClean(sv.work).completed;if(shifts)o.work={completed:shifts};
   // no friendships yet (js/life.js) is the same progress as a save from before they existed, so the new empty field
   // doesn't make two devices disagree
   if(o.rel&&typeof o.rel==="object"&&!Object.keys(o.rel).length)delete o.rel;return clHash(clCanon(o))};
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
-  return(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
+  return !workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
     (!sv.jobs||!Object.values(sv.jobs).some(v=>typeof v==="number"?v>0:!e(v)))}
 function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:foundCount(sv.found||{}),
   cups:Object.values(champ).filter(c=>c&&c.won).length,mods:Object.keys(sv.mods||{}).length}}
@@ -1061,11 +1065,18 @@ function clReconcile(doc){
     return clUpload(doc&&doc.rev||0)}
   const L=clProg(save),C=clProg(cloud),rev=doc.rev||0;
   // the same progress, or neither side moved on since this device last synced: in step (settings are sent if changed)
-  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}
+  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();clWork(cloud);clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}
   if(clFresh(save))return clApply(doc,cloud);                                      // a new device: bring the account's progress here
   if(CL.meta.rev===rev&&CL.meta.prog)return clUpload(rev);                          // only this device moved on since it last synced
   if(CL.meta.rev&&CL.meta.prog===L)return clApply(doc,cloud);                        // only the account moved on (another device)
   CL.pick={doc,cloud};clSet("conflict","This device and your account have different progress. Choose which to keep.");clPickShow()}
+// With the same completed shifts, the cooldown can only have counted down on either device.
+function clWork(cloud){
+  const remote=workClean(cloud.work);
+  if(remote.completed===save.work.completed&&remote.cool<WORK.cool){
+    WORK.cool=remote.cool;save.work=remote;persist();
+  }
+}
 // Your needs (js/life.js) aren't progress, so two saves that differ only there are in step. Whose go up with the next
 // backup? The account's, if this device hasn't changed its own since it last synced (it would only be sending old
 // ones back over newer ones from another device): they become this device's. Otherwise this device's are the newer.

@@ -753,7 +753,7 @@ function parkAll(except){
 /* ================================================================ INPUT */
 const keys={},pad={};
 const PAD_OWN=[];   // touch pointers held on each group of on-screen pads (set up with the pads)
-function clearInput(){for(const k in keys)keys[k]=false;for(const k in pad)pad[k]=false;PAD_OWN.forEach(m=>m.clear());document.querySelectorAll(".pb.on").forEach(e=>e.classList.remove("on"))}
+function clearInput(){if(typeof workClose==="function")workClose();for(const k in keys)keys[k]=false;for(const k in pad)pad[k]=false;PAD_OWN.forEach(m=>m.clear());document.querySelectorAll(".pb.on").forEach(e=>e.classList.remove("on"))}
 let locked=false,autoHold=false;
 // a game controller (the first one connected, standard layout): left stick steers, right trigger is the gas, left
 // trigger the brake, A the handbrake; Start pauses, View/Back opens the map, Y changes camera, X is the prompt key
@@ -784,6 +784,7 @@ function pollPad(){
   if(tabIdle||clOverlayOpen())GO.stick[0]=GO.stick[1]=0;
   if(tabIdle)return;
   if(clOverlayOpen()){if(hit(1))clEscape();return}
+  if(WORK.panel){GP.steer=GP.gas=GP.brake=0;GP.fire=GP.hb=false;workPad(hit);return}
   const inputState=state;
   if(state==="ARRIVAL"){if(hit(0)||hit(1)||hit(9))finishArrival();return}
   else if(state==="WARDROBE"){

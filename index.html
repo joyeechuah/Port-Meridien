@@ -470,7 +470,8 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 /* contracts */
 #jobs{z-index:62}
 /* needs (js/life.js): four bars, each with its number and a word for its colour, the mood and one suggestion */
-#needs{z-index:62;padding:max(16px,var(--st)) max(16px,var(--sr)) max(16px,var(--sb)) max(16px,var(--sl))}
+#work .mbtn{min-height:44px;width:100%;text-transform:uppercase}#work .card{overflow:auto;max-height:100%}
+#work,#needs{z-index:62;padding:max(16px,var(--st)) max(16px,var(--sr)) max(16px,var(--sb)) max(16px,var(--sl))}
 .ndc{width:min(440px,100%);max-height:100%;overflow:auto}
 .ndMood{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px;margin:-6px 0 8px}
 .ndMood span{font-size:10px;letter-spacing:.3em;color:var(--mute);font-weight:700}
@@ -806,6 +807,12 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn pri" id="cpClose">CLOSE</button>
 </div></div>
 
+<div id="work" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="wkTitle">
+  <h3>OLD QUAY MARKET</h3><h2 id="wkTitle">Market Kitchen</h2><p id="wkStatus" role="status"></p>
+  <button class="mbtn" id="wkEat">Eat · free</button><button class="mbtn" id="wkStart">Work a shift · 300 CR</button>
+  <div id="wkOrders" class="hide"><button class="mbtn" id="wk0">1 · Bread</button><button class="mbtn" id="wk1">2 · Bowl</button><button class="mbtn" id="wk2">3 · Stew</button></div>
+  <button class="mbtn hide" id="wkLeave">Leave shift</button><button class="mbtn" id="wkClose">Close</button>
+</div></div>
 <div id="needs" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="ndTitle">
   <h3>YOU</h3><h2 id="ndTitle">Needs</h2>
   <div class="ndMood"><span>MOOD</span><b id="ndMood">Okay</b></div>
@@ -853,23 +860,25 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <!-- Shared helpers, the car list, the save, the renderer, the sky and the day and night -->
-<script src="js/core.js?v=f7e6ca6f98"></script>
+<script src="js/core.js?v=970fc05482"></script>
 <!-- The island: terrain, the road network, scenery, the house, the dealership, plants, the sea and the roadside -->
 <script src="js/world.js?v=2da9805524"></script>
 <!-- Car models and their looks, input, the player's car physics and traffic -->
-<script src="js/cars.js?v=cfdfbbc3f9"></script>
+<script src="js/cars.js?v=1b6fa589e8"></script>
 <!-- Free-ride streaks, races and time trials, speed radars, the GPS, money and messages, the HUD canvases and the full map -->
-<script src="js/play.js?v=fe9f4d8c91"></script>
+<script src="js/play.js?v=d8626d20ed"></script>
 <!-- Sound effects, music and Photo Mode -->
 <script src="js/media.js?v=839a84c0e2"></script>
 <!-- The Explorer Passport, contracts and class championships -->
-<script src="js/progress.js?v=dfb8a088e3"></script>
+<script src="js/progress.js?v=42fa7b63db"></script>
 <!-- Game states, the garage, the dealership, menus and prompts, one game tab at a time, and the cloud save -->
-<script src="js/screens.js?v=b8e129db2d"></script>
+<script src="js/screens.js?v=e759a39ee8"></script>
 <!-- The HUD, on foot, the police, the pistol and health, pedestrians, and the harbour boat -->
-<script src="js/people.js?v=2694d4ad7e"></script>
+<script src="js/people.js?v=0a2a14b300"></script>
 <!-- The life side: the people of Old Quay, talking to them, and the friendships they remember -->
-<script src="js/life.js?v=349a660b82"></script>
+<script src="js/life.js?v=6d36f296b2"></script>
+<!-- Paid shifts at the Market Kitchen -->
+<script src="js/work.js?v=5b47bbf748"></script>
 <!-- Playing together: rooms with a code, friends drawn where they are, the Play together panel -->
 <script src="js/net.js?v=218adea98e"></script>
 <!-- Each frame: the drive update, adaptive resolution, the ?perf panel and the main loop, and the boot that builds the world -->
