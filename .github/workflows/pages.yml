@@ -1,0 +1,47 @@
+# Publishes the game to GitHub Pages: the files players load (index.html, 404.html, js/ and audio/), with each script
+# tag stamped from its file's contents by tests/support/stage-site.js (docs/SCRIPT_RELEASES.md, option A).
+# Step 1: run by hand (Actions → Pages → Run workflow) once Settings → Pages → Source is "GitHub Actions". Step 2 adds
+# a run on every push to main, when index.html in the repository moves to fixed ?v=dev tags.
+name: Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# one deployment at a time, and a running one is never cut off
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Stage the site and stamp its scripts
+        run: node tests/support/stage-site.js _site
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

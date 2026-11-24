@@ -169,7 +169,7 @@ npx playwright test --project=chromium        # logic tests (about 25 min)
 npx playwright test --project=webgl           # drawn tests, slow with a software GPU
 ```
 
-GitHub Actions runs lint and both test projects on every pull request. The drawn tests can also be run on their own: Actions → **Drawn browser tests (WebGL)** → Run workflow.
+GitHub Actions runs lint and both test projects on every pull request, in four shards at once. The game is published to GitHub Pages by the **Pages** workflow, which copies index.html, 404.html, js/ and audio/ and stamps each script tag from its file (see [docs/SCRIPT_RELEASES.md](docs/SCRIPT_RELEASES.md)). The drawn tests can also be run on their own: Actions → **Drawn browser tests (WebGL)** → Run workflow.
 
 Run one Playwright instance at a time: the test server uses port 4173 and reads `index.html` and `js/` from disk on each page load, so don't edit them during a run.
 
