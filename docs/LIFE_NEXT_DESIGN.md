@@ -1,6 +1,6 @@
 # Step 5, part 4: a shift at the Market Kitchen
 
-**Approved by Jo Yee (24 Nov 2026); to be built by Codex.** Part 3 is friends who ride with you. Give someone exploring Old Quay on foot a short paid job. The free meal already brings players to the counter. A shift gives them a second reason to stay and a way to earn credits without a car.
+**Approved by Jo Yee (24 Nov 2026); built in js/work.js.** Part 3 is friends who ride with you. Give someone exploring Old Quay on foot a short paid job. The free meal already brings players to the counter. A shift gives them a second reason to stay and a way to earn credits without a car.
 
 | Decision | Working recommendation |
 | --- | --- |
@@ -23,4 +23,4 @@
 5. Load a legacy save and malformed work fields. Choose device and account in separate cloud-conflict tests. Credits and completed shifts must come from the same chosen save.
 6. At 360 by 640 and 640 by 360, reach every action at 200% text, close the panel by keyboard and controller, and verify that a second room client earns zero. Compare world fixtures with main.
 
-Approval would cover the working recommendations together. This proposal adds no gameplay code.
+The kitchen shift uses the existing counter, collision shape and active simulation clock.
