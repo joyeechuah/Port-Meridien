@@ -11,15 +11,15 @@ const PROF={
          cabin:[[.62,.95],[-.12,1.27],[-.95,1.29],[-1.4,1.18,-1.8,1.0],[.62,.95]],w:2.04,cw:1.52,wb:1.42,tr:.93,rear:-2.38,front:2.3,tail:.8,ws:[.62,.95],roofF:-.12,roof:1.28,eye:1.05,wr:.36},
   gt:{body:[[-2.3,.26],[2.22,.26],[2.36,.46],[2.3,.64],[2.05,.8,1.3,.9],[.35,1.0],[-1.5,1.02],[-2.22,.99],[-2.36,.74],[-2.3,.26]],
       cabin:[[.42,.98],[-.3,1.34],[-1.05,1.36],[-1.65,1.22,-2.1,1.0],[.42,.98]],w:1.98,cw:1.5,wb:1.44,tr:.92,rear:-2.34,front:2.3,tail:.82,ws:[.42,.98],roofF:-.3,roof:1.35,eye:1.11,wr:.36},
-  hatch:{body:[[-1.95,.26],[1.95,.26],[2.05,.48],[1.98,.66],[1.3,.84],[.45,.94],[-1.6,.98],[-1.98,.9],[-2.03,.5],[-1.95,.26]],
-         cabin:[[.5,.92],[-.1,1.42],[-1.55,1.45],[-1.9,1.0],[.5,.92]],w:1.8,cw:1.56,wb:1.28,tr:.84,rear:-2.02,front:2.0,tail:.86,ws:[.5,.93],roofF:-.1,roof:1.43,eye:1.19,wr:.34},
+  hatch:{body:[[-1.95,.26],[1.95,.26],[2.06,.5],[2.0,.72],[1.55,.86],[.85,.95],[-1.6,.99],[-1.98,.92],[-2.03,.5],[-1.95,.26]],
+         cabin:[[.85,.94],[.2,1.42],[-1.55,1.45],[-1.9,1.0],[.85,.94]],w:1.8,cw:1.56,wb:1.28,tr:.84,rear:-2.02,front:2.0,tail:.86,ws:[.85,.95],roofF:.2,roof:1.43,eye:1.19,wr:.34},
   muscle:{body:[[-2.4,.3],[2.36,.3],[2.46,.55],[2.42,.8],[1.95,.92],[.55,.97],[-1.6,.99],[-2.36,.97],[-2.48,.72],[-2.4,.3]],
           cabin:[[.55,.96],[-.1,1.33],[-1.05,1.35],[-1.6,1.22,-2.0,.98],[.55,.96]],w:2.0,cw:1.56,wb:1.5,tr:.92,rear:-2.46,front:2.42,tail:.8,ws:[.55,.96],roofF:-.1,roof:1.34,eye:1.12,wr:.37},
   roadster:{body:[[-2.1,.26],[2.05,.26],[2.2,.44],[2.15,.62],[1.9,.78,1.2,.86],[.45,.92],[-1.4,.95],[-2.08,.92],[-2.2,.66],[-2.1,.26]],
             cabin:[[.5,.9],[.04,1.22],[-.06,1.22],[.36,.9],[.5,.9]],w:1.86,cw:1.5,wb:1.3,tr:.86,rear:-2.18,front:2.15,tail:.78,ws:[.5,.9],roofF:-.05,roof:1.22,eye:1.08,wr:.33,open:true},
   sedan:{body:[[-2.3,.26],[2.25,.26],[2.36,.5],[2.3,.68],[1.3,.86],[.55,.95],[-1.75,.98],[-2.3,.94],[-2.38,.6],[-2.3,.26]],
          cabin:[[.6,.93],[-.05,1.38],[-1.15,1.42],[-1.6,1.3,-1.9,.97],[.6,.93]],w:1.82,cw:1.5,wb:1.42,tr:.86,rear:-2.38,front:2.36,tail:.84,ws:[.6,.93],roofF:-.05,roof:1.4,eye:1.15,wr:.34},
-  suv:{body:[[-2.42,.44],[2.36,.44],[2.48,.72],[2.44,1.0],[2.05,1.12],[1.15,1.2],[-2.3,1.22],[-2.46,1.0],[-2.5,.66],[-2.42,.44]],
+  suv:{body:[[-2.42,.32],[2.36,.32],[2.5,.62],[2.46,1.0],[2.05,1.12],[1.15,1.2],[-2.3,1.22],[-2.46,1.0],[-2.52,.6],[-2.42,.32]],
        cabin:[[1.15,1.18],[.45,1.74],[-2.05,1.78],[-2.36,1.22],[1.15,1.18]],w:2.04,cw:1.84,wb:1.48,tr:.92,rear:-2.48,front:2.44,tail:1.02,ws:[1.15,1.18],roofF:.45,roof:1.76,eye:1.52,wr:.43}
 };
 const wheelGeo={tire:new THREE.CylinderGeometry(.36,.36,.3,20),rim:new THREE.CylinderGeometry(.24,.24,.32,14),sa:new THREE.BoxGeometry(.34,.06,.42),sb:new THREE.BoxGeometry(.34,.42,.06)};
@@ -128,11 +128,11 @@ function carIndoors(on){
 const LOOK={
   super:{p:6,crown:.035,belt:.42,tuck:.1,sill:1,intake:1,louvre:1,doors:[[.25,-.85]],head:"blade",tail:"bar",rim:"y5",cal:0xf2c200,grille:0,mir:.7},
   gt:{p:5,crown:.03,belt:.5,tuck:.09,sill:1,intake:0,louvre:0,doors:[[.3,-.95]],head:"swept",tail:"bar",rim:"ten",cal:0xc8141a,grille:1,mir:.75},
-  hatch:{p:3.6,crown:.025,belt:.55,tuck:.07,sill:1,intake:0,louvre:0,doors:[[.42,-.6],[-.6,-1.45]],head:"box",tail:"pair",rim:"five",cal:0x222428,grille:1,mir:.8},
-  muscle:{p:4,crown:.03,belt:.52,tuck:.08,sill:0,intake:0,louvre:0,doors:[[.42,-.85]],head:"box",tail:"bar",rim:"split",cal:0x222428,grille:1,mir:.8},
+  hatch:{p:5,crown:.025,belt:.55,tuck:.07,sill:1,intake:0,louvre:0,doors:[[.75,-.32],[-.32,-1.3]],head:"box",tail:"pair",rim:"five",cal:0x222428,grille:1,mir:.8},
+  muscle:{p:6.5,crown:.03,belt:.52,tuck:.08,sill:0,intake:0,louvre:0,doors:[[.42,-.85]],head:"box",tail:"bar",rim:"split",cal:0x222428,grille:1,mir:.8},
   roadster:{p:5,crown:.03,belt:.48,tuck:.09,sill:1,intake:0,louvre:0,doors:[[.35,-.6]],head:"swept",tail:"pair",rim:"seven",cal:0xc8141a,grille:1,mir:.7},
   sedan:{p:4,crown:.03,belt:.52,tuck:.08,sill:0,intake:0,louvre:0,doors:[[.52,-.42],[-.42,-1.38]],head:"swept",tail:"pair",rim:"five",cal:0x222428,grille:1,mir:.8},
-  suv:{p:3.4,crown:.03,belt:.55,tuck:.07,sill:1,intake:0,louvre:0,doors:[[.95,-.15],[-.15,-1.25]],head:"box",tail:"pair",rim:"six",cal:0x222428,grille:1,mir:.9}
+  suv:{p:5.5,crown:.03,belt:.55,tuck:.07,sill:1,intake:0,louvre:0,doors:[[.95,-.15],[-.15,-1.25]],head:"box",tail:"pair",rim:"six",cal:0x222428,grille:1,mir:.9}
 };
 const smooth01=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)};
 // top and bottom of a side profile at any point along the car
@@ -184,7 +184,7 @@ function carShape(pr,shape,openCockpit){
     if(a>0)for(const i of [1,2,3]){const y=c[i*2+1];if(y<a){c[i*2+1]=a;if(i===1)c[2]=Math.min(c[2],pr.tr-.24)}}
     // up the side the points only ever climb (the lifted arch used to fold the side over itself)
     for(let i=2;i<=7;i++)c[i*2+1]=Math.max(c[i*2+1],c[i*2-1]+.012);
-    // The Sora 2's door tops stay high while the centre drops into the open cockpit.
+    // An open-top car's door tops stay high while the centre drops into the cockpit (the Sora 2's first, now every roadster).
     const recess=cockpit(z);
     c[16]+=hw*.25*recess;c[17]-=.23*recess;c[19]-=.34*recess;
     return c};
@@ -304,8 +304,12 @@ function bodyPaint(K){
         if(pocket>.01)return;
       }
     }
-    // side intake behind the doors (mid-engined cars)
-    if(S.intake&&side&&z<dA[0][1]-.06&&z>dA[0][1]-.62){const yt=T-.1-(dA[0][1]-.06-z)*.25;if(y>Bo+.16&&y<yt){o.c=.012;o.r=.6;o.m=0;return}}
+    // side intake behind the doors (mid-engined cars): a scoop whose leading edge rakes back, with a mesh and a
+    // gloss-dark lip, clear of the sill. It was a flat black slab from the sill to the belt, which read as a hole
+    if(S.intake&&side){const d1=dA[0][1],bot=Bo+.24,top=T-.12-(d1-.08-z)*.12,lead=d1-.08-(y-bot)*.55,tail=d1-.62;
+      if(y>bot&&y<top&&z<lead&&z>tail){const e=Math.min(lead-z,z-tail,y-bot,top-y);
+        if(e<.018){o.c=.02;o.r=.22;o.m=0;return}
+        o.c=((Math.floor(z/.024)+Math.floor(y/.022))&1)?.05:.012;o.r=.6;o.m=0;return}}
     // engine cover louvres
     if(S.louvre&&top&&z>R+.35&&z<cab0-.05&&ax<hw*.5){if(((z/.06)%1+1)%1<.45){o.c=.015;o.r=.5;o.m=0;return}}
     // panel lines: doors, bonnet, boot
@@ -502,7 +506,7 @@ function modsInPlace(c,to){
 }
 // how far out the wheels sit: the track, but never so far that the tyre stands outside the body's side over it
 const wheelTrack=(pr,K)=>Math.min(pr.tr,Math.min(K.halfW(pr.wb),K.halfW(-pr.wb))-.15*pr.wr/.36+.01);
-function addMx5Cockpit(add){
+function addOpenCockpit(add){
   const shape=new THREE.Shape();
   shape.moveTo(-.16,0);shape.quadraticCurveTo(-.225,0,-.215,.08);
   shape.quadraticCurveTo(-.19,.18,-.21,.29);shape.quadraticCurveTo(-.22,.36,-.135,.39);
@@ -527,7 +531,7 @@ function addMx5Cockpit(add){
   add(new THREE.BoxGeometry(.31,.12,.025),darkInM,0,1.02,-1.26);
 }
 function buildLook(cd,color,env,q,mods){
-  const mx5=cd.id==="mx5",pr=PROF[cd.shape],hi=q>0,parts=carParts(pr,cd.shape,q,mx5),K=parts.K,S=K.S,Mt=lookMats(env,hi),M=Object.assign({},MOD_STOCK,mods||{});
+  const pr=PROF[cd.shape],hi=q>0,parts=carParts(pr,cd.shape,q,!!pr.open),K=parts.K,S=K.S,Mt=lookMats(env,hi),M=Object.assign({},MOD_STOCK,mods||{});
   const roof=MOD_ROOF[M.roof],wing=M.wing?MOD_WING[M.wing]:cd.wing;
   const G=new THREE.Group(),shell=new THREE.Group();G.add(shell);
   const bodyM=paintMat(env,hi,color,parts.bt),cabM=paintMat(env,hi,roof===null?color:roof,parts.ct);cabM.roughnessMap=parts.ct.rm;
@@ -600,11 +604,8 @@ function buildLook(cd,color,env,q,mods){
     for(const s of [-1,1]){add(new THREE.BoxGeometry(.012,.15,.38),Mt.carbon,s*(pr.w/2-.02),rt+.44,R+.3);const st=add(new THREE.BoxGeometry(.03,.4,.1),Mt.carbon,s*.45,rt+.21,R+.32);st.rotation.x=.25}}
   else if(wing==="mid"){add(aeroGeo(.3,.045,pr.w-.24),Mt.carbon,0,rt+.2,R+.36).rotation.x=.08;for(const s of [-1,1])add(new THREE.BoxGeometry(.03,.2,.08),Mt.carbon,s*.5,rt+.09,R+.28)}
   else if(wing==="lip"){const w=add(aeroGeo(.18,.03,pr.w*.82),bodyM,0,rt+.0,R+.2);w.rotation.x=-.12}
-  // open-top cars: seats and roll hoops
-  if(mx5)addMx5Cockpit(add);
-  else if(pr.open){const seatM=Mt.black;for(const s of [-1,1]){const st=add(new THREE.BoxGeometry(.48,.6,.14),seatM,s*.38,pr.ws[1]+.16,-.85);st.rotation.x=-.15;
-      add(new THREE.BoxGeometry(.24,.2,.12),seatM,s*.38,pr.ws[1]+.56,-.93);add(new THREE.TorusGeometry(.17,.025,8,16,Math.PI),Mt.chrome,s*.38,pr.ws[1]+.36,-1.15)}
-    add(new THREE.BoxGeometry(pr.cw-.1,.04,1.2),seatM,0,pr.ws[1]-.08,-.6)}
+  // open-top cars: low seats in the recessed cockpit, with hoops behind them
+  if(pr.open)addOpenCockpit(add);
   // contact shadow
   const sh=new THREE.Mesh(new THREE.PlaneGeometry(pr.w+.7,K.z1-K.z0+.8),shadowMat());sh.rotation.x=-Math.PI/2;sh.position.set(0,.02,(K.z0+K.z1)/2);sh.renderOrder=-1;G.add(sh);
   // wheels
