@@ -819,6 +819,7 @@ function gunPick(){
   for(const t of TRAFFIC)if(t.e&&t.c.G.visible&&(t.damage||0)<100)list.push({k:t.cop?"cop":"car",x:t.wx,z:t.wz,y:1,o:t,stop:2.8});
   if(pedOn)for(const p of PEDS)if(p.m.G.visible&&p.st!=="down")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
   if(OFFICER.on&&!(OFFICER.down>0))list.push({k:"officer",x:OFFICER.x,z:OFFICER.z,y:1.2,o:OFFICER,stop:.6});
+  for(const p of VERGE)if(p.m.G.visible&&p.st!=="down")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
   let best=null,bs=1e9;
   for(const q of list){const dx=q.x-F.x,dz=q.z-F.z,d=Math.hypot(dx,dz);if(d<.8||d>GUN.range)continue;
     const a=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1));if(a>GUN.cone)continue;
@@ -999,7 +1000,48 @@ function buildPeds(){
     PEDS.push({e,from:fwd?e.a:e.b,s:rnd(i,33)*e.len,v:0,st:"walk",t:0,off:(rnd(i,34)-.5)*1.1,o:0,ph:rnd(i,35)*TAU,h:0,x:0,z:0,y:0,
       seed:1+Math.floor(rnd(i,36)*1e6),pace:.85+rnd(i,37)*.35,m:pedModel(i,.94+rnd(i,38)*.12)});
   }
+  buildVergeWalkers();
 }
+
+const VERGE=[],vergeSites=[],vergeView=new V3();
+let vergeIndex=0,vergeWait=0;
+function buildVergeWalkers(){
+  for(let i=0;i<(isTouch?4:8);i++)VERGE.push({verge:true,e:null,m:pedModel(i,.94+rnd(i,38)*.12),pace:.9+rnd(i,37)*.2});
+  for(const e of EDGES)if(e.type==="country"){
+    for(let s=22;s+16<e.len-14;s+=36)for(const side of [-1,1]){
+      const a=edgePos(e,s),b=edgePos(e,s+16),len=Math.hypot(b.x-a.x,b.z-a.z);
+      if(len<15.9)continue;
+      const inx=side*(b.z-a.z)/len,inz=side*(a.x-b.x)/len;
+      const offset=e.half+1.5;
+      for(const q of [a,b]){q.x+=inx*offset;q.z+=inz*offset}
+      // Exclude the district, junctions, other carriageways and verges that bend away.
+      let clear=true;
+      for(let j=0;j<=4;j++){
+        const x=a.x+(b.x-a.x)*j/4,z=a.z+(b.z-a.z)*j/4,road=nearestRoad(x,z,offset+2);
+        if(zoneAt(x,z)==="OLD QUAY"||road?.e!==e||Math.abs(Math.hypot(x-road.x,z-road.z)-offset)>.5||meshH(x,z)<.5){clear=false;break}
+      }
+      if(clear)vergeSites.push({a,b,len,inx,inz,cross:false});
+    }
+  }
+}
+function vergeTick(dt,me=BOAT.on?BOAT:FOOT.on?FOOT:P){
+  const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
+  for(const p of VERGE)if(p.e){
+    if(Math.hypot(p.x-me.x,p.z-me.z)>300){p.e=null;p.m.G.visible=false}
+    else {if(p.m.G.visible)faceBlink(p.m.face,dt);pedStep(p,dt,me,driving,psp)}
+  }
+  vergeWait-=dt;if(vergeWait>0||!vergeSites.length)return;vergeWait=.35;
+  const p=VERGE.find(w=>!w.e);if(!p)return;
+  for(let i=0;i<Math.min(32,vergeSites.length);i++){
+    const e=vergeSites[vergeIndex++%vergeSites.length],x=e.a.x,z=e.a.z,d=Math.hypot(x-me.x,z-me.z);
+    if(d<=121||d>295||VERGE.some(w=>w.e&&Math.hypot(w.x-x,w.z-z)<24))continue;
+    const view=vergeView.set(x,footGround(x,z)+1,z).project(camera);
+    if(view.z>=-1&&view.z<=1&&Math.abs(view.x)<1.12&&Math.abs(view.y)<1.12)continue;
+    Object.assign(p,{e,from:e.a,x,z,s:0,o:0,off:0,h:Math.atan2(e.b.x-x,e.b.z-z),ph:0,st:"walk",t:0,v:0,fall:0,hitAt:-9});
+    pedStep(p,0,me,driving,psp);break;
+  }
+}
+
 // each person's own run of chances: the same every time the game is loaded, so what they do can be tested
 const pedRnd=p=>{p.seed=(p.seed*16807+11)%2147483647;return p.seed/2147483647};
 // where a person is on their stretch of pavement or crossing, before anything pushes them aside
@@ -1040,6 +1082,7 @@ function pedNext(p,node){
   else p.st="walk";
 }
 function pedUpdate(dt){
+  vergeTick(dt);
   if(!PEDS.length)return;
   const me=BOAT.on?BOAT:FOOT.on?FOOT:P,on=Math.hypot(me.x-660,me.z-36)<PED_V.near;
   if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)p.m.G.visible=false}
@@ -1047,9 +1090,21 @@ function pedUpdate(dt){
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of PEDS){
     if(p.m.G.visible)faceBlink(p.m.face,dt);
+    pedStep(p,dt,me,driving,psp);
+  }
+  lifeUpdate(dt);
+}
+function pedStep(p,dt,me,driving,psp){
     const e=p.e;let want=0,hurry=false;
     // a car coming at them (yours, or traffic): step in towards the buildings, or hurry off the crossing
     let danger=driving&&psp>2.5&&Math.hypot(P.x-p.x,P.z-p.z)<4+psp*.9&&((p.x-P.x)*P.vx+(p.z-P.z)*P.vz)/psp>0&&Math.abs((p.x-P.x)*-P.vz+(p.z-P.z)*P.vx)/psp<2.2;
+    if(p.verge&&!danger)danger=TRAFFIC.some(t=>{
+      if(!t.e||t.v<=2.5)return false;
+      const dx=p.x-t.wx,dz=p.z-t.wz;
+      if(Math.abs(dx)+Math.abs(dz)>2*(4+t.v*.9))return false;
+      const sn=Math.sin(t.yaw),cs=Math.cos(t.yaw),ahead=dx*sn+dz*cs;
+      return ahead>0&&ahead<4+t.v*.9&&Math.abs(dx*cs-dz*sn)<2.2;
+    });
     if(p.st==="down")danger=false;
     if(p.st==="walk"||p.st==="cross"){
       want=PED_V.walk*p.pace;
@@ -1070,23 +1125,24 @@ function pedUpdate(dt){
     p.o+=clamp((!e.cross&&danger?2.1:p.off)-p.o,-1.2*dt,(danger?4:1.2)*dt);
     p.v+=clamp(want-p.v,-8*dt,(hurry?9:3)*dt);
     p.s+=p.v*dt;
-    if(p.s>=e.len)pedNext(p,p.from===e.a?e.b:e.a);
+    if(p.s>=e.len){
+      const end=p.from===e.a?e.b:e.a;
+      if(p.verge){p.from=end;p.s=0}else pedNext(p,end);
+    }
     const[sx,sz,sh]=pedSpot(p);
     // your car running into someone: they stagger and stand a while, and it is a crime if the police see it
-    if(driving&&psp>3&&copClock-(p.hitAt||-9)>3){const dx=sx-P.x,dz=sz-P.z,cs=Math.cos(P.h),sn=Math.sin(P.h);
+    if(driving&&psp>3&&copClock-(p.hitAt??-9)>3){const dx=sx-P.x,dz=sz-P.z,cs=Math.cos(P.h),sn=Math.sin(P.h);
       if(Math.abs(dx*cs-dz*sn)<1.25&&Math.abs(dx*sn+dz*cs)<2.6){p.hitAt=copClock;p.st="idle";p.t=4;p.v=0;crime("ped",sx,sz);lifeHurt(p,15)}}
     // never inside a wall, a post or a car: whatever is there pushes them out, as it does you
     const c=footClear(sx,sz);p.x=c[0];p.z=c[1];
     p.h+=wrapA((p.st==="talk"?Math.atan2(FOOT.x-p.x,FOOT.z-p.z):sh)-p.h)*Math.min(1,dt*8);p.y=footGround(p.x,p.z);
-    const G=p.m.G,vis=Math.hypot(p.x-me.x,p.z-me.z)<PED_V.see;G.visible=vis;
+    const G=p.m.G,vis=Math.hypot(p.x-me.x,p.z-me.z)<(p.verge?300:PED_V.see);G.visible=vis;
     if(vis){p.ph+=p.v*dt*3.3;if(p.v<.05)p.ph+=(Math.round(p.ph/Math.PI)*Math.PI-p.ph)*Math.min(1,dt*10);
       const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
       // lying down after being shot, and getting up again
       p.fall=clamp((p.fall||0)+(p.st==="down"&&save.violence?dt*4:-dt*1.6),0,1);
       G.position.set(p.x,p.y+Math.abs(Math.cos(p.ph))*Math.min(.04,p.v*.012)+p.fall*.12,p.z);G.rotation.set(-Math.PI/2*p.fall,p.h,0,"YXZ");
       p.m.legs[0].rotation.x=sw;p.m.legs[1].rotation.x=-sw;p.m.arms[0].rotation.x=-sw*.7;p.m.arms[1].rotation.x=sw*.7}
-  }
-  lifeUpdate(dt);
 }
 /* ================================================================ HARBOUR + BOAT */
 // A pier on the east coast, out from the town, and a motorboat moored beside it. Walk onto the pier and board; the
