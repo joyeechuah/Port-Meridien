@@ -420,6 +420,108 @@ test.describe("driving", () => {
     expect(Math.hypot(b[0] - a[0], b[1] - a[1])).toBeGreaterThan(1);
   });
 
+  test("with driving assist, Old Quay's T-junctions from 130 km/h with W held: the turn at 50 km/h or more, even turned late", async ({
+    game,
+  }) => {
+    test.setTimeout(300_000);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        out = [],
+        ang = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+      for (const t of T.TRAFFIC) {
+        t.e = null;
+        t.c.G.visible = false;
+        t.wx = t.wz = 1e6;
+      }
+      T.save.assist = true;
+      T.save.auto = false;
+      T.attachCar("gtr");
+      const S = T.save.side === "R" ? 1 : -1;
+      // every T-junction in town met head on: a straight street of 130 m or more into it, roads both ways out
+      for (const n of T.NODES) {
+        if (n.adj.length !== 3) continue;
+        for (const a of n.adj) {
+          const e = a.e;
+          if (e.type !== "town" || e.len < 140) continue;
+          const toB = n === e.b,
+            dirS = toB ? 1 : -1,
+            sAt = (d) => (toB ? e.len - d : d),
+            h = (d) => {
+              const q = T.edgePos(e, sAt(d));
+              return Math.atan2(q.dx * dirS, q.dz * dirS);
+            };
+          let straight = true;
+          for (let d = 10; d <= 130; d += 10) if (Math.abs(ang(h(d) - h(10))) > 0.15) straight = false;
+          const h0 = h(10),
+            exits = n.adj
+              .filter((b) => b !== a)
+              .map((b) => {
+                const q2 = T.edgePos(b.e, b.end === "a" ? 12 : b.e.len - 12);
+                return { e: b.e, turn: ang(Math.atan2(q2.x - n.x, q2.z - n.z) - h0) };
+              });
+          if (!straight || exits.some((x) => Math.abs(x.turn) < 1.2)) continue;
+          // the turn begun about a turning circle out, and late, at the zebra crossing
+          for (const ex of exits)
+            for (const lead of [1, 0.6]) {
+              const lane = T.RT[e.type].lanes[0],
+                q = T.edgePos(e, sAt(130)),
+                ux = q.dx * dirS,
+                uz = q.dz * dirS,
+                hx = h0 + ex.turn;
+              P.x = q.x - uz * lane * S;
+              P.z = q.z + ux * lane * S;
+              P.h = Math.atan2(ux, uz);
+              P.vx = ux * 36;
+              P.vz = uz * 36;
+              P.vy = 0;
+              P.r = P.steer = P.steerS = P.brkT = P.holdT = P.holdDir = 0;
+              P.thr = 1;
+              P.laneT = P.turnRoom = null;
+              P.air = false;
+              for (const k in T.keys) T.keys[k] = false;
+              let key = null,
+                done = false,
+                vMin = 999,
+                slow = 0,
+                made = false;
+              for (let i = 0; i < 900 && !made; i++) {
+                const v = Math.hypot(P.vx, P.vz),
+                  fwd = (n.x - P.x) * Math.sin(h0) + (n.z - P.z) * Math.cos(h0);
+                if (!key && !done && fwd < lead * (5 + 0.7 * v))
+                  key = Math.sin(hx) * -Math.cos(P.h) + Math.cos(hx) * Math.sin(P.h) > 0 ? "d" : "a";
+                if (key && Math.abs(ang(P.h - hx)) < 0.2) {
+                  T.keys[key] = false;
+                  key = null;
+                  done = true;
+                }
+                T.keys.w = true;
+                if (key) T.keys[key] = true;
+                T.driveUpdate(1 / 60);
+                const kmh = Math.hypot(P.vx, P.vz) * 3.6;
+                if (fwd < 60) vMin = Math.min(vMin, kmh);
+                if (kmh < 60) slow += 1 / 60;
+                const nr = T.nearestRoad(P.x, P.z, 12);
+                made = !!nr && nr.e === ex.e && Math.hypot(P.x - n.x, P.z - n.z) > 30;
+              }
+              out.push({ n: T.NODES.indexOf(n), turn: Math.round((ex.turn * 180) / Math.PI), lead, made, vMin: Math.round(vMin), slow: +slow.toFixed(1) });
+            }
+        }
+      }
+      for (const k in T.keys) T.keys[k] = false;
+      return out;
+    });
+    test.info().annotations.push({ type: "T-junction turns", description: JSON.stringify(r) });
+    expect(r.length, "T-junction turns tried").toBeGreaterThanOrEqual(8);
+    // Jo Yee's video (24 Nov 2026): the assist read the junction as a kink and braked from 130 km/h to 43 km/h, over
+    // 3 to 4 s below 60 km/h. Turned in good time it now goes round at 53 to 59 km/h, and late it still makes it
+    for (const x of r) expect(x.made, `T-junction ${x.n}, ${x.turn}°, turn begun at ${x.lead} of a turning circle`).toBe(true);
+    for (const x of r.filter((x) => x.lead === 1)) {
+      expect(x.vMin, `T-junction ${x.n}, ${x.turn}°: slowest km/h`).toBeGreaterThanOrEqual(50);
+      expect(x.slow, `T-junction ${x.n}, ${x.turn}°: seconds below 60 km/h`).toBeLessThan(2);
+    }
+  });
+
   test("with driving assist, a short steering press at 100 km/h ends in the middle of a lane, never on the divider", async ({ game }) => {
     const r = await game.eval(() => {
       const T = __T,
