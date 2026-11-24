@@ -501,6 +501,9 @@ test.describe("needs: the hint", () => {
     await page_wait(game, 3500);
     await steps(game, 1);
     expect((await hints()).slice(-1)[0]).toMatch(/^BORED/);
+    await game.eval(() => __T.toast("LANDMARK DISCOVERED", "Found in Old Quay"));
+    await expect(game.page.locator("#toasts .needHint")).toHaveCount(0);
+    await expect(game.page.locator("#toasts .toast").first()).toContainText("LANDMARK DISCOVERED");
   });
 });
 const page_wait = (game, ms) => game.page.waitForTimeout(ms);
@@ -738,4 +741,33 @@ test("playing together: a friend driving fast beside you earns you nothing; only
   expect(jo).toBeCloseTo(65 - 601 / 600, 5);
   expect(ali).toBeCloseTo(65 - 601 / 600 + 2, 5);
   await ctx2.close();
+});
+
+test("Needs keeps keyboard focus off Pause and the room code accepts D-pad focus", async ({ game, page }) => {
+  await out(game);
+  await game.eval(() => __T.pauseOn());
+  await page.locator("#pNeeds").click();
+  await page.locator("#pRes").evaluate(el => el.focus());
+  await expect(page.locator("#ndClose")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pNeeds")).toBeFocused();
+  await page.locator("#pPlay").click();
+  await page.locator("#plStart").focus();
+  await game.eval(PAD, 13);
+  await expect(page.locator("#plCode")).toBeFocused();
+});
+
+test("standing up on the reward frame ends a bench interval before it pays", async ({ game }) => {
+  await onFoot(game);
+  await toBench(game);
+  const result = await game.eval(() => {
+    const T = __T;
+    T.promptAct();
+    T.SIT.t = 4.99;
+    T.keys.w = true;
+    T.driveUpdate(1 / 30);
+    T.keys.w = false;
+    return { sitting: T.SIT.on, gain: T.VISIT.got };
+  });
+  expect(result).toEqual({ sitting: false, gain: 0 });
 });

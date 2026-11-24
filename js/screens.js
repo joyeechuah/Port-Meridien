@@ -1066,8 +1066,9 @@ function clReconcile(doc){
 // ones back over newer ones from another device): they become this device's. Otherwise this device's are the newer.
 // One whole set or the other, never the higher of each; a save from before needs has the starting values
 function clNeeds(cloud){
+  needsCommit();   // bench and speed rewards can be newer than the last local checkpoint
   const here=needsKey(save),there=needsKey(cloud);
-  if(here!==there&&(!CL.meta.needs||CL.meta.needs===here)){needsLoad(needsOfSave(cloud));persist()}
+  if(here!==there&&(!CL.meta.needs||CL.meta.needs===here)){needsLoad(needsOfSave(cloud));persist();if(state==="GARAGE")restSync()}
   if(needsKey(save)===there)CL.meta.needs=there}
 // the account's save becomes this device's (its ghost laps stay), and the game starts again from it
 // From here until the page reloads, this tab neither saves nor backs up: the progress still in memory would otherwise

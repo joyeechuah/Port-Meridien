@@ -471,6 +471,7 @@ function footUpdate(dt){
   const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||kH());
   // on a bench (js/life.js), walking or turning gets you up first
   if(SIT.on&&(go||Math.abs(steerIn())>.3))sitEnd();
+  if(SIT.on&&!document.hidden)sitTick(dt);   // movement and danger interrupt the final fraction of a rest interval too
   const still=TALK.p||SIT.on,want=still?0:go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
   FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
   // right turns right, as in the car: the heading decreases (it was the wrong way round, on foot and on the boat)

@@ -423,6 +423,7 @@ function toast(t,sub,kind){
   const box=$("toasts"),d=document.createElement("div");d.className="toast "+(kind||"");
   const b=document.createElement("b");b.textContent=t;d.appendChild(b);
   if(sub){const s=document.createElement("span");s.textContent=sub;d.appendChild(s)}
+  box.querySelector(".needHint")?.remove();   // an incoming message takes priority over a needs hint
   box.prepend(d);while(box.children.length>4)box.lastChild.remove();toastFit();
   setTimeout(()=>d.classList.add("out"),2800);setTimeout(()=>d.remove(),3200);
 }

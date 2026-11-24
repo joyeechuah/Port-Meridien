@@ -764,7 +764,7 @@ const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],
 // with an outline on the one picked, and A presses it
 function padMenu(hit){
   const sub=PAUSE_SUBS.map(([id])=>$(id)).find(e=>!e.classList.contains("hide")),box=sub||$("pause");
-  const bs=/** @type {HTMLElement[]} */([...box.querySelectorAll("button,a.mbtn")]).filter(b=>b.offsetParent&&!(/** @type {HTMLButtonElement} */(b).disabled));
+  const bs=/** @type {HTMLElement[]} */([...box.querySelectorAll("button,a.mbtn,input")]).filter(b=>b.offsetParent&&!(/** @type {HTMLButtonElement} */(b).disabled));
   if(!bs.length)return;
   const i=bs.indexOf(/** @type {HTMLElement} */(document.activeElement)),d=hit(12)||hit(14)?-1:hit(13)||hit(15)?1:0;
   if(d){const b=bs[i<0?(d>0?0:bs.length-1):(i+d+bs.length)%bs.length];document.querySelectorAll(".padSel").forEach(e=>e.classList.remove("padSel"));

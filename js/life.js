@@ -78,7 +78,7 @@ function talkPick(k){
   relSet(who.id,r.f+d,r.n+(TALK.n===1?1:0));
   // company: the first friendly line that goes down well in a conversation (not a rude one) lifts Social, once per
   // conversation, and then not again from this person for 30 s of play, however often you walk up to them
-  if(t.id!=="rude"&&d>0&&!TALK.social&&!(NS.social[who.id]>NS.t)){TALK.social=true;NS.social[who.id]=NS.t+30;needsAdd("social",8)}
+  if(t.id!=="rude"&&used===0&&rel(who.id).f>r.f&&!TALK.social&&!(NS.social[who.id]>NS.t)){TALK.social=true;NS.social[who.id]=NS.t+30;needsAdd("social",8)}
   emote(p,d>=8?(t.id==="joke"?"laugh":"heart"):d>=2?(t.id==="joke"?"laugh":"smile"):d>0?"smile":d===0?"meh":d>-8?"frown":"angry");
   let line=talkReaction(who,t.id,d);
   if(t.id==="tip")line+=" “"+talkTip(who)+"”";
@@ -311,7 +311,7 @@ function needsTip(){
 }
 // each frame of play (driveUpdate): the needs fall, fast driving or sailing is fun, the bench rests you
 function needsTick(dt){
-  if(state!=="DRIVE"||!(dt>0))return;
+  if(state!=="DRIVE"||document.hidden||!(dt>0))return;
   NS.t+=dt;
   for(const k of NEED_ORDER)NEEDS[k]=Math.max(0,NEEDS[k]-NEED_LOSS[k]*dt/NEED_HOUR);
   // a point of fun for every 5 s on end at 80 km/h or more in a car, or 3 m/s on the boat; slowing down, or getting
@@ -319,7 +319,6 @@ function needsTick(dt){
   const mode=BOAT.on?"boat":FOOT.on?"foot":"car",fast=mode==="car"?kphNow()>=80:mode==="boat"&&Math.abs(BOAT.v)>=3;
   if(!fast||mode!==NS.mode){NS.fast=0;NS.mode=mode}
   if(fast&&(NS.fast+=dt)>=5){NS.fast-=5;needsAdd("fun",1)}
-  sitTick(dt);
   // a bench visit is over once you've walked out of its reach (or driven off)
   if(VISIT.b&&!SIT.on&&(!FOOT.on||Math.hypot(FOOT.x-VISIT.b.x,FOOT.z-VISIT.b.z)>FOOT_V.reach))VISIT.b=null;
   needsMood();needsHints();
@@ -332,7 +331,7 @@ function needsHints(){
   const due=NEED_ORDER.filter(k=>NS.due[k]);
   if(!due.length||ev||job||testDrive||WANTED.lvl||TALK.p||SIT.on||locked||$("toasts").children.length)return;
   const k=due.reduce((a,b)=>needOf(b)<needOf(a)?b:a);for(const q of due)NS.due[q]=false;
-  toast(MOOD_OF[k].toUpperCase(),NEED_HINT[k]);
+  toast(MOOD_OF[k].toUpperCase(),NEED_HINT[k],"needHint");
 }
 
 /* ---------- putting them back ---------- */
@@ -401,9 +400,9 @@ function needsRender(){
     row.querySelector("b").textContent=String(v);row.querySelector("em").textContent=w;row.className="ndr "+c}
 }
 const needsLabel=()=>"NEEDS · "+needsMood().toUpperCase();
-function needsOpen(){if(state!=="PAUSE")return;needsRender();show("needs",true);try{$("ndClose").focus({preventScroll:true})}catch(e){}}
+function needsOpen(){if(state!=="PAUSE")return;needsRender();$("pause").inert=true;show("needs",true);try{$("ndClose").focus({preventScroll:true})}catch(e){}}
 // back to the pause menu, on the button that opened it
-function needsClose(){show("needs",false);try{$("pNeeds").focus({preventScroll:true})}catch(e){}}
+function needsClose(){show("needs",false);$("pause").inert=false;try{$("pNeeds").focus({preventScroll:true})}catch(e){}}
 {const list=$("ndList");
   for(const k of NEED_ORDER){const r=document.createElement("div");r.id="nd_"+k;r.className="ndr";
     r.innerHTML='<span class="ndl">'+NEED_LABEL[k]+'</span><div class="ndb" role="meter" aria-valuemin="0" aria-valuemax="100" aria-label="'+NEED_LABEL[k]+'"><i></i></div><b class="num"></b><em></em>';
