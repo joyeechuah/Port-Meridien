@@ -948,8 +948,10 @@ function stepPlayer(dt){
   const th=groundH(P.x,P.z),sand=!onRoad&&th<3.4;
   const surf=onRoad?1:sand?.55:.72;
   // past the finish line the car brakes itself to a stop (the controls are locked) before the result shows
-  // stopping to get out (FOOT.stop, js/people.js) brakes as the finish line does, and the throttle waits
-  const gas=kG()&&!FOOT.stop,brake=kB()||(!!ev&&ev.phase==="finish"&&vF>.5)||(FOOT.stop>0&&vF>.5),hb=kH(),sp0=Math.abs(vF),gA=gas?gasAmt():0,bA=kB()?brakeIn():1;
+  // stopping to get out (FOOT.stop, js/people.js) takes over both pedals and brakes the car to rest, going forwards or
+  // backwards (Codex's review of #79: reversing with S held, it waited 4 s and gave up, still going at 28.8 km/h)
+  const stopping=FOOT.stop>0,pedB=kB()&&!stopping;
+  const gas=kG()&&!stopping,brake=pedB||(!!ev&&ev.phase==="finish"&&vF>.5)||(stopping&&Math.abs(vF)>.5),hb=kH(),sp0=Math.abs(vF),gA=gas?gasAmt():0,bA=pedB?brakeIn():1;
   const vMax=onRoad?cd.top/3.6:sand?Math.min(cd.top/3.6*.35,20):Math.min(cd.top/3.6*.45,30),power=(HD.pBase+cd.acc*HD.pAcc)*damagePower(P);
   // tyre grip: arcade-strong on asphalt, a bit more at low speed
   const vN=clamp(sp0/55,0,1),aLatRoad=9.81*(HD.latBase+cd.grip*HD.latGrip)*(1+HD.latLow*(1-vN)),aLat=aLatRoad*surf;
@@ -990,7 +992,7 @@ function stepPlayer(dt){
   // and pulling back afterwards let a light trigger build up to full throttle at a crawl, where the ramp is quickest
   const tT=Math.min(thrCap,gA),t0=P.thr||0;P.thr=t0<tT?Math.min(tT,t0+thrUp*dt):Math.max(tT,t0-8*dt);
   // Holding the brake from a crawl must stop the car. Check motion before this step's slope force.
-  const bHeld=kB();if(!bHeld)P.brkHold=false;else if(vF>REVERSE_STOP)P.brkHold=true;
+  const bHeld=pedB;if(!bHeld)P.brkHold=false;else if(vF>REVERSE_STOP)P.brkHold=true;
   if(!P.air){const sl=(surfH(P.x+fx*2,P.z+fz*2)-surfH(P.x-fx*2,P.z-fz*2))/4;vF-=9.81*sl*.75*dt}
   // the brake builds up while it's held: gentle at first (6 m/s²), full (13 m/s²) after a second, so a quick press
   // slows the car instead of stopping it dead. Nov 2026: was 9 to 22 m/s² in 0.7 s, which threw away speed into bends.
