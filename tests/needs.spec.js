@@ -85,7 +85,7 @@ const PAD = (i) => {
 };
 
 test.describe("needs: the clock", () => {
-  test("two needs-hours (60 s of play) take 6, 10, 6 and 4, the same at 30, 60 and 120 frames a second", async ({ game }) => {
+  test("two needs-hours (60 s of play) take 6, 4, 6 and 4, the same at 30, 60 and 120 frames a second", async ({ game }) => {
     await out(game);
     const got = [];
     for (const fps of [30, 60, 120]) {
@@ -93,14 +93,14 @@ test.describe("needs: the clock", () => {
       await steps(game, 60 * fps, 1 / fps);
       got.push(await needs(game));
     }
-    for (const n of got) expect(n).toEqual({ energy: 74, hunger: 65, fun: 59, social: 61 });
+    for (const n of got) expect(n).toEqual({ energy: 74, hunger: 71, fun: 59, social: 61 });
   });
 
   test("walking counts as play; the pause menu, Photo Mode, a hidden tab and the garage don't", async ({ game }) => {
     await onFoot(game);
     await setNeeds(game, {});
     await steps(game, 600);
-    expect((await needs(game)).hunger).toBe(73);   // 10 s on foot: 75 - 5/3
+    expect((await needs(game)).hunger).toBe(74);   // 10 s on foot: 75 - 2/3
     const still = async (what) => {
       const before = await game.eval(() => JSON.stringify(__T.NEEDS));
       await game.frames(20);
@@ -307,7 +307,7 @@ test.describe("needs: putting them back", () => {
     await steps(game, 1810);
     expect(await prompt(game)).toBe("Eat at the Market Kitchen · free");
     await game.key("e");
-    expect((await needs(game)).hunger).toBe(95);
+    expect((await needs(game)).hunger).toBe(98);
     // full: no meal, and no wait either
     await steps(game, 1810);
     await setNeeds(game, { hunger: 100 });
@@ -475,7 +475,7 @@ test.describe("needs: the hint", () => {
     await page_wait(game, 3500);
     await game.watchToasts();
     const hints = async () => (await game.toastLog()).filter((t) => /^(TIRED|HUNGRY|BORED|LONELY) \|/.test(t));
-    await setNeeds(game, { hunger: 26 });
+    await setNeeds(game, { hunger: 25.6 });
     await steps(game, 60 * 7);
     expect(await hints()).toEqual(["HUNGRY | The Market Kitchen in Old Quay serves a free meal"]);
     await steps(game, 60 * 20);
@@ -515,7 +515,7 @@ test.describe("needs: the save", () => {
     await steps(game, 600);
     const r = await game.eval(() => { __T.persist(); return { live: __T.NEEDS.energy, saved: JSON.parse(localStorage.getItem(__T.SAVE_KEY)).needs }; });
     expect(r.live).toBeCloseTo(79, 5);
-    expect(r.saved).toEqual({ v: 1, energy: 79, hunger: 73, fun: 64, social: 64 });
+    expect(r.saved).toEqual({ v: 1, energy: 79, hunger: 74, fun: 64, social: 64 });
     await game.eval(() => { __T.needsLoad({ v: 1, energy: 0, hunger: 100, fun: 0, social: 100 }); __T.persist(); });
     await game.reload();
     expect(await needs(game)).toEqual({ energy: 0, hunger: 100, fun: 0, social: 100 });

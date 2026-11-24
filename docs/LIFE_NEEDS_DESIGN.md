@@ -5,7 +5,7 @@
 | Need (100 is full) | Start | Loss per active game hour | Recovery |
 | --- | ---: | ---: | --- |
 | Energy | 80 | 3 | Choose Rest at the house for +40 once. Sit on an Old Quay bench for +3 per 5 continuous simulation seconds, up to +15 per visit. |
-| Hunger (100 means fed) | 75 | 5 | Eat at a proposed counter beside the Old Quay market for +35. The basic meal is free, including at zero credits. |
+| Hunger (100 means fed) | 75 | 2 (5 until Jo Yee's change on 24 Nov 2026) | Eat at a proposed counter beside the Old Quay market for +35. The basic meal is free, including at zero credits. |
 | Fun | 65 | 3 | Finish a race for +15 once per result, regardless of placing. Driving at or above 80 km/h or sailing at or above 3 m/s awards +1 per 5 continuous simulation seconds. |
 | Social | 65 | 2 | In a conversation, the first accepted non-rude line with a positive friendship change gives +8; opening, repeating, or saying goodbye gives zero. |
 
@@ -26,7 +26,7 @@
 
 ## Acceptance tests
 
-- Clock: replay identical activity at 30, 60 and 120 fps. After two active hours from defaults expect 74 energy, 65 hunger, 59 fun and 61 social before rewards. Check menu, hidden-tab, frozen sky and midnight cases.
+- Clock: replay identical activity at 30, 60 and 120 fps. After two active hours from defaults expect 74 energy, 71 hunger, 59 fun and 61 social before rewards. Check menu, hidden-tab, frozen sky and midnight cases.
 - Rewards: exercise each normal input path, caps at 100, the zero-credit meal, race finish versus abort, interrupted bench use, speed boundaries and reconnecting to a person during cooldown. Repeated input in one frame awards once.
 - Safety: repeat with an active delivery, police pursuit, arrest and knock-out. Check the existing timer, fines and health, and that a forced return home does not count as rest.
 - Saves: round-trip zero and 100, legacy saves, malformed values, arrays and unknown versions. Test equal-progress divergent needs, an older local save plus a preference change, and both explicit cloud choices with different friendships and needs.

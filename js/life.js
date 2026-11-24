@@ -308,7 +308,8 @@ function lifeUpdate(dt){
 // loading don't count, and nothing is made up from the real clock afterwards. Something in the city puts each back.
 // Needs never stop you, slow you or cost you: a low one sets your mood, one suggestion in the pause menu and one
 // short hint, and a need at zero just stays there until you see to it
-const NEED_LOSS={energy:3,hunger:5,fun:3,social:2},NEED_HOUR=30,NEED_ORDER=["energy","hunger","fun","social"];
+// (hunger was 5 an hour as first approved: Hungry after 5 minutes of play. Jo Yee chose 2 on 24 Nov, after Codex's tuning note)
+const NEED_LOSS={energy:3,hunger:2,fun:3,social:2},NEED_HOUR=30,NEED_ORDER=["energy","hunger","fun","social"];
 const NEED_LABEL={energy:"Energy",hunger:"Hunger",fun:"Fun",social:"Social"},MOOD_OF={energy:"Tired",hunger:"Hungry",fun:"Bored",social:"Lonely"};
 // what to do about each, short for a hint and in full for the pause menu
 const NEED_HINT={energy:"Sit on a bench by the fountain, or go home and rest",hunger:"The Market Kitchen in Old Quay serves a free meal",
