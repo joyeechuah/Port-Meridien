@@ -1,5 +1,14 @@
 # Script releases for GitHub Pages
 
+**Decided by Jo Yee, 24 Nov 2026: A**, in two steps.
+
+1. **Publish from a workflow (done).** `.github/workflows/pages.yml` stages the site with `tests/support/stage-site.js`: index.html, 404.html, js/ and audio/, with each script tag stamped from the copied file's bytes. Today that copy is byte for byte what the branch publishes. The workflow runs by hand until Settings → Pages → Source is **GitHub Actions**.
+2. **Unstamped source (next).** index.html in the repository moves to fixed `?v=dev` tags, lint and the tests accept them, `npm run stamp` leaves the development workflow, and the Pages workflow runs on every push to main. This waits until the open branches that change stamps have merged.
+
+Later, if needed: the immutable `releases/<digest>/` folders below, so a page loading during a deploy still gets matching scripts. Step 1 keeps today's cache behaviour: query stamps only.
+
+The proposal as written by Codex follows.
+
 **Proposed decision for Jo Yee:** choose A if you are willing to change Settings → Pages → Source to **GitHub Actions**. It removes generated stamp edits from every feature branch and keeps the public game URL. B keeps the current branch publishing setting at the cost of a manual, generated release commit. Neither option changes gameplay.
 
 | | A. Build the deployed copy | B. Publish a generated copy from main |
