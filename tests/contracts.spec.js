@@ -366,8 +366,8 @@ test.describe("contracts", () => {
     await game.open();
     await game.driveOut();
     await game.park();
-    const J = await game.eval(() => { const T = __T, J = T.JOBS.find((j) => j.type === "courier"); T.jobStart(J); T.job.timing = true; T.job.left = 77; T.WANTED.lvl = 1; return J.id; });
-    await game.eval(() => { __T.pauseOn(); __T.jobsOpen(); });
+    // paused in the same step, so no frame runs the contract's clock down before RESTART is pressed
+    const J = await game.eval(() => { const T = __T, J = T.JOBS.find((j) => j.type === "courier"); T.jobStart(J); T.job.timing = true; T.job.left = 77; T.WANTED.lvl = 1; T.pauseOn(); T.jobsOpen(); return J.id; });
     await page.locator("#jbRestart").click();
     const r = await game.eval(() => ({ id: __T.job && __T.job.def.id, left: __T.job && __T.job.left, abandoned: __T.save.jobs.abandoned, gps: !!__T.gps.t, note: document.getElementById("jbNote").textContent, open: !document.getElementById("jobs").classList.contains("hide") }));
     expect(r).toEqual({ id: J, left: 77, abandoned: 0, gps: true, note: "Lose the police first to restart: this contract carries on.", open: true });

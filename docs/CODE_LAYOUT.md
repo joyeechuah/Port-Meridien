@@ -14,7 +14,7 @@ Port Meridien is still a static page with no build step: `index.html` holds the 
 | `js/progress.js` | The Explorer Passport, contracts and class championships |
 | `js/screens.js` | Game states, the garage, the dealership, menus and prompts, one game tab at a time, and the cloud save |
 | `js/people.js` | The HUD, on foot, the police, the pistol and health, pedestrians, and the harbour boat |
-| `js/life.js` | The life side: the people of Old Quay with their names and personalities, talking to them, the friendships they remember, and your needs and mood (the clock, resting, eating, sitting, the Needs screen) |
+| `js/life.js` | The life side: the people of Old Quay with their names and personalities, talking to them, the friendships they remember, your needs and mood (the clock, resting, eating, sitting, the Needs screen), and friends who ride with you |
 | `js/work.js` | Market Kitchen shifts, order timing, input and payment |
 | `js/net.js` | Playing together: rooms on Firebase's Realtime Database (or, with `?mp=local`, the test server's relay), friends drawn where they are, and the PLAY TOGETHER panel |
 | `js/main.js` | Each frame: the drive update, adaptive resolution, the `?perf` panel and the main loop, and `boot()`, which builds the world behind the loading screen |

@@ -16,6 +16,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
 function setState(s){if(s==="GARAGE")gunSync();if(s!=="DRIVE")talkClose();   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js)
+  if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
@@ -568,7 +569,7 @@ $("dDrive").onclick=()=>{const c=CARS[dSel];if(!save.owned.includes(c.id))return
 $("dSell").onclick=()=>{const c=CARS[dSel];if(!save.owned.includes(c.id)||c.id===curId||save.owned.length<2)return;delete save.mods[c.id];
   // its models go too: kept, they still wore the old upgrades when you looked at it, test-drove it or bought it back
   for(const M of [carMeshes,showMeshes])if(M[c.id]){disposeHeroCar(M[c.id]);delete M[c.id]}
-  const v=Math.round(c.price*.6/100)*100;save.owned=save.owned.filter(id=>id!==c.id);earn(v);persist();parkAll(curId);
+  const v=Math.round(c.price*.6/100)*100;save.owned=save.owned.filter(id=>id!==c.id);if(save.cur===c.id)save.cur=save.owned[0];earn(v);persist();parkAll(curId);
   toast("SOLD",c.mk+" "+c.md+" · +"+fmtCr(v)+" CR","gold");dPick(dSel)};
 $("dTest").onclick=()=>startTestDrive(CARS[dSel].id);
 $("dExit").onclick=closeDealer;
@@ -621,6 +622,8 @@ function updatePrompt(){
     for(const o of c){const d=Math.hypot(P.x-o.x,P.z-o.z);if(d<o.r&&d<bd){bd=d;best=o}}
     // the police are after you: nowhere to hide indoors, and no racing
     if(best&&WANTED.lvl&&!testDrive)best={t:"Lose the police first",a:wantedBlock};
+    // stopped with a friend aboard (js/life.js): let them out here
+    if(!best)best=ridePrompt();
   }
   promptAct=best?best.a:null;show("prompt",!!best);if(best)$("promptTxt").textContent=best.t;
 }

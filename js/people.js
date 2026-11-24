@@ -829,7 +829,7 @@ function gunFrom(){if(FOOT.on)return{x:FOOT.x,z:FOOT.z,h:FOOT.h,y:FOOT.y+1.3};co
 function gunPick(){
   const F=gunFrom(),fx=Math.sin(F.h),fz=Math.cos(F.h),list=[];
   for(const t of TRAFFIC)if(t.e&&t.c.G.visible&&(t.damage||0)<100)list.push({k:t.cop?"cop":"car",x:t.wx,z:t.wz,y:1,o:t,stop:2.8});
-  if(pedOn)for(const p of PEDS)if(p.m.G.visible&&p.st!=="down")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
+  if(pedOn)for(const p of PEDS)if(p.m.G.visible&&p.st!=="down"&&p.st!=="ride")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
   if(OFFICER.on&&!(OFFICER.down>0))list.push({k:"officer",x:OFFICER.x,z:OFFICER.z,y:1.2,o:OFFICER,stop:.6});
   let best=null,bs=1e9;
   for(const q of list){const dx=q.x-F.x,dz=q.z-F.z,d=Math.hypot(dx,dz);if(d<.8||d>GUN.range)continue;
@@ -1055,10 +1055,11 @@ function pedNext(p,node){
 function pedUpdate(dt){
   if(!PEDS.length)return;
   const me=BOAT.on?BOAT:FOOT.on?FOOT:P,on=Math.hypot(me.x-660,me.z-36)<PED_V.near;
-  if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)p.m.G.visible=false}
+  if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)if(p!==RIDE.p)p.m.G.visible=false}
   if(!on)return;
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of PEDS){
+    if(p===RIDE.p)continue;   // a friend with you, following or riding (js/life.js: rideTick)
     if(p.m.G.visible)faceBlink(p.m.face,dt);
     const e=p.e;let want=0,hurry=false;
     // a car coming at them (yours, or traffic): step in towards the buildings, or hurry off the crossing

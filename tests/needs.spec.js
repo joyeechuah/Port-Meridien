@@ -477,13 +477,15 @@ test.describe("needs: the hint", () => {
     await page_wait(game, 3500);
     await game.watchToasts();
     const hints = async () => (await game.toastLog()).filter((t) => /^(TIRED|HUNGRY|BORED|LONELY) \|/.test(t));
-    await setNeeds(game, { hunger: 25.6 });
+    // hunger falls 2 a needs-hour (30 s of play), so 0.3 takes 4.5 s (a loaded save is whole numbers, so set it in play)
+    await setNeeds(game, { hunger: 26 });
+    await game.eval(() => { __T.NEEDS.hunger = 25.3; });
     await steps(game, 60 * 7);
     expect(await hints()).toEqual(["HUNGRY | The Market Kitchen in Old Quay serves a free meal"]);
     await steps(game, 60 * 20);
     expect((await hints()).length, "once").toBe(1);
     // back to 35: it can tell you again
-    await game.eval(() => { __T.NEEDS.hunger = 36; __T.driveUpdate(1 / 60); __T.NEEDS.hunger = 25.5; });
+    await game.eval(() => { __T.NEEDS.hunger = 36; __T.driveUpdate(1 / 60); __T.NEEDS.hunger = 25.15; });
     await page_wait(game, 3500);
     await steps(game, 60 * 4);
     expect((await hints()).length).toBe(2);

@@ -146,7 +146,8 @@ function netState(){
   if(!out||!pc)return d;
   if(BOAT.on){d.m=2;d.y=r(BOAT.m.position.y,100);d.v=r(BOAT.v||0,10)}
   else if(FOOT.on){d.m=1;d.y=r(FOOT.y,100);d.v=r(FOOT.v||0,10)}
-  else{d.m=0;d.y=r(pc.G.position.y,100);d.v=r(speedF(),10);d.c=STREET.has(curId)?STREET.get(curId).base:curCar().id;d.p=paintOf(curId);const q=pc.G.quaternion;d.q=[q.x,q.y,q.z,q.w].map(v=>r(v,1000))}
+  else{d.m=0;d.y=r(pc.G.position.y,100);d.v=r(speedF(),10);d.c=STREET.has(curId)?STREET.get(curId).base:curCar().id;d.p=testDrive?testDrive.paint:paintOf(curId);const q=pc.G.quaternion;d.q=[q.x,q.y,q.z,q.w].map(v=>r(v,1000))}
+  if(state!=="DRIVE")d.v=0;
   d.x=r(a.x,100);d.z=r(a.z,100);d.h=r(a.h,1000);
   return d;
 }
@@ -176,7 +177,8 @@ function netGot(uid,d){
   if(!$("play").classList.contains("hide"))netRender();
 }
 function netGone(uid){const p=NET.peers.get(uid);if(!p)return;netDrop(p);NET.peers.delete(uid);toast(p.name.toUpperCase(),"left the room");if(!$("play").classList.contains("hide"))netRender()}
-function netDrop(p){if(p.model)scene.remove(p.model.G);if(p.tag){scene.remove(p.tag);p.tag.material.map.dispose();p.tag.material.dispose()}p.model=p.tag=null}
+function netDropModel(p){if(!p.model)return;if(p.model.kind==="car")disposeHeroCar(p.model);else scene.remove(p.model.G);p.model=null}
+function netDrop(p){netDropModel(p);if(p.tag){scene.remove(p.tag);p.tag.material.map.dispose();p.tag.material.dispose()}p.model=p.tag=null}
 // a name above each friend, readable from a distance and through walls, so you can find each other
 function netTag(p){
   if(p.tag){scene.remove(p.tag);p.tag.material.map.dispose();p.tag.material.dispose()}
@@ -192,7 +194,7 @@ function netTag(p){
 function netModel(p,d){
   const key=d.m===0?"car:"+d.c+":"+d.p:d.m===1?"foot:"+d.o:d.m===2?"boat":"away";
   if(key===p.key)return;
-  if(p.model)scene.remove(p.model.G);p.model=null;p.key=key;
+  netDropModel(p);p.key=key;
   if(d.m===0){const cd=carById(d.c)||CARS[0],col=Number.isInteger(d.p)&&d.p>=0&&d.p<=0xffffff?d.p:cd.body;p.model={kind:"car",G:buildHeroCar(cd,col,Object.assign({},MOD_STOCK)).G};scene.add(p.model.G)}
   else if(d.m===1){const o=OUTFITS.find(x=>x.id===d.o)||OUTFITS[0],m=pedModel(0,1,figureLook(o.shirt,o.pants,0xc49a7a,0x2a1d16,false));p.model={kind:"foot",G:m.G,legs:m.legs,arms:m.arms}}
   else if(d.m===2&&BOAT.m){const G=BOAT.m.clone();G.traverse(o=>{if(o===BOAT.wake||o.material===BOAT.wake.material)o.visible=false});scene.add(G);p.model={kind:"boat",G}}
