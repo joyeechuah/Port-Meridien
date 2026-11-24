@@ -462,8 +462,8 @@ needsLoad(save.needs);
 // get out, or go indoors, and they go on their way. A ride isn't saved: the friendship it earns is
 const RIDE_AT=40,RIDE_V={follow:1.6,hurry:3.6,door:1.35,board:1.8,wait:90,social:6,friend:20,friendMax:10,chat:[26,40],fast:130,
   tip:250,lift:.5,near:[300,1500]};
-/** @type {{p:any,who:any,st:string,t:number,stuck:number,best:number,gain:number,soc:number,fr:number,chat:number,fastAt:number,hitAt:number,dmg:number,dest:any,cops:boolean,car:string|null}} */
-const RIDE={p:null,who:null,st:"",t:0,stuck:0,best:1e9,gain:0,soc:0,fr:0,chat:30,fastAt:-99,hitAt:-99,dmg:0,dest:null,cops:false,car:null};
+/** @type {{p:any,who:any,st:string,t:number,stuck:number,gain:number,soc:number,fr:number,chat:number,fastAt:number,hitAt:number,dmg:number,dest:any,cops:boolean,car:string|null}} */
+const RIDE={p:null,who:null,st:"",t:0,stuck:0,gain:0,soc:0,fr:0,chat:30,fastAt:-99,hitAt:-99,dmg:0,dest:null,cops:false,car:null};
 // what each kind of person says: yes, a word on the way, at speed, after a crash, with the police behind
 const RIDE_LINES={
   cheerful:{yes:"I'd love to!",chat:["I love this road.","Put the radio on, go on!"],fast:"Whee! Faster!",crash:"Oops! Everyone all right?",cops:"Oh no, oh no. Drive!"},
@@ -492,7 +492,7 @@ function talkRide(){
   const why=rideWhy(who,p);if(why){talkShow(who.name+" shakes their head. “"+why+"”");emote(p,"meh");TALK.busy=.7;return false}
   const r=rel(who.id);relSet(who.id,r.f+3,r.n);
   if(!TALK.social&&!(NS.social[who.id]>NS.t)){TALK.social=true;NS.social[who.id]=NS.t+30;needsAdd("social",8)}
-  Object.assign(RIDE,{p,who,st:"follow",t:0,stuck:0,best:1e9,gain:0,soc:0,fr:0,chat:RIDE_V.chat[0],fastAt:-99,hitAt:-99,dmg:P.damage||0,dest:null,cops:false,car:null});
+  Object.assign(RIDE,{p,who,st:"follow",t:0,stuck:0,gain:0,soc:0,fr:0,chat:RIDE_V.chat[0],fastAt:-99,hitAt:-99,dmg:P.damage||0,dest:null,cops:false,car:null});
   talkClose();p.st="follow";p.v=0;
   rideSay(RIDE_LINES[who.trait].yes,"smile");persist();rideHud();
   return true;
@@ -553,11 +553,17 @@ function rideTick(dt){
     if(car&&psp>4&&Math.hypot(P.x-p.x,P.z-p.z)>10){relSet(who.id,r().f-4,r().n);rideSay("You drove off without me!","frown");rideEnd("left");persist();return}
     if(car&&d<RIDE_V.board&&psp<1.5){rideBoard();return}
     // walking (or hurrying) over; stuck behind something for a while, or left far behind, they catch you up
-    if(d<RIDE.best-.3){RIDE.best=d;RIDE.stuck=0}else RIDE.stuck+=dt;
-    if(d>45||(RIDE.stuck>4&&d>1.5)){p.x=g.x;p.z=g.z;RIDE.best=0;RIDE.stuck=0}
     const want=d<=g.stop?0:d>4?RIDE_V.hurry:RIDE_V.follow;p.v+=clamp(want-p.v,-8*dt,6*dt);
-    if(d>.01){const k=Math.min(d,p.v*dt);let nx=p.x+dx/d*k,nz=p.z+dz/d*k;[nx,nz]=footClear(nx,nz);p.x=nx;p.z=nz;
-      if(p.v>.05)p.h+=wrapA(Math.atan2(dx,dz)-p.h)*Math.min(1,dt*8)}
+    const step=Math.min(d,p.v*dt);
+    if(d>.01){
+      const [nx,nz]=footClear(p.x+dx/d*step,p.z+dz/d*step);
+      // Compare movement towards this frame's goal. A walking player moves that goal every frame.
+      const progress=((nx-p.x)*dx+(nz-p.z)*dz)/d;
+      RIDE.stuck=d>1.5&&progress<step*.15?RIDE.stuck+dt:0;
+      p.x=nx;p.z=nz;
+      if(p.v>.05)p.h+=wrapA(Math.atan2(dx,dz)-p.h)*Math.min(1,dt*8);
+    }else RIDE.stuck=0;
+    if(d>45||RIDE.stuck>4){[p.x,p.z]=footClear(g.x,g.z);RIDE.stuck=0}
     if(d<=g.stop&&!car)p.h+=wrapA(FOOT.h-p.h)*Math.min(1,dt*4);
     p.y=footGround(p.x,p.z);
     const G=p.m.G;G.visible=true;p.ph+=p.v*dt*3.3;const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
