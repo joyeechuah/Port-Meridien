@@ -43,7 +43,7 @@ const TAKES={
 const TALK={p:null,person:null,used:{},n:0,busy:0,end:0,sel:0,fireHold:false,social:false};
 const LIFE={t:0};
 // who you can talk to: someone near you on the pavement, not lying down, crossing the road or still shaken by your car
-const talkable=p=>FOOT.on&&!TALK.p&&!!personOf(p)&&p.m.G.visible&&p.st!=="down"&&p.st!=="cross"&&!(copClock-(p.hitAt??-99)<4);
+const talkable=p=>!WORK.active&&FOOT.on&&!TALK.p&&!!personOf(p)&&p.m.G.visible&&p.st!=="down"&&p.st!=="cross"&&!(copClock-(p.hitAt??-99)<4);
 function talkOpen(p){
   if(!talkable(p))return false;
   const who=personOf(p),r=rel(who.id);
@@ -354,7 +354,7 @@ function needsTip(){
 // each frame of play (driveUpdate): the needs fall, fast driving or sailing is fun, the bench rests you
 function needsTick(dt){
   if(state!=="DRIVE"||document.hidden||!(dt>0))return;
-  NS.t+=dt;
+  workTick(dt);NS.t+=dt;
   for(const k of NEED_ORDER)NEEDS[k]=Math.max(0,NEEDS[k]-NEED_LOSS[k]*dt/NEED_HOUR);
   // a point of fun for every 5 s on end at 80 km/h or more in a car, or 3 m/s on the boat; slowing down, or getting
   // out or aboard, starts the 5 s again
@@ -371,7 +371,7 @@ function needsTick(dt){
 function needsHints(){
   for(const k of NEED_ORDER){const v=needOf(k);if(v>=35){NS.armed[k]=true;NS.due[k]=false}else if(v<=25&&NS.armed[k]){NS.armed[k]=false;NS.due[k]=true}}
   const due=NEED_ORDER.filter(k=>NS.due[k]);
-  if(!due.length||ev||job||testDrive||WANTED.lvl||TALK.p||SIT.on||locked||$("toasts").children.length)return;
+  if(!due.length||WORK.panel||WORK.active||ev||job||testDrive||WANTED.lvl||TALK.p||SIT.on||locked||$("toasts").children.length)return;
   const k=due.reduce((a,b)=>needOf(b)<needOf(a)?b:a);for(const q of due)NS.due[q]=false;
   toast(MOOD_OF[k].toUpperCase(),NEED_HINT[k],"needHint");
 }
@@ -388,7 +388,8 @@ function restSync(){const b=$("gRest"),e=needOf("energy"),wait=NS.t<NS.restAt;
   b.textContent=e>=100?"ENERGY FULL":(wait?"RESTED":"REST")+" · ENERGY "+e;b.disabled=e>=100||wait;
   b.setAttribute("aria-label",e>=100?"Your energy is full":wait?"Rested. Energy "+e+" of 100. Go out for a while before resting again":"Rest: energy +40. Energy "+e+" of 100")}
 // The Market Kitchen (js/world.js): a free meal, +35 hunger, at any balance, even none; then not again for 30 s of play
-function needsEat(){
+function needsEat(){return job?kitchenMeal():workOpen()}
+function kitchenMeal(){
   if(!FOOT.on||state!=="DRIVE")return false;
   if(WANTED.lvl){wantedBlock();return false}
   if(NS.t<NS.mealAt){toast("YOU'VE JUST EATEN","Come back in a little while");return false}
@@ -396,7 +397,7 @@ function needsEat(){
   const got=needsAdd("hunger",35);
   NS.mealAt=NS.t+30;persist();toast("A GOOD MEAL","Hunger +"+Math.round(got)+" · on the house","gold");return true;
 }
-const kitchenText=()=>NS.t<NS.mealAt?"Market Kitchen · you've just eaten":needOf("hunger")>=100?"Market Kitchen · you're full":"Eat at the Market Kitchen · free";
+const kitchenText=()=>WORK.active?"Market Kitchen · continue shift":!job?"Market Kitchen · eat or work":NS.t<NS.mealAt?"Market Kitchen · you've just eaten":needOf("hunger")>=100?"Market Kitchen · you're full":"Eat at the Market Kitchen · free";
 // finishing a race or a time trial, however it went: +15 fun, at the result (finishEvent), once a result
 function needsRace(){needsAdd("fun",15)}
 // Sitting on a bench by the fountain: +3 energy for every 5 s sat there, up to +15 a visit. Standing up and sitting

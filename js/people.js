@@ -334,6 +334,7 @@ function leftClear(){LEFT.length=0;for(const id of[...STREET.keys()])if(id!==cur
 function streetFree(id){const c=carMeshes[id];if(c){disposeHeroCar(c);delete carMeshes[id]}STREET.delete(id)}
 // puts you in the driving seat of a car standing at (x,z), facing h
 function driveCar(id,x,z,h,damage){
+  workCancel();
   FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;promptAct=null;show("prompt",false);footHud(false);
   attachCar(id,isStreet(id));
   P.x=x;P.z=z;P.h=h;P.vx=P.vz=P.vy=0;P.r=0;P.steer=P.steerS=0;P.thr=0;P.brkHold=false;P.air=false;P.y=P.ty=surfH(x,z);
@@ -418,7 +419,7 @@ function footEnter(){
 }
 // back in the driving seat (also when the car is moved from under you: map travel, back to road, the garage)
 function footEnd(){
-  if(!FOOT.on)return;talkClose();sitEnd();FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
+  if(!FOOT.on)return;workCancel();talkClose();sitEnd();FOOT.on=false;if(FOOT.m)FOOT.m.G.visible=false;
   promptAct=null;show("prompt",false);footHud(false);autoHold=true;if(pc)snapCam();
 }
 // what the screen shows on foot: no speedometer or streak, and the pads say what they do now
@@ -766,6 +767,7 @@ function copClear(){
   wantedHud();
 }
 function copCaught(){
+  workCancel();
   const fine=Math.min(save.cr,COP_V.fine*WANTED.lvl),armed=save.armed;
   save.cr-=fine;if(armed)save.armed=false;persist();updateMoney();copClear();
   if(armed){gunArrest(fine);return}
@@ -874,7 +876,7 @@ function gunFoot(dt){
   const on=save.armed&&FOOT.on;GUN.m.visible=on;GUN.cool-=dt;GUN.flashT-=dt;GUN.aimT-=dt;GUN.flash.visible=GUN.flashT>0&&save.flash;
   // talking or sitting on a bench (js/life.js) holds the pistol: no aim and no fire, and a fire button still held at
   // goodbye (or on getting up) waits to be let go
-  const talking=!!TALK.p||SIT.on;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
+  const talking=!!TALK.p||SIT.on||WORK.panel;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
   GUN.lock=on&&!talking?gunPick():null;
   if(on&&!talking&&!TALK.fireHold&&gunWant()&&GUN.cool<=0)gunFire();
   const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,(q.k==="car"||q.k==="cop"?footGround(q.x,q.z)+2.1:footGround(q.x,q.z)+2.05),q.z);GUN.ring.rotation.z+=dt*2}
@@ -903,7 +905,7 @@ function kitTick(dt){
       toast("FIRST AID","+50 health · this one is back in 2 minutes","gold")}}
 }
 function hurt(n){
-  const H=HEALTH;if(H.hp<=0||n<=0)return;H.hp=Math.max(0,H.hp-n);H.calm=0;H.hurtT=.5;
+  const H=HEALTH;if(H.hp<=0||n<=0)return;workCancel();H.hp=Math.max(0,H.hp-n);H.calm=0;H.hurtT=.5;
   if(H.hp<=0)knockedOut();
 }
 // out cold: home, a little poorer; nothing you were doing carries on (a chase, a contract, a taken car)
@@ -1169,6 +1171,7 @@ function boatLandSpot(){
 function boatHud(){footHud(true);keysShown="";$("keys").innerHTML="<kbd>W</kbd><kbd>S</kbd> power / reverse &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>E</kbd> land";$("bG").textContent="POWER";$("bB").textContent="REVERSE";$("bH").innerHTML=""}
 function boatBoard(){
   if(!FOOT.on||BOAT.on||!BOAT.m)return false;
+  workCancel();
   FOOT.on=false;FOOT.m.G.visible=false;BOAT.on=true;BOAT.v=0;BOAT.steer=0;BOAT.car=[P.x,P.z];BOAT.cy=BOAT.h;
   promptAct=null;show("prompt",false);boatHud();boatCam(0,true);
   toast("ABOARD",isTouch?"POWER to sail, REVERSE to back up. Come back beside the pier to step off.":"W sails, S reverses, A and D steer. Come back beside the pier to step off.");

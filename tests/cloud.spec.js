@@ -726,21 +726,23 @@ test.describe("cloud save: needs", () => {
     test(`two saves with different progress, friendships and needs: keeping the ${keep}'s takes its needs, whole`, async ({ game, page }) => {
       await page.addInitScript(FAKE_CLOUD);
       await game.open();
-      await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.cr=500000;sv.xp=90000;sv.rel={0:{f:-20,n:2}};sv.needs=${JSON.stringify(N(10, 90, 10, 90))};delete sv.ghost;s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()};`);
+      await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.cr=500000;sv.xp=90000;sv.work={v:1,completed:4,cool:33};sv.rel={0:{f:-20,n:2}};sv.needs=${JSON.stringify(N(10, 90, 10, 90))};delete sv.ghost;s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()};`);
       await progress(game, 300000);
-      await game.eval(() => { __T.save.rel = { 0: { f: 50, n: 3 } }; __T.needsLoad({ v: 1, energy: 90, hunger: 10, fun: 90, social: 10 }); __T.persist(); });
+      await game.eval(() => { __T.save.work={v:1,completed:2,cool:90};__T.WORK.cool=90;__T.save.rel = { 0: { f: 50, n: 3 } }; __T.needsLoad({ v: 1, energy: 90, hunger: 10, fun: 90, social: 10 }); __T.persist(); });
       await signIn(page, game);
       await expect(page.locator("#cloudPick")).toBeVisible();
       if (keep === "device") {
         await page.locator("#cpkKeepDev").click();
         await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
         expect(await accNeeds(game)).toEqual(N(90, 10, 90, 10));
+        expect(JSON.parse((await cloud(game)).docs.u1.save).work).toEqual({v:1,completed:2,cool:90});
         expect(await hereNeeds(game)).toEqual(N(90, 10, 90, 10));
       } else {
         await page.locator("#cpkKeepAcc").click();
         await page.waitForEvent("load");
         await game.boot();
         expect(await hereNeeds(game)).toEqual(N(10, 90, 10, 90));
+        expect(await game.eval(()=>__T.save.work)).toEqual({v:1,completed:4,cool:33});
         expect(await game.eval(() => [__T.save.cr, __T.save.rel[0].f])).toEqual([500000, -20]);
         await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
         expect(await accNeeds(game)).toEqual(N(10, 90, 10, 90));

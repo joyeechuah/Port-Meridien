@@ -290,35 +290,37 @@ test.describe("needs: putting them back", () => {
     await onFoot(game);
     await game.eval(() => { __T.save.cr = 0; });
     await setNeeds(game, { hunger: 30 });
-    expect(await toKitchen(game)).toBe("Eat at the Market Kitchen · free");
+    expect(await toKitchen(game)).toBe("Market Kitchen · eat or work");
     await game.watchToasts();
     // two presses in the same moment: one meal
-    await game.eval(() => { __T.needsEat(); __T.needsEat(); });
+    await game.eval(() => { __T.kitchenMeal(); __T.kitchenMeal(); });
     expect((await needs(game)).hunger).toBe(65);
     expect(await game.eval(() => __T.save.cr)).toBe(0);
     expect(await game.eval(() => __T.save.needs.hunger), "saved straight away").toBe(65);
-    expect(await prompt(game)).toBe("Market Kitchen · you've just eaten");
+    expect(await prompt(game)).toBe("Market Kitchen · eat or work");
     await page.locator("#prompt").click();
+    await page.locator("#wkEat").click();
     expect((await needs(game)).hunger).toBe(65);
     const log = await game.toastLog();
     expect(log[0]).toMatch(/^A GOOD MEAL \| Hunger \+35/);
     expect(log[1]).toMatch(/^YOU'VE JUST EATEN/);
     // 30 s of play later it serves you again
     await steps(game, 1810);
-    expect(await prompt(game)).toBe("Eat at the Market Kitchen · free");
+    expect(await prompt(game)).toBe("Market Kitchen · eat or work");
     await game.key("e");
+    await page.locator("#wkEat").click();
     expect((await needs(game)).hunger).toBe(98);
     // full: no meal, and no wait either
     await steps(game, 1810);
     await setNeeds(game, { hunger: 100 });
     await steps(game, 1);
     await game.eval(() => { __T.NEEDS.hunger = 100; });
-    expect(await game.eval(() => __T.needsEat())).toBe(false);
+    expect(await game.eval(() => __T.kitchenMeal())).toBe(false);
     expect(await game.eval(() => __T.NS.mealAt < __T.NS.t)).toBe(true);
     // wanted: not now
     await game.eval(() => { __T.NEEDS.hunger = 40; __T.WANTED.lvl = 1; });
     expect(await toKitchen(game)).toBe("Lose the police first");
-    expect(await game.eval(() => __T.needsEat())).toBe(false);
+    expect(await game.eval(() => __T.kitchenMeal())).toBe(false);
     await game.eval(() => __T.copClear());
   });
 
@@ -663,7 +665,7 @@ test.describe("needs: the places", () => {
         let seen = false, i = 0;
         for (; i < 900 && (h === 0 ? F.z < K.z + to : F.z > K.z + to); i++) {
           T.driveUpdate(1 / 60);
-          if (document.getElementById("promptTxt").textContent === "Eat at the Market Kitchen · free" && !document.getElementById("prompt").classList.contains("hide")) seen = true;
+          if (document.getElementById("promptTxt").textContent === "Market Kitchen · eat or work" && !document.getElementById("prompt").classList.contains("hide")) seen = true;
         }
         T.keys.w = false;
         return { seen, past: h === 0 ? F.z >= K.z + to : F.z <= K.z + to, dx: Math.abs(F.x - (K.x - 0.6)) };
@@ -740,6 +742,14 @@ test("playing together: a friend driving fast beside you earns you nothing; only
   const jo = await game.eval(() => __T.NEEDS.fun), ali = await friend.eval(() => __T.NEEDS.fun);
   expect(jo).toBeCloseTo(65 - 601 / 600, 5);
   expect(ali).toBeCloseTo(65 - 601 / 600 + 2, 5);
+  const credits=await game.eval(()=>__T.save.cr);
+  await friend.eval(()=>{
+    const T=__T; T.footExit();const k=T.QUAY.kitchen;T.FOOT.x=k.x;T.FOOT.z=k.z;
+    T.workOpen();T.workStart();
+    for(let i=0;i<3;i++){T.workServe(i);if(i<2)T.workTick(10)}
+  });
+  expect(await friend.eval(()=>__T.save.work.completed)).toBe(1);
+  expect(await game.eval(()=>[__T.save.cr,__T.save.work.completed])).toEqual([credits,0]);
   await ctx2.close();
 });
 
@@ -770,4 +780,41 @@ test("standing up on the reward frame ends a bench interval before it pays", asy
     return { sitting: T.SIT.on, gain: T.VISIT.got };
   });
   expect(result).toEqual({ sitting: false, gain: 0 });
+});
+
+for(const size of [{width:360,height:640},{width:640,height:360}]){
+  test("a kitchen shift by touch, keyboard and controller at "+size.width+" by "+size.height, async({game,page})=>{
+    await page.setViewportSize(size);await onFoot(game);await toKitchen(game);
+    await game.eval(()=>{document.documentElement.style.zoom="2";__T.save.cr=0});
+    await page.locator("#prompt").click();
+    await expect(page.locator("#wkEat")).toBeFocused();
+    await page.locator("#wkStart").click();
+    for(let i=0;i<3;i++){
+      const b=page.locator("#wk"+i);await b.scrollIntoViewIfNeeded();
+      const box=await b.boundingBox();expect(box.height).toBeGreaterThanOrEqual(44);
+      if(i===0)await game.key("1");else await b.click();
+      if(i<2)await steps(game,601);
+    }
+    await expect(page.locator("#work")).toBeHidden();
+    expect(await game.eval(()=>[__T.save.cr,__T.save.work.completed])).toEqual([300,1]);
+    await expect(page.locator("#prompt")).toBeFocused();
+    await page.locator("#prompt").click();await game.eval(PAD,1);
+    await expect(page.locator("#work")).toBeHidden();
+  });
+}
+
+test("work stops on fast travel, home, arrest and knock-out",async({game})=>{
+  for(const action of ["fastTravel","home","arrest","knockout"]){
+    await onFoot(game);await toKitchen(game);
+    const r=await game.eval(action=>{
+      const T=__T;T.workOpen();T.workStart();T.workServe(0);
+      const started=T.WORK.active;
+      if(action==="home")T.goGarage(false);
+      if(action==="arrest"){T.save.armed=true;T.WANTED.lvl=1;T.copCaught()}
+      if(action==="knockout")T.knockedOut();
+      if(action==="fastTravel"){T.workClose();T.openMap();T.fastTravel({act:"dealer",x:T.DEALER_MARK.x,z:T.DEALER_MARK.z})}
+      return [started,T.WORK.active,T.save.work.completed];
+    },action);
+    expect(r).toEqual([true,false,0]);
+  }
 });

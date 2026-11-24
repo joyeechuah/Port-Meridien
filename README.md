@@ -54,6 +54,8 @@ On foot you can also take any traffic car that has stopped: stand in its lane so
 
 ## Needs
 
+At the Market Kitchen, choose **Eat** for a free meal or **Work a shift**. Serve bread, bowl and stew for 300 CR, with ten seconds between orders and two minutes of play before the next shift.
+
 Energy, hunger, fun and social each run from 0 to 100 and fall slowly while you play (not in menus, the garage or Photo Mode). See them, and your mood, under **NEEDS** in the pause menu. Low needs never slow or stop you: they only set your mood, a suggestion and a short hint.
 
 | Need | What puts it back |
