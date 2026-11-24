@@ -323,6 +323,8 @@ function finishEvent(tx){
   if(isRec&&ev.rec&&ev.rec.length>=8&&ev.rec.length<12000){ev.rec.push(+P.x.toFixed(1),+P.z.toFixed(1),+P.h.toFixed(2),+E.route.len.toFixed(1));save.ghost[E.id]={c:curCar().id,t,d:ev.rec}   /* a taken car's ghost is kept as the model it borrows: its made-up id means nothing after a reload, and the ghost was dropped */}
   rows.unshift(["Your time",fmtT(t)]);rows.push(["Best",fmtT(save.rec[E.id])+(isRec?"  · new record":"")],["Reward",rew?"+"+fmtCr(rew)+" CR":"none"]);
   if(cupRows)rows.push(...cupRows.rows);
+  // finishing is fun, wherever you came (js/life.js); quitting isn't
+  needsRace();
   if(rew)earn(rew);if(cupRows&&cupRows.prize)earn(cupRows.prize);persist();
   // the result shows once the car has stopped past the line (updateEvent): it used to show at once, with the car
   // frozen at race speed, which carried on the moment you pressed OK
@@ -421,6 +423,7 @@ function toast(t,sub,kind){
   const box=$("toasts"),d=document.createElement("div");d.className="toast "+(kind||"");
   const b=document.createElement("b");b.textContent=t;d.appendChild(b);
   if(sub){const s=document.createElement("span");s.textContent=sub;d.appendChild(s)}
+  box.querySelector(".needHint")?.remove();   // an incoming message takes priority over a needs hint
   box.prepend(d);while(box.children.length>4)box.lastChild.remove();toastFit();
   setTimeout(()=>d.classList.add("out"),2800);setTimeout(()=>d.remove(),3200);
 }
@@ -535,6 +538,9 @@ function icon(c,kind,x,z,scale,big){
   else if(kind==="event"){c.fillStyle="#fff";c.beginPath();c.arc(0,0,7.5,0,TAU);c.stroke();c.fill();c.fillStyle="#0d1a22";c.beginPath();c.arc(0,0,3.2,0,TAU);c.fill()}
   else if(kind==="radar"){c.fillStyle="#c9ced4";c.fillRect(-4.5,-4.5,9,9);c.strokeRect(-4.5,-4.5,9,9)}
   else if(kind==="landmark"){c.fillStyle="#7fd1c7";c.beginPath();c.moveTo(0,-6.5);c.lineTo(6.5,0);c.lineTo(0,6.5);c.lineTo(-6.5,0);c.closePath();c.stroke();c.fill()}
+  // your needs (js/life.js): the Market Kitchen, a bowl; the benches round the fountain, a bench
+  else if(kind==="kitchen"){c.fillStyle="#e8846b";c.beginPath();c.arc(0,0,7.5,0,TAU);c.stroke();c.fill();c.fillStyle="#fff";c.beginPath();c.arc(0,-.5,4.6,0,Math.PI);c.closePath();c.fill();c.fillRect(-2.2,3.6,4.4,1.3)}
+  else if(kind==="rest"){c.fillStyle="#8fc7e8";c.beginPath();c.arc(0,0,7.5,0,TAU);c.stroke();c.fill();c.fillStyle="#0d1a22";c.fillRect(-4.6,-1.4,9.2,2);c.fillRect(-3.8,.6,1.4,3.2);c.fillRect(2.4,.6,1.4,3.2)}
   else if(kind==="flag"){c.fillStyle="#f2b33d";c.beginPath();c.moveTo(0,0);c.lineTo(0,-14);c.lineTo(9,-10);c.lineTo(0,-6);c.stroke();c.fill();c.fillRect(-1,-14,2,14)}
   c.restore();
 }
@@ -595,6 +601,9 @@ function mapMarkers(){
   const list=[{x:hm.x,z:hm.z,name:"Your house",desc:"Change car, paint it, or pick another",kind:"home",act:"home"},{x:DEALER_MARK.x,z:DEALER_MARK.z,name:"Auto Gallery",desc:"Buy, sell and test drive cars",kind:"dealer",act:"dealer"}];
   for(const E of EVENTS)list.push({x:E.x,z:E.z,name:E.name,desc:(E.type==="tt"?"Time trial":"Race")+" · "+(E.route.len/1000).toFixed(1)+" km"+(save.rec[E.id]?" · best "+fmtT(save.rec[E.id]):""),kind:"event",act:"event",E});
   for(const r of RADARS)list.push({x:r.x,z:r.z,name:"Speed radar",desc:save.radar[r.id]?"Record "+save.radar[r.id]+" km/h":"No record yet",kind:"radar"});
+  // where your needs are seen to (js/life.js)
+  if(QUAY.kitchen)list.push({x:QUAY.kitchen.sx,z:QUAY.kitchen.sz,name:"Market Kitchen",desc:"A free meal · hunger +35",kind:"kitchen"});
+  list.push({x:QUAY.fountain[0],z:QUAY.fountain[1],name:"Benches by the fountain",desc:"Sit down to rest · energy up to +15",kind:"rest"});
   // landmarks show once found (the passport keeps the rest a secret)
   for(const L of LANDMARKS)if(save.found[L.id])list.push({x:L.x,z:L.z,name:L.name,desc:"Landmark · found",kind:"landmark"});
   return list;

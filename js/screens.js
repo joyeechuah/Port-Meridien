@@ -257,6 +257,7 @@ function buildGarageUI(){
   save.owned.forEach((id,i)=>{const c=carById(id),d=document.createElement("button");d.className="gdot"+(i===gSel?" on":"");d.setAttribute("aria-label",c.mk+" "+c.md);d.onclick=()=>gPick(i);dots.appendChild(d)});
   $("gcount").textContent=save.owned.length+"/"+GARAGE_CAP+" CARS";
   const won=CUPS.filter(C=>save.champ[C.cls]&&save.champ[C.cls].won).map(C=>C.cls);$("gcups").textContent=won.length?" · CUPS WON: "+won.join(" "):"";
+  restSync();   // REST, at home (js/life.js)
 }
 function statBars(c,p){
   $(p+"1").style.width="0";$(p+"2").style.width="0";$(p+"3").style.width="0";
@@ -687,7 +688,7 @@ $("repairNow").onclick=()=>{
 function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audioOn(false);
   $("pTitle").textContent=ev?ev.E.name:testDrive?"Test drive · "+carById(testDrive.id).md:job?"Contract · "+job.def.title:"Free ride";
   $("pHome").textContent=job?"GO HOME · ENDS CONTRACT":"GO HOME · REPAIR FREE";
-  $("pRepair").textContent="VEHICLE CONDITION · "+damagePct()+"%";
+  $("pRepair").textContent="VEHICLE CONDITION · "+damagePct()+"%";$("pNeeds").textContent=needsLabel();
   show("pQuit",!!(ev||testDrive));$("pQuit").textContent=testDrive?"END TEST DRIVE":ev&&ev.fin?"SEE RESULT":"QUIT EVENT";show("pHome",!testDrive);
   syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);show("pause",true)}
 function pauseOff(){show("pause",false);if(state==="PAUSE"){setState("DRIVE");audioOn(true);TILT.zero=TILT.phi}}
@@ -829,6 +830,7 @@ addEventListener("keydown",e=>{
   else if(!$("jobs").classList.contains("hide")){if(k==="escape")jobsClose()}
   else if(!$("play").classList.contains("hide")){if(k==="escape")netClose()}
   else if(!$("cups").classList.contains("hide")){if(k==="escape")cupsClose()}
+  else if(!$("needs").classList.contains("hide")){if(k==="escape")needsClose()}
   else if(state==="PAUSE"){if(k==="escape"||k==="p")pauseOff();else if(k==="v")photoEnter()}
   else if(state==="PHOTO"){
     if(!$("phShot").classList.contains("hide")){if(k==="escape")photoShotClose()}
@@ -941,9 +943,11 @@ function fbLoad(f){
     s.integrity=FB_SRI[f];s.async=true;s.crossOrigin="anonymous";s.onload=res;
     s.onerror=()=>{delete FB_LOADS[f];s.remove();console.warn("Couldn't load "+s.src);rej(new Error("Couldn't load "+f))};document.head.appendChild(s)}));
 }
-// what isn't progress: settings, the car picked, a note about a contract under way. They're backed up too, but don't
-// count as a difference worth asking about. Ghost laps stay on each device (they can pass Firestore's 1 MB limit)
-const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn"];
+// what isn't progress: settings (FLASHES, VIOLENCE and the pistol choice among them: two saves that differed only there
+// used to ask which to keep), the car picked, a note about a contract under way, your needs (js/life.js). They're
+// backed up too, but don't count as a difference worth asking about. Ghost laps stay on each device (they can pass
+// Firestore's 1 MB limit)
+const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn","needs","flash","violence","armed"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 const clProg=sv=>{const o={};for(const k in sv)if(!CL_PREFS.includes(k))o[k]=sv[k];
@@ -1003,7 +1007,7 @@ function clLoadMeta(){let m=null;try{m=JSON.parse(localStorage.getItem(CLOUD_KEY
   // owner: the id of the account this device's progress last went to or came from. It stays after signing out, so
   // another account signing in here is asked before that progress goes to it. Only the id: no name or email of a
   // signed-out account is kept on the device (older saves stored the name; it's dropped here)
-  const o=Object.assign({uid:null,name:"",email:"",rev:0,prog:"",full:"",at:0,rehash:false,owner:null,ownerName:""},m&&typeof m==="object"?m:{});
+  const o=Object.assign({uid:null,name:"",email:"",rev:0,prog:"",full:"",needs:"",at:0,rehash:false,owner:null,ownerName:""},m&&typeof m==="object"?m:{});
   if(o.uid&&!o.owner)o.owner=o.uid;o.ownerName="";return o}
 function clSaveMeta(){try{localStorage.setItem(CLOUD_KEY,JSON.stringify(CL.meta))}catch(e){}}
 CL={meta:clLoadMeta(),ad:null,user:null,st:"guest",msg:"",busy:false,timer:0,pick:null,lastPut:0,other:false,signingOut:null};
@@ -1017,7 +1021,7 @@ function clSet(st,msg){CL.st=st;CL.msg=msg||"";clRender()}
 function clBoot(){
   CL.ad=clAdapter();
   // straight after a restore from the account: the save as this game reads it is the version now in step
-  if(CL.meta.rehash){CL.meta.rehash=false;CL.meta.prog=clProg(save);CL.meta.full=clHash(clCanon(clPayload(save)));clSaveMeta()}
+  if(CL.meta.rehash){CL.meta.rehash=false;CL.meta.prog=clProg(save);CL.meta.full=clHash(clCanon(clPayload(save)));CL.meta.needs=needsKey(save);clSaveMeta()}
   if(CL.meta.uid&&CL.ad)clConnect(false);else clRender();
   addEventListener("online",()=>{if(CL.user&&(CL.st==="offline"||CL.st==="pending"))clSync()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&CL.user)clSync()});
@@ -1042,7 +1046,7 @@ function clConnect(interactive){
     if(tabIdle)return;
     if(!u){if(CL.meta.uid){clSet("signedout","You're signed out. Sign in again to keep backing up; your progress is safe on this device.")}else clSet("guest");return}
     CL.user=u;CL.other=!!(CL.meta.owner&&CL.meta.owner!==u.uid);
-    if(CL.meta.uid&&CL.meta.uid!==u.uid||CL.other){CL.meta.rev=0;CL.meta.prog="";CL.meta.full="";CL.meta.at=0}
+    if(CL.meta.uid&&CL.meta.uid!==u.uid||CL.other){CL.meta.rev=0;CL.meta.prog="";CL.meta.full="";CL.meta.needs="";CL.meta.at=0}
     CL.meta.uid=u.uid;CL.meta.name=u.name;CL.meta.email=u.email;clSaveMeta();
     return clReadAccount()}).catch(clAccountError)}
 function clReconcile(doc){
@@ -1053,11 +1057,20 @@ function clReconcile(doc){
     return clUpload(doc&&doc.rev||0)}
   const L=clProg(save),C=clProg(cloud),rev=doc.rev||0;
   // the same progress, or neither side moved on since this device last synced: in step (settings are sent if changed)
-  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();clSaveMeta();return clUpload(rev,true)}
+  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}
   if(clFresh(save))return clApply(doc,cloud);                                      // a new device: bring the account's progress here
   if(CL.meta.rev===rev&&CL.meta.prog)return clUpload(rev);                          // only this device moved on since it last synced
   if(CL.meta.rev&&CL.meta.prog===L)return clApply(doc,cloud);                        // only the account moved on (another device)
   CL.pick={doc,cloud};clSet("conflict","This device and your account have different progress. Choose which to keep.");clPickShow()}
+// Your needs (js/life.js) aren't progress, so two saves that differ only there are in step. Whose go up with the next
+// backup? The account's, if this device hasn't changed its own since it last synced (it would only be sending old
+// ones back over newer ones from another device): they become this device's. Otherwise this device's are the newer.
+// One whole set or the other, never the higher of each; a save from before needs has the starting values
+function clNeeds(cloud){
+  needsCommit();   // bench and speed rewards can be newer than the last local checkpoint
+  const here=needsKey(save),there=needsKey(cloud);
+  if(here!==there&&(!CL.meta.needs||CL.meta.needs===here)){needsLoad(needsOfSave(cloud));persist();if(state==="GARAGE")restSync()}
+  if(needsKey(save)===there)CL.meta.needs=there}
 // the account's save becomes this device's (its ghost laps stay), and the game starts again from it
 // From here until the page reloads, this tab neither saves nor backs up: the progress still in memory would otherwise
 // go back over the restored save (on leaving the page) and up to the account
@@ -1074,7 +1087,7 @@ function clUpload(rev,onlyIfChanged){if(tabIdle||CL.applying||CL.signingOut)retu
   CL.busy=true;CL.lastPut=Date.now();clRender();
   return CL.ad.put(user.uid,{save:JSON.stringify(pay),v:save.v||2,summary:clSummary(save)},rev).then(r=>clForUser(user,()=>{CL.busy=false;
     if(!r.ok){CL.meta.rev=-1;return clReconcile(r.doc)}
-    CL.meta.rev=r.rev;CL.meta.prog=prog;CL.meta.full=full;CL.meta.at=Date.now();clOwn();clSaveMeta();clSet("synced");
+    CL.meta.rev=r.rev;CL.meta.prog=prog;CL.meta.full=full;CL.meta.needs=needsKey(pay);CL.meta.at=Date.now();clOwn();clSaveMeta();clSet("synced");
     if(clHash(clCanon(clPayload(save)))!==full)clChanged()})).catch(e=>clForUser(user,()=>{CL.busy=false;clSet(clOff(e)?"offline":"pending",clErr(e))}))}
 // a backup after the progress changed (a few seconds after, on leaving the page, when back online, and BACK UP NOW)
 function clSync(){clearTimeout(CL.timer);CL.timer=0;if(!CL.user||CL.busy||CL.applying||CL.signingOut||tabIdle||CL.st==="conflict"||CL.st==="connecting")return Promise.resolve();
@@ -1092,7 +1105,7 @@ function clSignOut(){if(!CL.ad||CL.signingOut||CL.applying)return;
     // An already submitted first backup may succeed even if its reply arrives after sign-out.
     const owner=CL.meta.owner||(CL.busy&&CL.user?CL.user.uid:null);
     clearTimeout(CL.timer);CL.timer=0;CL.user=null;CL.pick=null;CL.busy=false;CL.other=false;CL.signingOut=null;
-    CL.meta={uid:null,name:"",email:"",rev:0,prog:"",full:"",at:0,rehash:false,owner:owner||null,ownerName:""};
+    CL.meta={uid:null,name:"",email:"",rev:0,prog:"",full:"",needs:"",at:0,rehash:false,owner:owner||null,ownerName:""};
     clSaveMeta();clSet("guest");toast("SIGNED OUT","Your progress stays on this device; it isn't backed up now");
   },()=>{
     CL.signingOut=null;clSet(CL.st,"Couldn't sign out. Try again.");clChanged();

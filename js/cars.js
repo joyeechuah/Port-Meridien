@@ -759,7 +759,18 @@ let locked=false,autoHold=false;
 const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,index:null,prev:[]};
 // screens opened from the pause menu, and how each closes
 /** @type {[string, () => void][]} */
-const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()]];
+const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()],["needs",()=>needsClose()],["play",()=>netClose()]];
+// a controller in the pause menu: the D-pad moves between the buttons of the menu (or of the screen opened from it),
+// with an outline on the one picked, and A presses it
+function padMenu(hit){
+  const sub=PAUSE_SUBS.map(([id])=>$(id)).find(e=>!e.classList.contains("hide")),box=sub||$("pause");
+  const bs=/** @type {HTMLElement[]} */([...box.querySelectorAll("button,a.mbtn,input")]).filter(b=>b.offsetParent&&!(/** @type {HTMLButtonElement} */(b).disabled));
+  if(!bs.length)return;
+  const i=bs.indexOf(/** @type {HTMLElement} */(document.activeElement)),d=hit(12)||hit(14)?-1:hit(13)||hit(15)?1:0;
+  if(d){const b=bs[i<0?(d>0?0:bs.length-1):(i+d+bs.length)%bs.length];document.querySelectorAll(".padSel").forEach(e=>e.classList.remove("padSel"));
+    b.classList.add("padSel");b.focus({preventScroll:true});b.scrollIntoView({block:"nearest"})}
+  else if(hit(0)&&i>=0)bs[i].click();
+}
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
   if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GP.index=null;GO.stick[0]=GO.stick[1]=0;return}
@@ -784,7 +795,7 @@ function pollPad(){
   else if(state==="DRIVE"&&TALK.p)talkPad(hit);
   else if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on&&!BOAT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on&&!BOAT.on)footExit()}
   // in the pause menu, B or Start closes a screen opened from it (passport, contracts) before the menu itself
-  else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}}
+  else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}else padMenu(hit)}
   else if(state==="LOAD"){if(hit(0)&&!$("lstart").classList.contains("hide"))$("lstart").click()}
   else if(state==="MAP"){if(hit(8)||hit(1)){if(!$("passport").classList.contains("hide"))passportClose();else closeMap()}}
   // B closes the picture just taken first, as Escape does; from Photo Mode itself it goes back
@@ -795,7 +806,7 @@ function pollPad(){
   // times as fast at 120 fps as at 30)
   {const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8;GO.stick[0]=state==="GARAGE"?dz(g.axes[2]||0):0;GO.stick[1]=state==="GARAGE"?dz(g.axes[3]||0):0}
   if(state==="GARAGE"&&cuOpen()){if(hit(1))custClose(false);else if(hit(0))custClose(true)}
-  else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick()}
+  else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(2))needsRest();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick()}
   // in the dealership A buys the car shown (or drives it, if it's yours), X takes it for a test drive
   else if(state==="DEALER"){const on=id=>{const b=$(id);return !b.classList.contains("hide")&&!b.disabled};
     if(hit(1))closeDealer();else if(hit(12)||hit(14))dPick(dSel-1);else if(hit(13)||hit(15))dPick(dSel+1);

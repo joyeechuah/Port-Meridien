@@ -1,6 +1,6 @@
 # Step 5: the life side
 
-**Status: working decisions, first part built.** Jo Yee wants Port Meridien to be a mix of GTA 6 and The Sims 4: the player chooses what to do, interacts with other people, and can also shoot, drive and travel. These choices follow the approach used for step 4 (suggestions first, changeable before release). Mechanics only: no names, characters or art from other games.
+**Status: working decisions; talking and needs built.** Jo Yee wants Port Meridien to be a mix of GTA 6 and The Sims 4: the player chooses what to do, interacts with other people, and can also shoot, drive and travel. These choices follow the approach used for step 4 (suggestions first, changeable before release). Mechanics only: no names, characters or art from other games.
 
 ## Built: talking to people (`js/life.js`)
 
@@ -17,10 +17,14 @@
 | Saving | Kept in the save as `rel` (friendship and conversations had), cleaned on loading, and counted as progress when choosing between a local and a cloud save |
 | Controls | Keyboard 1 to 6, mouse or touch on the buttons, a controller's D-pad and A |
 
+## Built: needs and moods (`js/life.js`)
+
+Energy, hunger, fun and social, a mood from them, and the places that see to them: the decisions and how they were built are in [`docs/LIFE_NEEDS_DESIGN.md`](LIFE_NEEDS_DESIGN.md).
+
 ## Next, not decided
 
-1. **Needs**: energy, hunger, fun and social, filled by sleeping at home, eating at a café, races and talking. They change your mood; nothing punishes you harshly.
-2. **Moods**: happy, tense, bored and so on, from needs and events, with small effects (prices, police, friends).
+1. **Moods with effects**: today a mood only changes a suggestion and a hint. Small effects (prices, police, friends) are not decided.
+2. **More places for needs**: a café with seats, more benches, the house's own bed.
 3. **Friends doing things with you**: ride along, call them, meet at a place.
 4. **A home to run**: furniture in the house, bills, a bed to sleep in and skip the night.
 5. **A job**: shifts that pay, alongside contracts.

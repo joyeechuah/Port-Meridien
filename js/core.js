@@ -106,8 +106,19 @@ const OUTFITS=[
   {id:"stripe",name:"Boardwalk stripe",detail:"Coral striped tee · dark denim",shirt:0xaf5a53,pants:0x394c59,trim:0xffcfaa},
   {id:"club",name:"Night shift",detail:"Ink jacket · ivory trousers",shirt:0x323958,pants:0xd9ccae,trim:0xcaa57f}
 ];
-const save={v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{}};
+// what each of the four needs (js/life.js) starts at, out of 100
+const NEEDS_START={energy:80,hunger:75,fun:65,social:65};
+const save={v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
+// the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
+// version starts again from the starting values; a missing or broken number is put back to its own starting value,
+// and keys the game doesn't know are left out. Used on loading, and on a save from the account (js/screens.js)
+/** @returns {{v:number,energy:number,hunger:number,fun:number,social:number}} */
+function needsClean(n){
+  const ok=!!n&&typeof n==="object"&&!Array.isArray(n)&&n.v===1,o=/** @type {any} */ ({v:1});
+  for(const k in NEEDS_START){const x=ok?n[k]:undefined;o[k]=typeof x==="number"&&Number.isFinite(x)?Math.round(clamp(x,0,100)):NEEDS_START[k]}
+  return o;
+}
 try{
   const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
   if(s&&typeof s==="object"&&!Array.isArray(s)){
@@ -165,6 +176,7 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
+  save.needs=needsClean(save.needs);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};
    for(const k of ["A1","A2","A3","A4","A5","A6","A7"]){const v=c[k];if(!v||typeof v!=="object")continue;
@@ -186,7 +198,8 @@ if(!save.owned.length)save.owned=STARTERS.slice();
 if(!save.owned.includes(save.cur))save.cur=save.owned[0];
 // if the browser refuses to store the save (private mode, storage full) the game carries on, and says so once
 let saveWarned=false,CL=null,tabIdle=false;   // tabIdle: the game is open in a newer tab, and this one has stopped   // CL: the cloud save's state, set up with it below (null until then, or with no cloud)
-function persist(){if(tabIdle)return;if(CL){if(CL.applying)return;clChanged()}try{localStorage.setItem(SAVE_KEY,JSON.stringify(save))}catch(e){if(!saveWarned&&typeof toast==="function"){saveWarned=true;toast("PROGRESS NOT SAVED","This browser isn't letting the game store your progress","bad")}}}
+// (the needs are kept with fractions while you play, js/life.js; the save gets them as whole numbers, here)
+function persist(){if(tabIdle)return;if(typeof needsCommit==="function")needsCommit();if(CL){if(CL.applying)return;clChanged()}try{localStorage.setItem(SAVE_KEY,JSON.stringify(save))}catch(e){if(!saveWarned&&typeof toast==="function"){saveWarned=true;toast("PROGRESS NOT SAVED","This browser isn't letting the game store your progress","bad")}}}
 const paintOf=id=>STREET.has(id)?STREET.get(id).paint:save.paint[id]!==undefined?save.paint[id]:carById(id).body;
 
 /* ================================================================ RENDERER */
