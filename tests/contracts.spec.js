@@ -361,4 +361,20 @@ test.describe("contracts", () => {
     expect(r).toEqual({ job: false, cr: c0, saved: null, abandoned: 1 });
     await expect.poll(async () => (await game.toastLog()).join(" ")).toContain("CONTRACT");
   });
+
+  test("RESTART with the police after you keeps the contract under way and its clock; once they've gone it restarts", async ({ game, page }) => {
+    await game.open();
+    await game.driveOut();
+    await game.park();
+    const J = await game.eval(() => { const T = __T, J = T.JOBS.find((j) => j.type === "courier"); T.jobStart(J); T.job.timing = true; T.job.left = 77; T.WANTED.lvl = 1; return J.id; });
+    await game.eval(() => { __T.pauseOn(); __T.jobsOpen(); });
+    await page.locator("#jbRestart").click();
+    const r = await game.eval(() => ({ id: __T.job && __T.job.def.id, left: __T.job && __T.job.left, abandoned: __T.save.jobs.abandoned, gps: !!__T.gps.t, note: document.getElementById("jbNote").textContent, open: !document.getElementById("jobs").classList.contains("hide") }));
+    expect(r).toEqual({ id: J, left: 77, abandoned: 0, gps: true, note: "Lose the police first to restart: this contract carries on.", open: true });
+    expect(await game.eval(() => __T.jobRestart())).toBe(false);
+    // the police give up: RESTART starts it again from the first stop
+    await game.eval(() => __T.copClear());
+    await page.locator("#jbRestart").click();
+    expect(await game.eval(() => ({ id: __T.job && __T.job.def.id, stop: __T.job && __T.job.stop, abandoned: __T.save.jobs.abandoned, state: __T.state }))).toEqual({ id: J, stop: 0, abandoned: 1, state: "DRIVE" });
+  });
 });

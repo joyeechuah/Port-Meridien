@@ -501,6 +501,16 @@ test.describe("cloud save", () => {
     await expect(page.locator("#cpkAcc")).toContainText("2 people met · 0 friends · Maya: Dislikes you");
   });
 
+  test("FLASHES, VIOLENCE and the pistol choice are settings, not progress: two saves that differ only there don't ask", async ({ game }) => {
+    await game.open();
+    const r = await game.eval(() => {
+      const T = __T, a = T.clProg(T.save), b = JSON.parse(JSON.stringify(T.save));
+      b.flash = !b.flash; b.violence = (b.violence + 1) % 3; b.armed = !b.armed;
+      return a === T.clProg(b);
+    });
+    expect(r).toBe(true);
+  });
+
   test("the ghost car switch is a setting, not progress", async ({ game }) => {
     await game.open();
     const r = await game.eval(() => {

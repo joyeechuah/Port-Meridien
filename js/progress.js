@@ -188,7 +188,11 @@ function jobEnd(how,why){
   if(!$("jobs").classList.contains("hide"))renderJobs();
   return true;
 }
-function jobRestart(){if(!job)return false;const J=job.def;jobEnd("abandoned");return jobStart(J)}
+// the same contract again from the start. Nothing changes if it couldn't start again now (the police after you): the
+// delivery under way and its clock carry on. It used to end the contract first and then fail to start the new one,
+// so it counted as abandoned and the route was gone (Codex's audit, 24 Nov)
+const jobRestartWhy=()=>WANTED.lvl?"Lose the police first":ev?"Not during a race":testDrive?"Not during a test drive":state!=="DRIVE"&&state!=="PAUSE"?"Not now":"";
+function jobRestart(){if(!job||jobRestartWhy())return false;const J=job.def;jobEnd("abandoned");return jobStart(J)}
 // once a frame while driving
 function jobTick(dt){
   if(!job)return;
@@ -221,7 +225,7 @@ function renderJobs(){
   $("jbStats").textContent="Completed: "+s.parcel+" parcel · "+s.courier+" courier · "+s.tour+" tour"+(s.tour===1?"":"s")+" · earned "+fmtCr(s.earned)+" CR";
   const cur=$("jbCur");cur.innerHTML="";
   if(job){const J=job.def,b=document.createElement("b"),sp=document.createElement("span");b.textContent="Under way: "+JOB_TYPES[J.type]+" · "+J.title;sp.textContent=jobObjective()+(job.timing?" · "+fmtSecs(job.left)+" left":"");
-    const r=document.createElement("button"),a=document.createElement("button");r.className="mbtn";r.id="jbRestart";r.textContent="RESTART";r.onclick=()=>{jobRestart();jobsClose();if(state==="PAUSE")pauseOff()};
+    const r=document.createElement("button"),a=document.createElement("button");r.className="mbtn";r.id="jbRestart";r.textContent="RESTART";r.onclick=()=>{const why=jobRestartWhy();if(why){$("jbNote").textContent=why+" to restart: this contract carries on.";return}jobRestart();jobsClose();if(state==="PAUSE")pauseOff()};
     a.className="mbtn";a.id="jbAbandon";a.textContent="ABANDON";a.onclick=()=>{jobEnd("abandoned","No reward");renderJobs()};
     const acts=document.createElement("div");acts.className="jbacts";acts.append(r,a);cur.append(b,sp,acts)}
   show("jbCur",!!job);
@@ -268,8 +272,9 @@ function cupTimes(E,cls){
 const champOf=cls=>save.champ[cls]||(save.champ[cls]={r:0,pts:[],won:false});
 const cupTotal=c=>c.pts.reduce((a,x)=>a+x,0);
 // can a cup start now? the reason if not
+// (the police first: a won cup played AGAIN during a chase used to wipe its rounds and points, then be refused)
 function cupBlocked(cls){
-  if(job)return "Finish or abandon your contract first";if(testDrive)return "Not during a test drive";if(ev)return "Finish or quit this event first";
+  if(WANTED.lvl)return "Lose the police first";if(job)return "Finish or abandon your contract first";if(testDrive)return "Not during a test drive";if(ev)return "Finish or quit this event first";
   const own=save.owned.map(carById).filter(c=>c.cls===cls);
   if(!own.length)return "Opens once you own an "+cls+" car";
   if(curCar().cls!==cls)return "Drive an "+cls+" car to enter: your "+own.map(c=>c.md).join(", ")+(own.length>1?" are":" is")+" at home";

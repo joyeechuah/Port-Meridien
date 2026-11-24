@@ -943,10 +943,11 @@ function fbLoad(f){
     s.integrity=FB_SRI[f];s.async=true;s.crossOrigin="anonymous";s.onload=res;
     s.onerror=()=>{delete FB_LOADS[f];s.remove();console.warn("Couldn't load "+s.src);rej(new Error("Couldn't load "+f))};document.head.appendChild(s)}));
 }
-// what isn't progress: settings, the car picked, a note about a contract under way, your needs (js/life.js). They're
+// what isn't progress: settings (FLASHES, VIOLENCE and the pistol choice among them: two saves that differed only there
+// used to ask which to keep), the car picked, a note about a contract under way, your needs (js/life.js). They're
 // backed up too, but don't count as a difference worth asking about. Ghost laps stay on each device (they can pass
 // Firestore's 1 MB limit)
-const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn","needs"];
+const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn","needs","flash","violence","armed"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 const clProg=sv=>{const o={};for(const k in sv)if(!CL_PREFS.includes(k))o[k]=sv[k];
