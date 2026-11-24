@@ -125,6 +125,7 @@ function resetToRoad(fade){
 function fastTravel(m){
   closeMap();
   fadeThen(420,()=>{
+    if(RIDE.dest)rideEnd("drop");   // a map jump cannot complete a requested lift
     if(m.act==="home"){goGarage(true);return}
     if(m.act==="event"){const p=edgePos(m.E.route,6);P.x=p.x;P.z=p.z;P.h=Math.atan2(p.dx,p.dz)}
     else{P.x=m.x;P.z=m.z}
