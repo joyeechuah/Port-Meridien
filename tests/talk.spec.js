@@ -344,11 +344,12 @@ for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone l
       await meet(game, 0);
       // the camera follows you round; give it a second to settle behind you
       await steps(game, 60);
-      expect(await game.eval(() => __T.talkOpen(__T.PEDS[0]))).toBe(true);
+      // a friend, so all eight buttons show: the six lines, Come for a ride and Goodbye
+      expect(await game.eval(() => { __T.save.rel[0] = { f: 45, n: 3 }; return __T.talkOpen(__T.PEDS[0]); })).toBe(true);
       const r = await game.eval(() => {
         const box = (e) => e.getBoundingClientRect(),
           over = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-        const bs = [...document.querySelectorAll("#tkActs .btn")].map(box),
+        const bs = [...document.querySelectorAll("#tkActs .btn")].filter((e) => e.offsetParent).map(box),
           t = box(document.getElementById("talk")),
           pads = [...document.querySelectorAll("#pads .pz")].filter((e) => e.offsetParent && getComputedStyle(e).visibility !== "hidden").map(box),
           mini = box(document.getElementById("minWrap"));
@@ -368,7 +369,7 @@ for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone l
           at: [+v.x.toFixed(2), +v.y.toFixed(2), Math.round(headY), Math.round(t.top)]
         };
       });
-      expect(r.n).toBe(7);
+      expect(r.n).toBe(8);
       expect(r.minH).toBeGreaterThanOrEqual(40);
       expect(r.inside).toBe(true);
       expect(r.padHit, "buttons under the touch controls").toBe(0);

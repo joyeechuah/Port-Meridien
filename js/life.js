@@ -43,7 +43,7 @@ const TAKES={
 const TALK={p:null,person:null,used:{},n:0,busy:0,end:0,sel:0,fireHold:false,social:false};
 const LIFE={t:0};
 // who you can talk to: someone near you on the pavement, not lying down, crossing the road or still shaken by your car
-const talkable=p=>FOOT.on&&!TALK.p&&!!personOf(p)&&p.m.G.visible&&p.st!=="down"&&p.st!=="cross"&&!(copClock-(p.hitAt??-99)<4);
+const talkable=p=>FOOT.on&&!TALK.p&&!!personOf(p)&&p.m.G.visible&&p.st!=="down"&&p.st!=="cross"&&p!==RIDE.p&&!(copClock-(p.hitAt??-99)<4);
 function talkOpen(p){
   if(!talkable(p))return false;
   const who=personOf(p),r=rel(who.id);
@@ -83,6 +83,7 @@ function talkPick(k){
   let line=talkReaction(who,t.id,d);
   if(t.id==="tip")line+=" “"+talkTip(who)+"”";
   const now=rel(who.id);
+  if(r.f<RIDE_AT&&now.f>=RIDE_AT)line+=" You're friends now: ask "+who.name+" to come for a ride.";
   // someone who has come to dislike you badly walks off; someone in a hurry gives you three lines at most
   if(now.f<=-50){line+=" "+who.name+" walks off.";TALK.end=1.4}
   else if(who.trait==="busy"&&TALK.n>=3){line+=" “Sorry, I have to run!”";TALK.end=1.4}
@@ -224,6 +225,8 @@ function talkShow(line){
   $("tkName").textContent=who.name;$("tkTrait").textContent=TRAIT_LABEL[who.trait];$("tkRelLbl").textContent=relLabel(r);
   bar.style.width=Math.abs(f)/2+"%";bar.style.left=(f<0?50-Math.abs(f)/2:50)+"%";bar.classList.toggle("neg",f<0);
   if(line!==undefined)$("tkLine").textContent=line;
+  // friends can be asked along for a ride (40 or more: Friend and up)
+  const ride=$("tkRide"),was=!ride.classList.contains("hide");show("tkRide",f>=RIDE_AT);if(was!==(f>=RIDE_AT))talkSel(Math.min(TALK.sel,tkButtons().length-1));
   show("talk",true);document.body.classList.add("talking");
 }
 // keys while talking: 1 to 6 say the lines, Escape, E or Backspace says goodbye. True when the key was used
@@ -231,13 +234,15 @@ function talkKey(k){
   if(!TALK.p)return false;
   if(k==="escape"||k==="e"||k==="backspace"){talkClose();return true}
   const i="123456".indexOf(k);if(k.length===1&&i>=0){talkPick(TALKS[i].id);return true}
+  if(k==="7"&&!$("tkRide").classList.contains("hide")){talkRide();return true}
   return false;
 }
 // the line picked for a controller: its outline and the index A uses move together, and with keyboard focus (focusin)
-function talkSel(i){TALK.sel=i;[...$("tkActs").children].forEach((b,k)=>b.classList.toggle("sel",k===i))}
+const tkButtons=()=>/** @type {HTMLElement[]} */([...$("tkActs").children]).filter(b=>!b.classList.contains("hide"));
+function talkSel(i){TALK.sel=i;const bs=tkButtons();[...$("tkActs").children].forEach(b=>b.classList.toggle("sel",bs.indexOf(/** @type {HTMLElement} */(b))===i))}
 // a controller: the D-pad moves between the lines, A says the one picked, B or X says goodbye, Start pauses
 function talkPad(hit){
-  const bs=/** @type {HTMLElement[]} */([...$("tkActs").children]);
+  const bs=tkButtons();
   if(hit(1)||hit(2)){talkClose();return}
   if(hit(9)){pauseOn();return}
   const d=hit(12)||hit(14)?-1:hit(13)||hit(15)?1:0;
@@ -247,7 +252,7 @@ function talkPad(hit){
 // knocking someone down, or running into them: they like you a good deal less, and they let you see it once they're up
 function lifeHurt(p,by){
   const who=personOf(p);if(!who)return;const r=rel(who.id);
-  relSet(who.id,r.f-by,Math.max(1,r.n));if(TALK.p===p)talkClose();p.mad=true;persist();
+  relSet(who.id,r.f-by,Math.max(1,r.n));if(TALK.p===p)talkClose();if(RIDE.p===p)rideEnd("hurt");p.mad=true;persist();
 }
 
 /* ================================================================ REACTIONS: a bubble over a person's head */
@@ -289,15 +294,13 @@ function lifeUpdate(dt){
     else if(TALK.end>0&&(TALK.end-=dt)<=0)talkClose();
   }
   for(const p of PEDS){
+    if(p===RIDE.p)continue;   // with you (rideTick)
     const who=personOf(p);
     if(p.mad&&p.st!=="down"){p.mad=false;emote(p,"angry")}
     // a friend passing you on foot waves
     else if(who&&FOOT.on&&!TALK.p&&p.m.G.visible&&p.st!=="down"&&(save.rel[who.id]?.f??0)>=35&&LIFE.t-(p.waved??-99)>40&&Math.hypot(p.x-FOOT.x,p.z-FOOT.z)<7){
       p.waved=LIFE.t;emote(p,"wave",2)}
-    const s=p.emo;if(!s||!s.sp.visible)continue;
-    s.t+=dt;const k=s.t/s.T;if(k>=1){s.sp.visible=false;continue}
-    const pop=Math.min(1,s.t/.18)*.44;s.sp.scale.set(pop,pop,1);s.sp.position.y=2.08+Math.min(.12,s.t*.1);
-    s.sp.material.opacity=k>.8?(1-k)/.2:1;
+    emoteTick(p,dt);
   }
 }
 
@@ -452,9 +455,158 @@ function needsClose(){show("needs",false);$("pause").inert=false;try{$("pNeeds")
   $("pNeeds").onclick=needsOpen;$("ndClose").onclick=needsClose;$("gRest").onclick=()=>needsRest()}
 needsLoad(save.needs);
 
+/* ================================================================ RIDES: a friend comes along in your car */
+// Step 5, part 3 (docs/LIFE_DESIGN.md). Ask a friend (40 or more) to come for a ride: they walk with you to your car,
+// get in beside you, talk as you drive, and now and then ask for a lift somewhere. Company lifts Social and, slowly,
+// the friendship; driving like a maniac, crashing or bringing the police along doesn't. Stop and choose "Drop off",
+// get out, or go indoors, and they go on their way. A ride isn't saved: the friendship it earns is
+const RIDE_AT=40,RIDE_V={follow:1.6,hurry:3.6,door:1.35,board:1.8,wait:90,social:6,friend:20,friendMax:10,chat:[26,40],fast:130,
+  tip:250,lift:.5,near:[300,1500]};
+/** @type {{p:any,who:any,st:string,t:number,stuck:number,gain:number,soc:number,fr:number,chat:number,fastAt:number,hitAt:number,dmg:number,dest:any,cops:boolean,car:string|null}} */
+const RIDE={p:null,who:null,st:"",t:0,stuck:0,gain:0,soc:0,fr:0,chat:30,fastAt:-99,hitAt:-99,dmg:0,dest:null,cops:false,car:null};
+// what each kind of person says: yes, a word on the way, at speed, after a crash, with the police behind
+const RIDE_LINES={
+  cheerful:{yes:"I'd love to!",chat:["I love this road.","Put the radio on, go on!"],fast:"Whee! Faster!",crash:"Oops! Everyone all right?",cops:"Oh no, oh no. Drive!"},
+  grumpy:{yes:"Fine. Just don't speed.",chat:["Mind the potholes.","You drive like my brother."],fast:"Slow down, would you?",crash:"That's coming out of your pocket.",cops:"I knew this was a mistake."},
+  joker:{yes:"Shotgun!",chat:["What's a car's favourite meal? Brake-fast.","I'd tell you a joke about this road, but it goes nowhere."],fast:"Is this the express?",crash:"Lovely parking.",cops:"Floor it!"},
+  chatty:{yes:"Ooh, yes. I'll tell you all about my week.",chat:["My aunt used to live up this way.","Did I ever tell you about the ferry strike?"],fast:"My cousin drove like this. He walks now.",crash:"Well, that's a story for later.",cops:"Is that... for us?"},
+  shy:{yes:"Okay... thank you.",chat:["It's nice, just driving.","I don't get out much."],fast:"Could we go a bit slower?",crash:"Oh!",cops:"Please, I want to get out."},
+  busy:{yes:"Quickly, then.",chat:["Is there a quicker way?","I've a call in five minutes."],fast:"Good, I'm late anyway.",crash:"I haven't got time for this.",cops:"I really haven't got time for this."}
+};
+const rideSay=(line,kind="talk")=>{if(!RIDE.who)return;toast(RIDE.who.name.toUpperCase(),"“"+line+"”");emote(RIDE.p,kind,2.2)};
+// whether a friend comes, or why not
+function rideWhy(who,p){
+  const r=rel(who.id);
+  if(r.f<RIDE_AT)return"Maybe when we know each other better.";
+  if(RIDE.p)return RIDE.p===p?"I'm coming, I'm coming!":"Looks like you've got company already.";
+  if(WANTED.lvl)return"Not while the police are after you!";
+  if(who.trait==="busy"&&r.f<70)return"Sorry, I'm late as it is!";
+  if(who.trait==="grumpy"&&r.f<55)return"I'll walk, thanks.";
+  if(ev||testDrive)return"Not now, you're busy.";
+  if(Math.hypot(P.x-FOOT.x,P.z-FOOT.z)>40)return"Where's your car? Bring it closer and ask again.";
+  return"";
+}
+// "Come for a ride", from a conversation: yes ends the conversation and they come with you; no is just a line
+function talkRide(){
+  const p=TALK.p,who=TALK.person;if(!p||TALK.busy>0||TALK.end>0)return false;
+  const why=rideWhy(who,p);if(why){talkShow(who.name+" shakes their head. “"+why+"”");emote(p,"meh");TALK.busy=.7;return false}
+  const r=rel(who.id);relSet(who.id,r.f+3,r.n);
+  if(!TALK.social&&!(NS.social[who.id]>NS.t)){TALK.social=true;NS.social[who.id]=NS.t+30;needsAdd("social",8)}
+  Object.assign(RIDE,{p,who,st:"follow",t:0,stuck:0,gain:0,soc:0,fr:0,chat:RIDE_V.chat[0],fastAt:-99,hitAt:-99,dmg:P.damage||0,dest:null,cops:false,car:null});
+  talkClose();p.st="follow";p.v=0;
+  rideSay(RIDE_LINES[who.trait].yes,"smile");persist();rideHud();
+  return true;
+}
+// where a follower is heading: just behind you on foot, or the passenger door of your car (its right-hand side)
+function rideGoal(){
+  if(FOOT.on){const fx=Math.sin(FOOT.h),fz=Math.cos(FOOT.h);return{x:FOOT.x-fx*1.3-fz*.7,z:FOOT.z-fz*1.3+fx*.7,stop:.35}}
+  return{x:P.x-Math.cos(P.h)*RIDE_V.door,z:P.z+Math.sin(P.h)*RIDE_V.door,stop:.2};
+}
+// in the seat beside you: their model rides in the car, facing forward, legs under the dash
+function rideSeat(){
+  const G=RIDE.p.m.G,e=pc.eye,h=G.scale.x;if(G.parent)G.parent.remove(G);pc.G.add(G);G.userData.rider=true;
+  G.position.set(-e.x,e.y-1.62*h,e.z-.05);G.rotation.set(0,0,0);G.visible=true;
+  for(const l of RIDE.p.m.legs)l.rotation.x=-1.35;for(const a of RIDE.p.m.arms)a.rotation.x=-.45;
+}
+function rideBoard(){
+  RIDE.st="ride";RIDE.car=curId;RIDE.t=0;RIDE.p.st="ride";rideSeat();
+  // sometimes they'd like a lift somewhere: a landmark, the pier or the Auto Gallery, a good drive away
+  if(!job&&!ev&&Math.random()<RIDE_V.lift){
+    const all=[...LANDMARKS.map(L=>({name:L.name,x:L.x,z:L.z})),{name:"the harbour pier",x:PIER.x0-14,z:0},{name:"the Auto Gallery",x:DEALER_MARK.x,z:DEALER_MARK.z}],
+      far=all.filter(d=>{const k=Math.hypot(d.x-P.x,d.z-P.z);return k>RIDE_V.near[0]&&k<RIDE_V.near[1]});
+    if(far.length){const d=far[Math.floor(Math.random()*far.length)],nr=nearestRoadGlobal(d.x,d.z,true)||d;
+      RIDE.dest={name:d.name,x:nr.x,z:nr.z};setGPS(nr.x,nr.z,d.name);rideSay("Could you drop me at "+d.name+"?")}
+  }
+  if(!RIDE.dest)rideSay(RIDE_LINES[RIDE.who.trait].chat[0]);
+  rideHud();
+}
+// the ride is over: they get out (on the pavement in Old Quay, or off on their own business anywhere else)
+function rideEnd(why){
+  const p=RIDE.p,who=RIDE.who;if(!p)return;
+  const G=p.m.G,riding=RIDE.st==="ride";
+  if(G.parent!==scene){if(G.parent)G.parent.remove(G);scene.add(G)}G.userData.rider=false;G.rotation.set(0,p.h,0);
+  for(const l of p.m.legs)l.rotation.x=0;for(const a of p.m.arms)a.rotation.x=0;
+  if(riding){p.x=P.x-Math.cos(P.h)*RIDE_V.door;p.z=P.z+Math.sin(P.h)*RIDE_V.door;const c=footClear(p.x,p.z);p.x=c[0];p.z=c[1]}
+  // back to a walk round the blocks, from the nearest stretch of pavement: in Old Quay they step straight onto it;
+  // anywhere else they stay where they got out, and are back on their pavement when you next come to town
+  let best=null,bd=1e18;for(const e of PED_EDGES){if(e.cross)continue;const ax=e.b.x-e.a.x,az=e.b.z-e.a.z,k=clamp(((p.x-e.a.x)*ax+(p.z-e.a.z)*az)/(e.len*e.len),0,1),d=(e.a.x+ax*k-p.x)**2+(e.a.z+az*k-p.z)**2;if(d<bd){bd=d;best={e,s:k*e.len}}}
+  if(best){p.e=best.e;p.from=best.e.a;p.s=best.s;p.o=0;if(bd<40*40&&why!=="hurt"){const[sx,sz]=pedSpot(p);p.x=sx;p.z=sz}}
+  if(why!=="hurt"){p.st="idle";p.t=1.5;p.v=0}
+  p.y=footGround(p.x,p.z);G.position.set(p.x,p.y,p.z);G.visible=true;
+  const dest=RIDE.dest;Object.assign(RIDE,{p:null,who:null,st:"",dest:null,car:null});
+  if(dest&&gps.t&&gps.label===dest.name&&!job)clearGPS();
+  rideHud();
+  const say=(t)=>toast(who.name.toUpperCase(),"“"+t+"”");
+  if(why==="drop")say(riding?"Thanks for the ride!":"Another time, then.");
+  else if(why==="out")say(riding?"Thanks for the ride!":"Another time, then.");
+  else if(why==="home"&&riding)say("See you around!");
+}
+// each frame of play (driveUpdate): following you, getting in, the ride itself
+function rideTick(dt){
+  if(!RIDE.p||state!=="DRIVE"||!(dt>0))return;
+  const p=RIDE.p,who=RIDE.who,r=()=>rel(who.id);RIDE.t+=dt;
+  if(RIDE.st==="follow"){
+    if(BOAT.on){rideSay("I'll wait on dry land.","meh");rideEnd("left");return}
+    if(RIDE.t>RIDE_V.wait){rideEnd("drop");return}
+    const g=rideGoal(),dx=g.x-p.x,dz=g.z-p.z,d=Math.hypot(dx,dz),car=!FOOT.on,psp=Math.hypot(P.vx,P.vz);
+    // you drove off without them
+    if(car&&psp>4&&Math.hypot(P.x-p.x,P.z-p.z)>10){relSet(who.id,r().f-4,r().n);rideSay("You drove off without me!","frown");rideEnd("left");persist();return}
+    if(car&&d<RIDE_V.board&&psp<1.5){rideBoard();return}
+    // walking (or hurrying) over; stuck behind something for a while, or left far behind, they catch you up
+    const want=d<=g.stop?0:d>4?RIDE_V.hurry:RIDE_V.follow;p.v+=clamp(want-p.v,-8*dt,6*dt);
+    const step=Math.min(d,p.v*dt);
+    if(d>.01){
+      const [nx,nz]=footClear(p.x+dx/d*step,p.z+dz/d*step);
+      // Compare movement towards this frame's goal. A walking player moves that goal every frame.
+      const progress=((nx-p.x)*dx+(nz-p.z)*dz)/d;
+      RIDE.stuck=d>1.5&&progress<step*.15?RIDE.stuck+dt:0;
+      p.x=nx;p.z=nz;
+      if(p.v>.05)p.h+=wrapA(Math.atan2(dx,dz)-p.h)*Math.min(1,dt*8);
+    }else RIDE.stuck=0;
+    if(d>45||RIDE.stuck>4){[p.x,p.z]=footClear(g.x,g.z);RIDE.stuck=0}
+    if(d<=g.stop&&!car)p.h+=wrapA(FOOT.h-p.h)*Math.min(1,dt*4);
+    p.y=footGround(p.x,p.z);
+    const G=p.m.G;G.visible=true;p.ph+=p.v*dt*3.3;const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
+    G.position.set(p.x,p.y,p.z);G.rotation.set(0,p.h,0,"YXZ");p.m.legs[0].rotation.x=sw;p.m.legs[1].rotation.x=-sw;p.m.arms[0].rotation.x=-sw*.7;p.m.arms[1].rotation.x=sw*.7;
+    faceBlink(p.m.face,dt);emoteTick(p,dt);
+    return;
+  }
+  // riding: the car you set out in, still (a graphics change rebuilds it: they sit down again in the new one)
+  if(RIDE.car!==curId||FOOT.on||BOAT.on){rideEnd("out");return}
+  if(p.m.G.parent!==pc.G)rideSeat();
+  p.x=P.x;p.z=P.z;faceBlink(p.m.face,dt);emoteTick(p,dt);
+  // company: Social now and then, and the friendship a little, up to a point each ride
+  if((RIDE.soc+=dt)>=RIDE_V.social){RIDE.soc-=RIDE_V.social;needsAdd("social",1)}
+  if((RIDE.fr+=dt)>=RIDE_V.friend&&RIDE.gain<RIDE_V.friendMax){RIDE.fr-=RIDE_V.friend;RIDE.gain++;relSet(who.id,r().f+1,r().n)}
+  const L=RIDE_LINES[who.trait],kph=kphNow();
+  // the police: once a chase, a word and a dent in the friendship
+  if(WANTED.lvl&&!RIDE.cops){RIDE.cops=true;relSet(who.id,r().f-8,r().n);rideSay(L.cops,"frown");persist()}
+  else if(!WANTED.lvl)RIDE.cops=false;
+  // a crash: a word (and a little less friendship) at most every 6 s
+  if((P.damage||0)>RIDE.dmg+2&&RIDE.t-RIDE.hitAt>6){RIDE.hitAt=RIDE.t;relSet(who.id,r().f-2,r().n);rideSay(L.crash,who.trait==="joker"?"laugh":"frown")}
+  RIDE.dmg=P.damage||0;
+  if(kph>=RIDE_V.fast&&RIDE.t-RIDE.fastAt>25){RIDE.fastAt=RIDE.t;rideSay(L.fast,who.trait==="cheerful"||who.trait==="joker"?"laugh":"frown")}
+  else if((RIDE.chat-=dt)<=0){RIDE.chat=RIDE_V.chat[0]+Math.random()*(RIDE_V.chat[1]-RIDE_V.chat[0]);rideSay(L.chat[Math.floor(RIDE.t/7)%L.chat.length])}
+  // their stop: pull up near it (slowly) and they get out, with thanks and something for the fuel
+  const D=RIDE.dest;
+  if(D&&Math.hypot(P.x-D.x,P.z-D.z)<30&&kph<15){relSet(who.id,r().f+8,r().n);needsAdd("social",6);earn(RIDE_V.tip);
+    toast(who.name.toUpperCase(),"“This is me. Thanks! Here, for the fuel.” +"+fmtCr(RIDE_V.tip)+" CR","gold");rideEnd("there");persist()}
+}
+// the bubble over someone's head, out of Old Quay too (pedUpdate isn't running there)
+function emoteTick(p,dt){const s=p.emo;if(!s||!s.sp.visible)return;s.t+=dt;const k=s.t/s.T;if(k>=1){s.sp.visible=false;return}
+  // over the car's roof when they're riding with you
+  const pop=Math.min(1,s.t/.18)*.44;s.sp.scale.set(pop,pop,1);s.sp.position.y=(p.st==="ride"?2.3:2.08)+Math.min(.12,s.t*.1);s.sp.material.opacity=k>.8?(1-k)/.2:1}
+// the HUD's line under the place and the clock: who's with you, and where they're going
+function rideHud(){const on=!!RIDE.p;show("ride",on);if(!on)return;$("rideWho").textContent=RIDE.who.name;
+  $("rideTo").textContent=RIDE.st==="follow"?"· to your car":RIDE.dest?"· to "+RIDE.dest.name:""}
+// the drive prompt, stopped with a friend aboard (updatePrompt): let them out here
+// (not in the first seconds after they get in: it read as being told to put them straight out again)
+const ridePrompt=()=>RIDE.st==="ride"&&RIDE.t>5&&kphNow()<5?{t:"Drop off "+RIDE.who.name,a:()=>rideEnd("drop")}:null;
+
 // the lines, as buttons: a number key for each on a keyboard, and goodbye last
 {const box=$("tkActs");
   TALKS.forEach((t,i)=>{const b=document.createElement("button");b.className="btn tkAct"+(t.id==="rude"?" bad":"");b.dataset.k=t.id;
     b.innerHTML=t.label+" <kbd>"+(i+1)+"</kbd>";b.onclick=()=>talkPick(t.id);box.appendChild(b)});
+  const ride=document.createElement("button");ride.className="btn tkAct hide";ride.id="tkRide";ride.dataset.k="ride";ride.innerHTML="Come for a ride <kbd>7</kbd>";ride.onclick=()=>talkRide();box.appendChild(ride);
   const bye=document.createElement("button");bye.className="btn ghost tkAct";bye.dataset.k="bye";bye.innerHTML="Goodbye <kbd>Esc</kbd>";bye.onclick=talkClose;box.appendChild(bye);
-  box.addEventListener("focusin",e=>{const i=[...box.children].indexOf(/** @type {Element} */(e.target));if(i>=0)talkSel(i)})}
+  box.addEventListener("focusin",e=>{const i=tkButtons().indexOf(/** @type {HTMLElement} */(e.target));if(i>=0)talkSel(i)})}
