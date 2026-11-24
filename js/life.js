@@ -171,10 +171,51 @@ const TIPS=[
   "You can pick up a first-aid kit by driving over it, too.",
   "Look under Contracts in the pause menu to see the jobs."
 ];
+// A resident gives practical directions first when the player asks with a low mood.
+const QUAY_REMEDIES={
+  cheerful:{
+    Hungry:["Lucky you, the Market Kitchen is serving!","Come to the yellow stall. The meal's on the house."],
+    Tired:["The fountain benches catch a lovely breeze.","Feet up! There's a Rest button back home."],
+    Bored:["Fancy a race? The finish is the fun bit.","Take the boat out and give it a little speed!"],
+    Lonely:["Stay for a chat. I'd like the company too.","Say hello around the quay. We like a new face."]
+  },
+  grumpy:{
+    Hungry:["Market Kitchen. Even I can't fault the price.","Try the yellow stall. A free meal's a free meal."],
+    Tired:["Sit by the fountain. It never asks questions.","Go home and rest. The quay can wait."],
+    Bored:["Finish a race. Beats standing here.","Take the boat for a brisk run. Works for me."],
+    Lonely:["Try a friendly word. Yes, even round here.","Talk to the locals. Some are cheerier than me."]
+  },
+  joker:{
+    Hungry:["The Kitchen's best dish? Whatever costs zero.","Ask at the yellow stall. Your wallet can stay home."],
+    Tired:["A fountain bench has a vacancy. Take a seat.","Give the garage a visit. Park yourself and rest."],
+    Bored:["Race to the finish. Second place still counts as fun.","Take the boat for a spin. The fish can referee."],
+    Lonely:["Tell someone a joke. Pick your audience, mind.","Try a compliment. Mine cost extra. Kidding!"]
+  },
+  chatty:{
+    Hungry:["The Market Kitchen feeds the whole quay for free.","See the yellow awning? Ask there for a meal."],
+    Tired:["Sit by the fountain. I could listen to it for hours.","Home's good for a proper rest. It's in the garage."],
+    Bored:["Finish a time trial, then tell me your time.","Get the boat moving. There's a whole coast to see."],
+    Lonely:["Ask someone about the quay. We've all got stories.","Stay and chat a bit. How's your day been?"]
+  },
+  shy:{
+    Hungry:["I usually eat at the Market Kitchen. It's free.","The yellow market stall serves a meal, if you like."],
+    Tired:["There's a quiet bench by the fountain.","I'd head home and choose Rest in the garage."],
+    Bored:["A time trial's nice. Just you and the clock.","I like a brisk boat ride when the day's dragging."],
+    Lonely:["A little hello is enough to start, I think.","You can stay and chat with me for a bit."]
+  },
+  busy:{
+    Hungry:["Free meal. Market Kitchen. Yellow awning.","Head to the market for food. No credits needed."],
+    Tired:["Benches by the fountain. Sit for a minute.","Home, garage, Rest. That's what I'd do."],
+    Bored:["Pick a race. Finish it. Works every time.","Get the boat up to speed. Clears the cobwebs."],
+    Lonely:["Quick hello to a local. You've got time.","Try a kind word with someone at the quay."]
+  }
+};
 // a friend points you at a landmark you haven't found yet, with its passport hint and which way it is from here;
 // anyone else tells you something useful about the city
 function talkTip(who){
-  const r=rel(who.id),todo=LANDMARKS.filter(L=>!save.found[L.id]);
+  const r=rel(who.id),lines=QUAY_REMEDIES[who.trait][needsMood()];
+  if(lines)return lines[(who.id+r.n+(TALK.used.tip||0))%lines.length];
+  const todo=LANDMARKS.filter(L=>!save.found[L.id]);
   if(todo.length&&r.f>=15){const L=todo[(who.id+r.n)%todo.length];return"Have you been "+compass(L.x-FOOT.x,L.z-FOOT.z)+" of here? "+L.hint+(/[.!?]$/.test(L.hint)?"":".")}
   return TIPS[(who.id+r.n+TALK.n)%TIPS.length];
 }
