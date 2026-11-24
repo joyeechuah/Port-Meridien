@@ -162,6 +162,9 @@ body.touch #lhint{display:none}
 #gunHud{display:flex;gap:10px;align-items:center;background:var(--panel);padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.14em;width:max-content}
 #gunHud .hp{display:block;width:80px;height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}#gunHud .hp i{display:block;height:100%;width:100%;background:#7fd08a}
 #gunHud.low .hp i{background:#e2483d}#gunHud.empty #gunTxt{color:#e2483d}
+/* a friend with you (js/life.js): who, and where they're going */
+#ride{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:baseline;background:var(--panel);padding:5px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.14em;width:max-content;max-width:min(260px,52vw)}
+#ride span{color:var(--mute)}#ride b{color:#3fe0a0;letter-spacing:.06em}#ride i{font-style:normal;color:var(--mute);letter-spacing:.04em}
 #bF{width:62px;height:62px;font-size:11px;background:rgba(226,72,61,.22);border-color:rgba(226,72,61,.55)}
 @keyframes wantedBlink{to{opacity:.25}}
 #streak{position:absolute;top:calc(16px + var(--st));left:50%;transform:translateX(-50%);text-align:center;min-width:220px;transition:opacity .25s}
@@ -312,8 +315,8 @@ body.touch #toasts{top:calc(196px + var(--st))}
    place instead of under them, so the column keeps its height and the minimap stays where it is (stacked, they ran
    down over the minimap) */
 @media (max-height:520px) and (min-width:561px){
-  body.touch #tl>#damageHud,body.touch #tl>#wanted,body.touch #tl>#gunHud{position:absolute;left:calc(100% + 8px)}
-  body.touch #tl>#damageHud{top:0}body.touch #tl>#wanted{top:42px}body.touch #tl>#gunHud{top:72px}
+  body.touch #tl>#damageHud,body.touch #tl>#wanted,body.touch #tl>#gunHud,body.touch #tl>#ride{position:absolute;left:calc(100% + 8px)}
+  body.touch #tl>#damageHud{top:0}body.touch #tl>#wanted{top:42px}body.touch #tl>#gunHud{top:72px}body.touch #tl>#ride{top:102px}
 }
 body.touch #prompt{bottom:calc(150px + var(--sb))}
 body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
@@ -612,6 +615,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
     <div class="lvl"><span>LEVEL <b id="lvv">1</b></span><div class="xp"><i id="xpf"></i></div></div>
     <div class="loc"><span id="zone">OLD QUAY</span><span class="num" id="clock">16:30</span></div>
     <div id="wanted" class="hide" aria-live="polite"></div>
+    <div id="ride" class="hide"><span>WITH</span> <b id="rideWho"></b> <i id="rideTo"></i></div>
     <div id="gunHud" class="hide"><span class="hp"><i id="hpBar"></i></span><span id="gunTxt">PISTOL 48</span></div>
   </div>
   <div id="tdPill" class="pill hide">TEST DRIVE <b class="num" id="tdT">1:30</b></div>
@@ -861,14 +865,14 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 <!-- The Explorer Passport, contracts and class championships -->
 <script src="js/progress.js?v=dfb8a088e3"></script>
 <!-- Game states, the garage, the dealership, menus and prompts, one game tab at a time, and the cloud save -->
-<script src="js/screens.js?v=4a457c9338"></script>
+<script src="js/screens.js?v=df0a14588c"></script>
 <!-- The HUD, on foot, the police, the pistol and health, pedestrians, and the harbour boat -->
-<script src="js/people.js?v=714b63d730"></script>
+<script src="js/people.js?v=2694d4ad7e"></script>
 <!-- The life side: the people of Old Quay, talking to them, and the friendships they remember -->
-<script src="js/life.js?v=f25c27b1ec"></script>
+<script src="js/life.js?v=96a61901e8"></script>
 <!-- Playing together: rooms with a code, friends drawn where they are, the Play together panel -->
 <script src="js/net.js?v=1a3a095c19"></script>
 <!-- Each frame: the drive update, adaptive resolution, the ?perf panel and the main loop, and the boot that builds the world -->
-<script src="js/main.js?v=4085876d35"></script>
+<script src="js/main.js?v=e8242f32e8"></script>
 </body>
 </html>

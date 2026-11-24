@@ -65,6 +65,10 @@ Energy, hunger, fun and social each run from 0 to 100 and fall slowly while you 
 
 The map shows the Market Kitchen and the benches. Nothing can be done about your needs while the police are after you.
 
+## Friends who ride with you
+
+Once someone in Old Quay is your friend, the conversation offers **Come for a ride** (key `7`). They walk with you to your car and get in beside you, chat as you drive, and sometimes ask for a lift somewhere: the GPS takes you, and they thank you with a little money for the fuel. Company lifts your Social and the friendship. Fast driving, crashes and the police get a word, and the police cost some friendship. Stop and choose **Drop off**, get out, or go home to end the ride.
+
 ## The harbour and the boat
 
 A pier stands on the east coast, straight out from the town past the end of its main avenue: look for the mast with a red marker. A lane runs down to the shore from where the avenue meets the coast road: park at its end and walk on (cars don't fit between the bollards).
@@ -138,7 +142,7 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 - **The police:** patrols, a wanted level of one to five stars, chases by car and on foot, fines, and losing them.
 - **The pistol:** lock-on aiming, health, being knocked out, arrest, and settings for violence and flashes.
 - **Things to do:** races, time trials, championships, delivery contracts, speed radars and an explorer passport of 18 landmarks.
-- **Life:** the sixteen people of Old Quay, each with a name and a personality, to talk to and make friends with; and four needs of your own with a mood (see [Needs](#needs)).
+- **Life:** the sixteen people of Old Quay, each with a name and a personality, to talk to and make friends with; friends who come for a ride and ask for lifts; and four needs of your own with a mood (see [Needs](#needs)).
 - **Playing together:** **PLAY TOGETHER** in the pause menu starts a room with a four-letter code. Up to three friends join with it from their own phones or computers, and everyone sees each other drive, walk and take the boat, with a name above each player. Traffic, the police, races and the time of day stay each player's own.
 - **Saves** in the browser, with an optional cloud backup through Google sign-in on the game's own site (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
 
