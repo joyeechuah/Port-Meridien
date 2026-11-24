@@ -35,8 +35,10 @@ function updateHUD(dt){
 // Getting out of the car and walking. The game stays in the DRIVE state: while FOOT.on, driveUpdate runs footUpdate
 // in place of the car's physics, the car stays where it was left, and the camera follows the walker.
 // Controls are the driving ones: gas walks, brake steps back, steering turns, the handbrake (or Shift) runs.
-const FOOT={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,m:null,cy:0,car:[0,0],hudT:0,cp:new THREE.Vector3(),cl:new THREE.Vector3()};
-const FOOT_V={walk:1.9,run:5.4,back:1.2,turn:2.5,r:.35,reach:3.4,exitMax:6};
+// stop: seconds left of braking to a stop before getting out (GET OUT pressed while the car was still rolling)
+const FOOT={on:false,x:0,z:0,y:0,h:0,v:0,ph:0,m:null,cy:0,car:[0,0],hudT:0,stop:0,cp:new THREE.Vector3(),cl:new THREE.Vector3()};
+// exitMax: the fastest the car may be rolling as you get out. Up to stopMax, GET OUT stops the car for you first
+const FOOT_V={walk:1.9,run:5.4,back:1.2,turn:2.5,r:.35,reach:3.4,exitMax:6,stopMax:60};
 // a simple figure, 1.76 m tall, standing on the group's origin and facing +z; legs and arms swing from hip and shoulder
 /* Faces: painted onto the front of the head, the eyes with whites, a coloured iris, a pupil and a catchlight, so a
    face reads as a person at phone size (built from tiny shapes it read as a mannequin: Jo Yee, 19 Nov). Stylized:
@@ -390,13 +392,22 @@ function footTarget(){
 function footBlocked(){
   if(ev)return "Finish or quit the event first";
   if(testDrive)return "Return the test car first";
-  if(kphNow()>FOOT_V.exitMax)return "Stop the car first";
+  if(kphNow()>FOOT_V.exitMax)return kphNow()>FOOT_V.stopMax?"Slow down first":"Stop the car first";
   if(P.water)return "Not in the water";
   return null;
 }
+// GET OUT while the car is still rolling (up to stopMax): it brakes itself to a stop and you get out then. It used to
+// say "Stop the car first" and do nothing, at 11 km/h too (Jo Yee's video, 24 Nov 2026)
+function footStopTick(dt){
+  FOOT.stop=Math.max(0,FOOT.stop-dt);
+  if(state!=="DRIVE"||FOOT.on||BOAT.on){FOOT.stop=0;return}
+  if(kphNow()<=FOOT_V.exitMax){FOOT.stop=0;footExit()}
+}
 function footExit(){
   if(state!=="DRIVE"||FOOT.on||BOAT.on)return false;
-  const why=footBlocked();if(why){toast("CAN'T GET OUT",why,"bad");return false}
+  const why=footBlocked();
+  if(why==="Stop the car first"){if(!FOOT.stop)toast("GETTING OUT","Stopping the car");FOOT.stop=4;return false}
+  if(why){toast("CAN'T GET OUT",why,"bad");return false}
   // beside the driver's door if there's room (the driver sits on the side nearest the middle of the road), otherwise
   // the other side, otherwise behind: wherever is clear of walls and out of the sea
   const rx=Math.cos(P.h),rz=-Math.sin(P.h),fx=Math.sin(P.h),fz=Math.cos(P.h),d=SIDE();let spot=null;
@@ -453,11 +464,25 @@ function footPlace(dt,speed=Math.abs(FOOT.v)){
   m.G.rotation.x=amp*.06;
   m.G.position.y+=Math.abs(Math.cos(FOOT.ph))*Math.min(.05,speed*.012);
 }
-// behind and above the walker, coming in closer when a wall or tree is in the way
+// the lowest the on-foot camera may be at (x,z) to stay clear of the cars standing there (yours, the ones you left,
+// traffic): over a car, or within a metre of one, it rises above the roof. It used to swing down through your parked
+// car as you turned beside it, and the screen filled with its bodywork from inside (Jo Yee's video, 24 Nov 2026)
+function carClearY(x,z){
+  let y=-1e9;
+  const car=(ox,oz,h,hx,hz)=>{
+    const dx=x-ox,dz=z-oz;if(Math.abs(dx)>hz+2||Math.abs(dz)>hz+2)return;
+    const cs=Math.cos(h),sn=Math.sin(h),lx=Math.abs(dx*cs-dz*sn)-hx,lz=Math.abs(dx*sn+dz*cs)-hz,d=Math.hypot(Math.max(lx,0),Math.max(lz,0));
+    if(d<1.2)y=Math.max(y,footGround(ox,oz)+2.75-d*.45)};
+  car(P.x,P.z,P.h,.95,2.3);
+  for(const l of LEFT)car(l.x,l.z,l.h,.95,2.3);
+  for(const t of TRAFFIC)if(t.e)car(t.wx,t.wz,t.yaw,.95,t.c.len);
+  return y;
+}
+// behind and above the walker, coming in closer when a wall or tree is in the way, and over a car standing there
 function footCam(dt,snap){
   FOOT.cy+=wrapA(FOOT.h-FOOT.cy)*(snap?1:1-Math.exp(-dt*5));
   const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),back=boomClear(FOOT.x,FOOT.z,fx,fz,3.9),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
-  const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,camFloor(px,pz,p));
+  const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,camFloor(px,pz,p),carClearY(px,pz));
   const k=snap?1:1-Math.exp(-dt*10);
   FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*2.3,FOOT.y+1.1,FOOT.z+fz*2.3),k);
   camera.position.copy(FOOT.cp);camera.lookAt(FOOT.cl);

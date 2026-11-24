@@ -877,16 +877,27 @@ function kphNow(){return Math.abs(speedF())*3.6}
 // Out of the tightest hairpin that stronger pull (and the throttle) still took the car across the centre line, 2 m
 // off its lane, because the tyres were already at their limit: now, while the assist is turning as hard as grip
 // allows and the road wants more (satAt), the car lifts off and brakes gently (satLift) instead. Worst case 0.8 m
+// Junction turns with the assist (Jo Yee's video, 24 Nov 2026): a right-angle turn is planned as an arc of jR m. A
+// steering key held into a junction sets how much room the turn has from where it began (its distance to the
+// junction's middle plus jIn, at least jMin) and brakes at up to csTurn m/s² to suit
 const STEER_SENS=[.7,1,1.35];
 const HD={latBase:1.2,latGrip:.6,latLow:.25,rUp:6,rUpHi:2,rBack:10,rBackHi:7,rCounter:14,steerEase:25,expHi:1.6,steerV:39,
-  asK:2.6,asLim:.9,csGrip:.83,csBrake:5,csPlan:4,csBand:3,thrUp:3.2,pBase:3.7,pAcc:9.2,offDrag:2.2,offDragV:.035,yawResp:10,rMin0:5,rMinV:.7,laneK:3,laneMax:.15,antT:.15,antMax:12,satAt:.97,satLift:2,brk0:6,brk1:13,brkUp:1,revMax:8,thrUp0:9};
+  asK:2.6,asLim:.9,csGrip:.83,csBrake:5,csPlan:4,csBand:3,thrUp:3.2,pBase:3.7,pAcc:9.2,offDrag:2.2,offDragV:.035,yawResp:10,rMin0:5,rMinV:.7,laneK:3,laneMax:.15,antT:.15,antMax:12,satAt:.97,satLift:2,brk0:6,brk1:13,brkUp:1,revMax:8,thrUp0:9,jR:18,jIn:4,jMin:10,csTurn:10};
 // fastest speed for a bend of curvature k: limited by grip, and in tight
 // corners by the smallest circle the car turns at that speed
 const vCorner=(k,aC)=>Math.min(Math.sqrt(aC/k),Math.max(4,(.92/k-HD.rMin0)/HD.rMinV));
-function limitFromAngles(ang,sp,aC){
+// jn: the samples that cross a junction. There the roads' centre lines meet at a point, so the turn looks much sharper
+// than the arc a car drives across the junction: it counts as an arc of HD.jR m for a right angle (tighter for a sharper
+// turn). Counted as the kink it was, a right-angle turn asked for about 22 km/h, and the car braked from 130 km/h to
+// a crawl 120 m before an Old Quay T-junction with only the throttle held (Jo Yee's video, 24 Nov 2026)
+function limitFromAngles(ang,sp,aC,jn){
   let lim=1e9;
   for(let i=1;i<ang.length-1;i++){
-    const k=Math.abs(wrapA(ang[i+1]-ang[i-1]))/16+1e-4,vc=vCorner(k,aC),dd=i*8;
+    let k=Math.abs(wrapA(ang[i+1]-ang[i-1]))/16+1e-4;
+    if(jn&&jn.length)for(const j of jn)if(i>=j-1&&i<=j+2){
+      const turn=Math.abs(wrapA(ang[Math.min(ang.length-1,j+3)]-ang[Math.max(0,j-2)]));
+      k=Math.min(k,Math.max(turn,.2)/(Math.PI/2)/HD.jR+1e-4);break}
+    const vc=vCorner(k,aC),dd=i*8;
     lim=Math.min(lim,Math.sqrt(vc*vc+2*HD.csPlan*Math.max(0,dd-sp*.35)));
   }
   return lim;
@@ -897,13 +908,13 @@ function cornerLimit(nr,dir,sp,aC){
   // braking at a comfortable rate before each one. The look-ahead carries on
   // through junctions along the straightest way out (at a T-junction that is
   // the turn itself). Also reports how far ahead the next junction is.
-  const look=lookAhead(sp),ang=[];let e=nr.e,s=nr.s,d=0,jD=1e9;
+  const look=lookAhead(sp),ang=[],jn=[];let e=nr.e,s=nr.s,d=0,jD=1e9,jN=null;
   while(d<=look+16){
     const q=edgePos(e,s),h=Math.atan2(q.dx*dir,q.dz*dir);ang.push(h);
     let ns=s+dir*8;d+=8;
     if(ns>e.len||ns<0){
       const over=ns>e.len?ns-e.len:-ns,node=ns>e.len?e.b:e.a;
-      if(node.adj.length>2)jD=Math.min(jD,d-over);
+      if(node.adj.length>2){if(d-over<jD){jD=d-over;jN=node}jn.push(ang.length)}
       let best=null,bd=9;
       for(const a of node.adj){if(a.e===e||(a.e.type==="drive"&&e.type!=="drive"))continue;
         const d2=a.end==="a"?1:-1,q2=edgePos(a.e,d2>0?0:a.e.len),dd=Math.abs(wrapA(Math.atan2(q2.dx*d2,q2.dz*d2)-h));
@@ -912,13 +923,14 @@ function cornerLimit(nr,dir,sp,aC){
       e=best.e;dir=best.dir;s=dir>0?Math.min(over,e.len):Math.max(0,e.len-over);
     }else s=ns;
   }
-  return{lim:limitFromAngles(ang,sp,aC),jD};
+  return{lim:limitFromAngles(ang,sp,aC,jn),jD,jN};
 }
 // the same along a known route (an event, or the GPS line), which knows which way it turns at junctions
 function pathLimit(R,s0,sp,aC){
-  const look=lookAhead(sp),ang=[];
-  for(let d=0;d<=look+16&&s0+d<=R.len;d+=8){const q=edgePos(R,s0+d);ang.push(Math.atan2(q.dx,q.dz))}
-  return limitFromAngles(ang,sp,aC);
+  const look=lookAhead(sp),ang=[],jn=[];let last=null;
+  for(let d=0;d<=look+16&&s0+d<=R.len;d+=8){const q=edgePos(R,s0+d);ang.push(Math.atan2(q.dx,q.dz));
+    const n=junctionAt(q.x,q.z);if(n&&n!==last&&n.adj.length>2)jn.push(ang.length-1);last=n}
+  return limitFromAngles(ang,sp,aC,jn);
 }
 // the middle of the nearest lane, on either side of the road, for a position across it (0 = the centre line);
 // a position beyond the road's edge is left as it is
@@ -937,7 +949,10 @@ function stepPlayer(dt){
   const th=groundH(P.x,P.z),sand=!onRoad&&th<3.4;
   const surf=onRoad?1:sand?.55:.72;
   // past the finish line the car brakes itself to a stop (the controls are locked) before the result shows
-  const gas=kG(),brake=kB()||(!!ev&&ev.phase==="finish"&&vF>.5),hb=kH(),sp0=Math.abs(vF),gA=gas?gasAmt():0,bA=kB()?brakeIn():1;
+  // stopping to get out (FOOT.stop, js/people.js) takes over both pedals and brakes the car to rest, going forwards or
+  // backwards (Codex's review of #79: reversing with S held, it waited 4 s and gave up, still going at 28.8 km/h)
+  const stopping=FOOT.stop>0,pedB=kB()&&!stopping;
+  const gas=kG()&&!stopping,brake=pedB||(!!ev&&ev.phase==="finish"&&vF>.5)||(stopping&&Math.abs(vF)>.5),hb=kH(),sp0=Math.abs(vF),gA=gas?gasAmt():0,bA=pedB?brakeIn():1;
   const vMax=onRoad?cd.top/3.6:sand?Math.min(cd.top/3.6*.35,20):Math.min(cd.top/3.6*.45,30),power=(HD.pBase+cd.acc*HD.pAcc)*damagePower(P);
   // tyre grip: arcade-strong on asphalt, a bit more at low speed
   const vN=clamp(sp0/55,0,1),aLatRoad=9.81*(HD.latBase+cd.grip*HD.latGrip)*(1+HD.latLow*(1-vN)),aLat=aLatRoad*surf;
@@ -948,15 +963,24 @@ function stepPlayer(dt){
   // and holding a steering key into a junction slows the car enough to make the turn
   const si=steerIn(),tgt0=Math.abs(si)>.5?Math.sign(si):0;
   P.holdT=tgt0&&tgt0===P.holdDir?(P.holdT||0)+dt:0;P.holdDir=tgt0;
-  let over=0;P.aBrk=false;
+  let over=0,brkMax=HD.csBrake;P.aBrk=false;
+  if(!P.holdT)P.turnRoom=null;
   if(save.assist&&vF>12&&!brake&&!hb&&nr&&nr.d<nr.e.half+5){
-    const aC=aLatRoad*HD.csGrip;let jD=1e9,path=null,ps=0;
+    const aC=aLatRoad*HD.csGrip;let jD=1e9,jN=null,path=null,ps=0;
     if(ev&&ev.phase==="run"&&ev.d<14){path=ev.R;ps=ev.sNow}
     else if(!ev&&gps.route&&gps.route.len>40){const tr=trackRoute(gps.route,P.x,P.z,0);if(tr.d<14){path=gps.route;ps=tr.s}}
     if(path){const q=edgePos(path,ps);if(q.dx*f0.x+q.dz*f0.z<.5)path=null}
     if(path)over=vF-pathLimit(path,ps,vF,aC);
-    else if(alongRoad){const c=cornerLimit(nr,rdir,vF,aC);over=vF-c.lim;jD=c.jD}
-    if(!path&&P.holdT>.2&&Math.abs(P.steer)>.7&&(jD<32||junctionAt(P.x,P.z)))over=Math.max(over,vF-vCorner(1/16,aC));
+    else if(alongRoad){const c=cornerLimit(nr,rdir,vF,aC);over=vF-c.lim;jD=c.jD;jN=c.jN}
+    // a steering key held into a junction: slow enough to make the turn from where it began. Begun about a turning
+    // circle out, the car goes round on an arc of HD.jR m; begun later it needs a tighter one, so it brakes harder,
+    // up to HD.csTurn, since the junction ahead was planned for that arc and a late turn has more speed to lose.
+    // It was a 16 m arc wherever the turn began: late turns ran wide, so the plan ahead had to be a crawl
+    const jx=P.holdT>.2&&Math.abs(P.steer)>.7?junctionAt(P.x,P.z)||(jD<32?jN:null):null;
+    if(jx){
+      if(P.turnRoom==null)P.turnRoom=clamp((jx.x-P.x)*f0.x+(jx.z-P.z)*f0.z+HD.jIn,HD.jMin,HD.jR);
+      over=Math.max(over,vF-vCorner(1/P.turnRoom,aC));brkMax=HD.csTurn;
+    }else P.turnRoom=null;
   }
   // the assist is already turning the car as hard as the tyres allow and the road wants more: lift off rather than
   // accelerate wide (out of a hairpin the car used to power across the centre line)
@@ -969,7 +993,7 @@ function stepPlayer(dt){
   // and pulling back afterwards let a light trigger build up to full throttle at a crawl, where the ramp is quickest
   const tT=Math.min(thrCap,gA),t0=P.thr||0;P.thr=t0<tT?Math.min(tT,t0+thrUp*dt):Math.max(tT,t0-8*dt);
   // Holding the brake from a crawl must stop the car. Check motion before this step's slope force.
-  const bHeld=kB();if(!bHeld)P.brkHold=false;else if(vF>REVERSE_STOP)P.brkHold=true;
+  const bHeld=pedB;if(!bHeld)P.brkHold=false;else if(vF>REVERSE_STOP)P.brkHold=true;
   if(!P.air){const sl=(surfH(P.x+fx*2,P.z+fz*2)-surfH(P.x-fx*2,P.z-fz*2))/4;vF-=9.81*sl*.75*dt}
   // the brake builds up while it's held: gentle at first (6 m/s²), full (13 m/s²) after a second, so a quick press
   // slows the car instead of stopping it dead. Nov 2026: was 9 to 22 m/s² in 0.7 s, which threw away speed into bends.
@@ -982,7 +1006,7 @@ function stepPlayer(dt){
   else if(brake){if(vF>.5)vF-=bF*bA*dt;else if(P.brkHold||!bHeld){const d=Math.max(bF,6)*dt;vF=Math.abs(vF)<=d?0:vF-Math.sign(vF)*d}else vF=Math.max(vF-5*bA*dt,-HD.revMax)}
   else if(P.thr>0&&!P.air)vF+=power*P.thr*Math.max(0,1-(vF/vMax)**2)*dt;
   if(!gas&&!brake||over>0){const dec=(.7+.00042*vF*vF)*dt;vF=Math.abs(vF)<=dec?0:vF-Math.sign(vF)*dec}
-  if(over>.6){vF-=Math.min(HD.csBrake,(over-.6)*3)*dt;P.aBrk=true}
+  if(over>.6){vF-=Math.min(brkMax,(over-.6)*3)*dt;P.aBrk=true}
   if(!onRoad){const d=((sand?3:HD.offDrag)+HD.offDragV*Math.abs(vF))*dt;vF=Math.abs(vF)<=d?0:vF-Math.sign(vF)*d}
   if(vF>vMax)vF-=7*dt;
   if(hb){const d=6*dt;vF=Math.abs(vF)<=d?0:vF-Math.sign(vF)*d}

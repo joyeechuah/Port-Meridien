@@ -1,3 +1,4 @@
+const { measureBends, measureJunctions } = require("./support/drive-scenarios");
 // Driving: the car responds to the controls, the sea puts you back on the road, travel and menus leave the car in
 // a sane state. Simulation steps run inside the page (game.steps), so results don't depend on the machine's speed.
 const { test, expect } = require("./support/game");
@@ -119,59 +120,7 @@ test.describe("driving", () => {
 
   test("holding only W, the corner assist slows for bends gently: never more than 8 m/s² over a second", async ({ game }) => {
     test.setTimeout(300_000);
-    const r = await game.eval(() => {
-      const T = __T,
-        P = T.P,
-        out = {};
-      for (const t of T.TRAFFIC) {
-        t.e = null;
-        t.c.G.visible = false;
-        t.wx = t.wz = 1e6;
-      }
-      T.save.assist = true;
-      T.save.auto = false;
-      const S = T.save.side === "R" ? 1 : -1;
-      for (const id of ["golf", "gtr"]) {
-        T.attachCar(id);
-        let peak = 0,
-          drops = 0,
-          runs = 0;
-        for (const e of T.EDGES.filter((e) => e.type !== "drive" && e.len > 500))
-          for (const dirS of [1, -1]) {
-            const lane = T.RT[e.type].lanes[0],
-              q = T.edgePos(e, dirS > 0 ? 35 : e.len - 35),
-              ux = q.dx * dirS,
-              uz = q.dz * dirS;
-            P.x = q.x - uz * lane * S;
-            P.z = q.z + ux * lane * S;
-            P.h = Math.atan2(ux, uz);
-            P.vx = P.vz = P.vy = 0;
-            P.r = P.steer = P.steerS = P.thr = P.brkT = P.holdT = P.holdDir = 0;
-            P.laneT = null;
-            P.air = false;
-            for (const k in T.keys) T.keys[k] = false;
-            const sp = [];
-            for (let i = 0; i < 1200; i++) {
-              T.keys.w = true;
-              T.driveUpdate(1 / 60);
-              const nr = T.nearestRoad(P.x, P.z, 20);
-              if (!nr || nr.e !== e) break;
-              sp.push(Math.hypot(P.vx, P.vz));
-            }
-            runs++;
-            for (let i = 60; i < sp.length; i++) peak = Math.max(peak, sp[i - 60] - sp[i]);
-            // 50 km/h or more gone within 4 s
-            for (let i = 0; i + 240 < sp.length; i += 30)
-              if (sp[i] - Math.min(...sp.slice(i, i + 240)) > 50 / 3.6) {
-                drops++;
-                i += 210;
-              }
-          }
-        out[id] = { peak: +peak.toFixed(2), drops, runs };
-      }
-      T.keys.w = false;
-      return out;
-    });
+    const r = await game.eval(measureBends);
     test.info().annotations.push({ type: "speed shed for bends with W held", description: JSON.stringify(r) });
     // before (Nov 2026 video): it eased off late and braked at up to 9 m/s²; over these roads it dropped 50 km/h in
     // under 4 s 20 times in the Kazan 6 and 11 in the Kest 25 (now 12 and 5)
@@ -418,6 +367,22 @@ test.describe("driving", () => {
     await page.keyboard.up("ArrowUp");
     const b = await game.eval(() => [__T.P.x, __T.P.z]);
     expect(Math.hypot(b[0] - a[0], b[1] - a[1])).toBeGreaterThan(1);
+  });
+
+  test("with driving assist, Old Quay's T-junctions from 130 km/h with W held: the turn at 50 km/h or more, even turned late", async ({
+    game,
+  }) => {
+    test.setTimeout(300_000);
+    const r = await game.eval(measureJunctions);
+    test.info().annotations.push({ type: "T-junction turns", description: JSON.stringify(r) });
+    expect(r.length, "T-junction turns tried").toBeGreaterThanOrEqual(8);
+    // Jo Yee's video (24 Nov 2026): the assist read the junction as a kink and braked from 130 km/h to 43 km/h, over
+    // 3 to 4 s below 60 km/h. Turned in good time it now goes round at 53 to 59 km/h, and late it still makes it
+    for (const x of r) expect(x.made, `T-junction ${x.n}, ${x.turn}°, turn begun at ${x.lead} of a turning circle`).toBe(true);
+    for (const x of r.filter((x) => x.lead === 1)) {
+      expect(x.vMin, `T-junction ${x.n}, ${x.turn}°: slowest km/h`).toBeGreaterThanOrEqual(50);
+      expect(x.slow, `T-junction ${x.n}, ${x.turn}°: seconds below 60 km/h`).toBeLessThan(2);
+    }
   });
 
   test("with driving assist, a short steering press at 100 km/h ends in the middle of a lane, never on the divider", async ({ game }) => {
