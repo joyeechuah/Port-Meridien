@@ -17,12 +17,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  chromium:
-    name: Playwright (Chromium)
+  shards:
+    name: Chromium shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    # The suite (364 tests on 2 workers, the WebGL ones on a software GPU) now takes about an hour on its own: at
-    # 60 minutes it was cut off with every test passed but the last two, so nothing could merge
-    timeout-minutes: 90
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v5
 
@@ -42,20 +44,39 @@ jobs:
 
       # Playwright starts the local server itself (tests/support/server.js, see playwright.config.js),
       # and the job fails if any test fails
-      - name: Run the tests
-        run: npx playwright test
-
-      - name: Summarise the results
-        if: ${{ !cancelled() }}
-        run: node tests/support/summary.js | tee -a "$GITHUB_STEP_SUMMARY"
+      # Shard each project separately so the slower software-rendered tests run on all four runners.
+      - name: Run both projects and summarise each report
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          status=0
+          for project in chromium webgl; do
+            npx playwright test --project="$project" --shard="$SHARD/4" || status=1
+            echo "## $project · shard $SHARD/4" >> "$GITHUB_STEP_SUMMARY"
+            node tests/support/summary.js >> "$GITHUB_STEP_SUMMARY"
+            mkdir -p "reports/$project"
+            for dir in playwright-report test-results; do
+              if [ -d "$dir" ]; then mv "$dir" "reports/$project/"; fi
+            done
+          done
+          exit "$status"
 
       # the HTML report, with screenshots and traces for any test that failed
       - name: Upload the report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
         with:
-          name: playwright-report
-          path: |
-            playwright-report/
-            test-results/
+          name: playwright-report-${{ matrix.shard }}
+          path: reports/
           retention-days: 14
+
+  chromium:
+    name: Playwright (Chromium)
+    needs: shards
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every shard to pass
+        env:
+          SHARD_RESULT: ${{ needs.shards.result }}
+        run: test "$SHARD_RESULT" = success
