@@ -576,7 +576,8 @@ const copSees=(x,z)=>TRAFFIC.some(t=>t.cop&&t.e&&Math.hypot(t.wx-x,t.wz-z)<COP_V
 const wantedBlock=()=>toast("LOSE THE POLICE FIRST","They're still after you: get out of their reach for a while","bad");
 const CRIME={crash:["Crashed into a car in front of the police",1],ped:["Ran into someone in front of the police",1],take:["Took a car in front of the police",1],
   speed:["Speeding past the police",1],cop:["Hit a police car",2],fire:["Fired a gun in front of the police",1],
-  shoot:["Shot at a car in front of the police",1],shootPed:["Shot at someone in front of the police",1],shootCop:["Shot at the police",2]};
+  shoot:["Shot at a car in front of the police",1],shootPed:["Shot at someone in front of the police",1],shootCop:["Shot at the police",2],
+  runCop:["Ran into a police officer",2]};
 // a crime at (x,z): it counts only where a police car can see it, never during a race or a test drive, and at most
 // one star every 4 s (a crash is several contacts in a row). In tests the police look away unless a test asks
 function crime(kind,x,z){
@@ -723,13 +724,27 @@ function copOfficer(dt,ch,still){
     if(!t)return false;
     // out of the door on the side nearer you
     const rx=Math.cos(t.yaw),rz=-Math.sin(t.yaw),sd=((me.x-t.wx)*rx+(me.z-t.wz)*rz)>=0?1:-1,c=footClear(t.wx+rx*sd*1.6,t.wz+rz*sd*1.6);
-    Object.assign(O,{on:true,x:c[0],z:c[1],y:footGround(c[0],c[1]),h:t.yaw,v:0,car:t,back:false,caughtT:0,detA:0,detT:0,detSide:0,outT:0,best:1e9,down:0,fall:0});O.m.G.rotation.set(0,t.yaw,0,"YXZ");O.m.G.visible=true;
+    Object.assign(O,{on:true,x:c[0],z:c[1],y:footGround(c[0],c[1]),h:t.yaw,v:0,car:t,back:false,caughtT:0,detA:0,detT:0,detSide:0,outT:0,best:1e9,down:0,fall:0,out:false,downT:0});O.m.G.rotation.set(0,t.yaw,0,"YXZ");O.m.G.visible=true;
     return false;
   }
+  // shot, or run down: on LOW, where nobody falls, they stand still for 6 s, then go back to the car. Otherwise, as
+  // anyone knocked down, they stay down while you're near or could see them (they used to get up after 6 s). Once
+  // you can't, they're gone, and their car with them once that's out of view too; the chase calls another
+  if(O.down>0){O.down-=dt;O.downT=(O.downT||0)+dt;O.caughtT=0;if(!save.violence)O.out=false;
+    O.fall=Math.min(1,(O.fall||0)+dt*4*(save.violence?1:0));O.m.G.rotation.set(-Math.PI/2*O.fall,O.h,0,"YXZ");
+    if(O.pool){const on=save.violence>1&&O.fall>.9&&O.m.G.visible;O.pool.visible=on;
+      if(on){const r=Math.min(.85,.2+O.downT*.22);O.pool.scale.set(r,r,1);O.pool.position.set(O.x-Math.sin(O.h)*.75,O.y+.02,O.z-Math.cos(O.h)*.75)}}
+    if(O.out){O.down=Math.max(O.down,.01);
+      const carSeen=car&&car.e&&pedSeen({x:car.wx,z:car.wz,y:footGround(car.wx,car.wz)},me);
+      if(O.downT>2&&!pedSeen(O,me)&&!carSeen){copOfficerIn();if(car&&car.e)copStandDown(car)}}
+    else if(O.down<=0){O.back=true;if(car)car.offAt=copClock;O.fall=0;O.m.G.rotation.set(0,O.h,0,"YXZ")}
+    return false}
   if(!car||!car.e){copOfficerIn();return false}
-  // shot: down for 6 s (standing still on LOW, where nobody falls), then back to the car
-  if(O.down>0){O.down-=dt;O.caughtT=0;O.fall=Math.min(1,(O.fall||0)+dt*4*(save.violence?1:0));O.m.G.rotation.set(-Math.PI/2*O.fall,O.h,0,"YXZ");
-    if(O.down<=0){O.back=true;car.offAt=copClock;O.fall=0;O.m.G.rotation.set(0,O.h,0,"YXZ")}return false}
+  // your car into them faster than about 20 km/h knocks them down, falling away from it (slower, they're only pushed
+  // aside, as before); a crime the police in their car see
+  if(save.violence&&!FOOT.on&&!BOAT.on){const dx=O.x-P.x,dz=O.z-P.z,cs=Math.cos(P.h),sn=Math.sin(P.h);
+    if(Math.hypot(P.vx,P.vz)>PED_V.knock&&Math.abs(dx*cs-dz*sn)<1.25&&Math.abs(dx*sn+dz*cs)<2.6){
+      Object.assign(O,{down:6,out:true,downT:0,caughtT:0,v:0,h:Math.atan2(P.x-O.x,P.z-O.z)});crime("runCop",O.x,O.z);return false}}
   const dMe=Math.hypot(me.x-O.x,me.z-O.z);O.outT+=dt;
   // once they turn back they go all the way to the car; it waits 12 s before sending anyone again
   if(!O.back&&(!WANTED.lvl||BOAT.on||(!FOOT.on&&!still)||dMe>OFF_V.giveUp||O.detT>15||O.outT>OFF_V.outT)){O.back=true;car.offAt=copClock}
@@ -771,7 +786,7 @@ function copOfficer(dt,ch,still){
   return false;
 }
 // the officer back in their car (or gone, if the car has been taken off the road), and the car free to drive again
-function copOfficerIn(){const O=OFFICER;if(O.car)O.car.stopT=0;O.on=false;O.car=null;O.back=false;O.m.G.visible=false}
+function copOfficerIn(){const O=OFFICER;if(O.car)O.car.stopT=0;O.on=false;O.car=null;O.back=false;O.m.G.visible=false;O.down=0;O.out=false;if(O.pool)O.pool.visible=false}
 // At four stars or more the two nearest chasing police cars within 30 m, with a clear line to you, fire every 1.5 s:
 // in your car a hit damages the car (6), on foot it hurts you (8). Never at sea, never from a wrecked car
 function copCarFire(dt,ch){
@@ -841,7 +856,16 @@ function initGun(){
   for(let i=0;i<6;i++){const k=new THREE.Mesh(GEO.ball,hot.clone());k.scale.setScalar(.18);k.visible=false;scene.add(k);GUN.sparks.push({m:k,t:0})}
   const red=new THREE.MeshBasicMaterial({color:0x7a0d0d,transparent:true,opacity:0,depthWrite:false});
   for(let i=0;i<6;i++){const k=new THREE.Mesh(new THREE.CircleGeometry(.35,12),red.clone());k.rotation.x=-Math.PI/2;k.visible=false;scene.add(k);GUN.marks.push({m:k,t:0})}
+  // on STRONG, a pool of blood spreads under someone lying knocked down: one for each person, made now with the rest.
+  // An uneven edge, turned differently for each, so it doesn't read as a disc
+  const pool=new THREE.CircleGeometry(1,18),at=pool.attributes.position;
+  for(let i=1;i<at.count;i++){const a=Math.atan2(at.getY(i),at.getX(i)),r=.8+.13*Math.sin(a*3+1.3)+.07*Math.cos(a*5);at.setXY(i,Math.cos(a)*r,Math.sin(a)*r)}
+  const blood=new THREE.MeshBasicMaterial({color:0x5a0909,transparent:true,opacity:.9,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+  [...PEDS,...VERGE,OFFICER].forEach((p,i)=>{const k=new THREE.Mesh(pool,blood);k.rotation.set(-Math.PI/2,0,i*2.4);k.visible=false;scene.add(k);p.pool=k});
 }
+// knocked down, by a shot or a car. On STANDARD and STRONG they stay down until you've looked away (pedStep): nobody
+// gets up again in front of you. On LOW, where nobody falls, they stand still for 6 s and walk on
+function pedKnock(p){p.st="down";p.t=6;p.v=0;p.out=save.violence>0;p.downT=0}
 const gunWant=()=>!locked&&(keys.g||pad.F||GP.fire);
 // whether a shot from (x0,z0) gets to (x1,z1) without a wall in the way (cars count as cover too)
 function gunClear(x0,z0,x1,z1,stop){
@@ -885,10 +909,8 @@ function gunFire(){
     // badly damaged: it stops where it is, out of the chase for good
     if((t.damage||0)>=100){t.stopT=1e6;t.v=0;if(t.cop){t.chase=false;t.offDuty=true}}
     seen(q.k==="cop"?"shootCop":"shoot",q.x,q.z)}
-  // the same in every violence setting: down for 6 s. The setting only changes what you see (on LOW they stand still
-  // instead of falling)
-  else if(q.k==="ped"){const p=q.o;p.st="down";p.t=6;p.v=0;gunMark(p.x,p.z);seen("shootPed",p.x,p.z);lifeHurt(p,25)}
-  else{const O=q.o;O.down=6;O.caughtT=0;gunMark(O.x,O.z);seen("shootCop",O.x,O.z)}
+  else if(q.k==="ped"){const p=q.o;pedKnock(p);gunMark(p.x,p.z);seen("shootPed",p.x,p.z);lifeHurt(p,25)}
+  else{const O=q.o;O.down=6;O.out=save.violence>0;O.downT=0;O.caughtT=0;gunMark(O.x,O.z);seen("shootCop",O.x,O.z)}
   return true;
 }
 // in the car, every frame: the lock ahead and firing (the pistol itself isn't seen). Not in a race or a test drive
@@ -976,7 +998,8 @@ function healthTick(dt){
    coming, standing a while now and then. They are scenery with manners, nothing more yet: a car can't hurt them
    (they hurry out of its way and are never left inside it), and traffic stops for one who is crossing. They are
    only worked out while you are near the town. */
-const PED_V={walk:1.35,hurry:3.3,r:.3,line:6.3,cap:isTouch?6:10,near:420,see:260};
+// knock: a car hitting someone faster than this (m/s, about 20 km/h) knocks them down; slower, they stagger
+const PED_V={walk:1.35,hurry:3.3,r:.3,line:6.3,cap:isTouch?6:10,near:420,see:260,knock:5.5};
 const PEDS=[],PED_NODES=[],PED_EDGES=[];let pedOn=false;
 // the avenue's centre line where it passes the blocks (it curves; the other streets are straight)
 const avenueZ=x=>{const A=[[560,40],[640,38],[720,36],[800,32]];for(let i=1;i<A.length;i++)if(x<=A[i][0]||i===A.length-1){const[a,b]=[A[i-1],A[i]];return a[1]+(b[1]-a[1])*clamp((x-a[0])/(b[0]-a[0]),0,1)}};
@@ -1066,7 +1089,7 @@ function buildVergeWalkers(){
 function vergeTick(dt,me=BOAT.on?BOAT:FOOT.on?FOOT:P){
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of VERGE)if(p.e){
-    if(Math.hypot(p.x-me.x,p.z-me.z)>300){p.e=null;p.m.G.visible=false}
+    if(Math.hypot(p.x-me.x,p.z-me.z)>300){p.e=null;p.m.G.visible=false;if(p.pool)p.pool.visible=false}
     else {if(p.m.G.visible)faceBlink(p.m.face,dt);pedStep(p,dt,me,driving,psp)}
   }
   vergeWait-=dt;if(vergeWait>0||!vergeSites.length)return;vergeWait=.35;
@@ -1076,7 +1099,7 @@ function vergeTick(dt,me=BOAT.on?BOAT:FOOT.on?FOOT:P){
     if(d<=121||d>295||VERGE.some(w=>w.e&&Math.hypot(w.x-x,w.z-z)<24))continue;
     const view=vergeView.set(x,footGround(x,z)+1,z).project(camera);
     if(view.z>=-1&&view.z<=1&&Math.abs(view.x)<1.12&&Math.abs(view.y)<1.12)continue;
-    Object.assign(p,{e,from:e.a,x,z,s:0,o:0,off:0,h:Math.atan2(e.b.x-x,e.b.z-z),ph:0,st:"walk",t:0,v:0,fall:0,hitAt:-9});
+    Object.assign(p,{e,from:e.a,x,z,s:0,o:0,off:0,h:Math.atan2(e.b.x-x,e.b.z-z),ph:0,st:"walk",t:0,v:0,fall:0,hitAt:-9,out:false,downT:0});
     pedStep(p,0,me,driving,psp);break;
   }
 }
@@ -1124,7 +1147,7 @@ function pedUpdate(dt){
   vergeTick(dt);
   if(!PEDS.length)return;
   const me=BOAT.on?BOAT:FOOT.on?FOOT:P,on=Math.hypot(me.x-660,me.z-36)<PED_V.near;
-  if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)if(p!==RIDE.p)p.m.G.visible=false}
+  if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)if(p!==RIDE.p){p.m.G.visible=false;if(p.pool)p.pool.visible=false;if(p.st==="down"&&p.out)pedRespawn(p,me)}}
   if(!on)return;
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of PEDS){
@@ -1159,10 +1182,14 @@ function pedStep(p,dt,me,driving,psp){
       else if(p.t>10){   // tired of waiting: back along the pavement instead
         const walk=p.from.adj.filter(a=>!a.cross);p.e=walk[Math.floor(pedRnd(p)*walk.length)];p.s=0;p.st="walk"}
     }else if(p.st==="idle"){p.t-=dt;if(p.t<=0)p.st="walk"}
-    else if(p.st==="down"){p.t-=dt;if(p.t<=0){p.st="idle";p.t=1.5}}
+    else if(p.st==="down"){p.t-=dt;p.downT=(p.downT||0)+dt;if(!save.violence)p.out=false;
+      // back on their feet after 6 s on LOW. Knocked down otherwise: still lying there while you're near or looking
+      // their way, and once you aren't, gone, to walk the town again later from somewhere you can't see. A country
+      // walker lies there until you're 300 m off (vergeTick)
+      if(p.t<=0){if(!p.out){p.st="idle";p.t=1.5}else if(p.verge||pedSeen(p,me)||!pedRespawn(p,me))p.t=1}}
     else if(p.st==="cross"&&danger)p.t=1;   // keeps hurrying to the far side once startled
     // on the pavement, step aside from a car and drift back afterwards
-    p.o+=clamp((!e.cross&&danger?2.1:p.off)-p.o,-1.2*dt,(danger?4:1.2)*dt);
+    if(p.st!=="down")p.o+=clamp((!e.cross&&danger?2.1:p.off)-p.o,-1.2*dt,(danger?4:1.2)*dt);
     p.v+=clamp(want-p.v,-8*dt,(hurry?9:3)*dt);
     p.s+=p.v*dt;
     if(p.s>=e.len){
@@ -1170,12 +1197,15 @@ function pedStep(p,dt,me,driving,psp){
       if(p.verge){p.from=end;p.s=0}else pedNext(p,end);
     }
     const[sx,sz,sh]=pedSpot(p);
-    // your car running into someone: they stagger and stand a while, and it is a crime if the police see it
-    if(driving&&psp>3&&copClock-(p.hitAt??-9)>3){const dx=sx-P.x,dz=sz-P.z,cs=Math.cos(P.h),sn=Math.sin(P.h);
-      if(Math.abs(dx*cs-dz*sn)<1.25&&Math.abs(dx*sn+dz*cs)<2.6){p.hitAt=copClock;p.st="idle";p.t=4;p.v=0;crime("ped",sx,sz);lifeHurt(p,15)}}
+    // your car running into someone: a bump makes them stagger and stand a while; faster than about 20 km/h it knocks
+    // them down, falling away from the car (on LOW, where nobody falls, they stagger). Someone already lying there
+    // stays down: the car used to stand them up. Either way a crime if the police see it
+    if(driving&&psp>3&&p.st!=="down"&&copClock-(p.hitAt??-9)>3){const dx=sx-P.x,dz=sz-P.z,cs=Math.cos(P.h),sn=Math.sin(P.h);
+      if(Math.abs(dx*cs-dz*sn)<1.25&&Math.abs(dx*sn+dz*cs)<2.6){p.hitAt=copClock;p.v=0;crime("ped",sx,sz);
+        if(save.violence&&psp>PED_V.knock){pedKnock(p);p.h=Math.atan2(P.x-sx,P.z-sz);lifeHurt(p,25)}else{p.st="idle";p.t=4;lifeHurt(p,15)}}}
     // never inside a wall, a post or a car: whatever is there pushes them out, as it does you
     const c=footClear(sx,sz);p.x=c[0];p.z=c[1];
-    p.h+=wrapA((p.st==="talk"?Math.atan2(FOOT.x-p.x,FOOT.z-p.z):sh)-p.h)*Math.min(1,dt*8);p.y=footGround(p.x,p.z);
+    if(p.st!=="down")p.h+=wrapA((p.st==="talk"?Math.atan2(FOOT.x-p.x,FOOT.z-p.z):sh)-p.h)*Math.min(1,dt*8);p.y=footGround(p.x,p.z);
     const G=p.m.G,vis=Math.hypot(p.x-me.x,p.z-me.z)<(p.verge?300:PED_V.see);G.visible=vis;
     if(vis){p.ph+=p.v*dt*3.3;if(p.v<.05)p.ph+=(Math.round(p.ph/Math.PI)*Math.PI-p.ph)*Math.min(1,dt*10);
       const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
@@ -1183,6 +1213,28 @@ function pedStep(p,dt,me,driving,psp){
       p.fall=clamp((p.fall||0)+(p.st==="down"&&save.violence?dt*4:-dt*1.6),0,1);
       G.position.set(p.x,p.y+Math.abs(Math.cos(p.ph))*Math.min(.04,p.v*.012)+p.fall*.12,p.z);G.rotation.set(-Math.PI/2*p.fall,p.h,0,"YXZ");
       p.m.legs[0].rotation.x=sw;p.m.legs[1].rotation.x=-sw;p.m.arms[0].rotation.x=-sw*.7;p.m.arms[1].rotation.x=sw*.7}
+    // the pool spreads from under the chest (the head falls away from the way they face) over about 3 s
+    if(p.pool){const on=vis&&p.st==="down"&&save.violence>1&&p.fall>.9;p.pool.visible=on;
+      if(on){const r=Math.min(.85,.2+p.downT*.22);p.pool.scale.set(r,r,1);p.pool.position.set(p.x-Math.sin(p.h)*.75,p.y+.02,p.z-Math.cos(p.h)*.75)}}
+}
+// whether you could see someone: near you, or in front of the camera
+function pedSeen(p,me){
+  if(Math.hypot(p.x-me.x,p.z-me.z)<50)return true;
+  const v=vergeView.set(p.x,p.y+.4,p.z).project(camera);
+  return v.z>=-1&&v.z<=1&&Math.abs(v.x)<1.15&&Math.abs(v.y)<1.15;
+}
+// someone knocked down, once you've looked away: walking again, on a pavement at least 60 m from you and out of view.
+// False if there's no such place yet (they stay down and it's tried again in a second)
+function pedRespawn(p,me){
+  const walks=PED_EDGES.filter(e=>!e.cross);
+  for(let i=0;i<24;i++){
+    const e=walks[Math.floor(pedRnd(p)*walks.length)],x=(e.a.x+e.b.x)/2,z=(e.a.z+e.b.z)/2;
+    if(Math.hypot(x-me.x,z-me.z)<60||pedSeen({x,z,y:footGround(x,z)},me))continue;
+    Object.assign(p,{e,from:pedRnd(p)<.5?e.a:e.b,s:pedRnd(p)*e.len,st:"walk",t:0,v:0,o:0,fall:0,out:false,downT:0,hitAt:-9});
+    if(p.pool)p.pool.visible=false;
+    return true;
+  }
+  return false;
 }
 /* ================================================================ HARBOUR + BOAT */
 // A pier on the east coast, out from the town, and a motorboat moored beside it. Walk onto the pier and board; the

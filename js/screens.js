@@ -729,7 +729,7 @@ $("pTilt").onclick=()=>{
   else on()};
 // off: no muzzle flash, and no red flash at the screen edges when you are hit (only a steady tint while health is low)
 $("pFlash").onclick=()=>{save.flash=!save.flash;syncPause();persist()};
-$("pViol").onclick=()=>{save.violence=(save.violence+1)%3;syncPause();persist();toast("VIOLENCE: "+VIOL[save.violence],["Nobody falls: a hit only flashes","People fall when hit, no blood","People fall, and hits leave a red mark that fades"][save.violence])};
+$("pViol").onclick=()=>{save.violence=(save.violence+1)%3;syncPause();persist();toast("VIOLENCE: "+VIOL[save.violence],["Nobody falls: someone hit stands still a moment","People hit fall and stay down, no blood","People hit fall and stay down, and bleed"][save.violence])};
 $("pGhost").onclick=()=>{save.ghostOn=!save.ghostOn;syncPause();persist();if(!save.ghostOn)ghostHide()};
 $("pSnd").onclick=()=>{save.sound=!save.sound;if(save.sound)audioInit();syncPause();persist()};
 $("pMus").onclick=$("gMus").onclick=()=>{save.music=!save.music;audioInit();musicInit();syncPause();persist()};

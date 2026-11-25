@@ -517,7 +517,8 @@ test.describe("police", () => {
       return { lvl: T.WANTED.lvl, st: p.st, t: p.t };
     });
     expect(r.lvl).toBe(1);
-    expect(r.st).toBe("idle");
+    // at 7 m/s (25 km/h) it knocks them down; slower than about 20 km/h they'd only stagger (pedestrians.spec.js)
+    expect(r.st).toBe("down");
     expect(r.t).toBeGreaterThan(3);
   });
   // Off the road the cars can't get beside you: an officer gets out and comes on foot. You get there the way a
@@ -636,6 +637,110 @@ test.describe("police", () => {
     // never caught: by the time they are back in the car the chase carries on, or you are far enough away to lose them
     expect(await toasts(game)).not.toContain("CAUGHT");
   });
+  test("an officer shot stays down while you can see them; once you can't, they and their car are gone", async ({ game }) => {
+    await setup(game);
+    await game.key("f");
+    const spot = await offRoad(game);
+    expect(spot).not.toBeNull();
+    await placeCop(game, 0, 40);
+    const r = await game.eval((spot) => {
+      const T = __T,
+        F = T.FOOT,
+        O = T.OFFICER,
+        cop = T.TRAFFIC.filter((t) => t.cop)[0];
+      T.save.violence = 1;
+      T.save.armed = true;
+      T.GUN.ammo = 20;
+      F.x = spot.x;
+      F.z = spot.z;
+      F.y = T.footGround(spot.x, spot.z);
+      cop.stopT = 0;
+      T.crime("crash", F.x, F.z);
+      let n = 0;
+      while (!O.on && n++ < 60 * 20) T.driveUpdate(1 / 60);
+      // once they're within 15 m, a shot
+      while (O.on && Math.hypot(O.x - F.x, O.z - F.z) > 15 && n++ < 60 * 40) T.driveUpdate(1 / 60);
+      F.h = F.cy = Math.atan2(O.x - F.x, O.z - F.z);
+      T.driveUpdate(1 / 60);
+      if (!T.GUN.lock || T.GUN.lock.k !== "officer") return { locked: false };
+      T.GUN.cool = 0;
+      T.gunFire();
+      const hit = { down: O.down > 0, out: !!O.out };
+      // 9 s on, with you still there: they used to get up after 6 s and walk back to the car
+      for (let i = 0; i < 60 * 9; i++) T.driveUpdate(1 / 60);
+      const watched = { on: O.on, down: O.down > 0, lying: +Math.abs(O.m.G.rotation.x).toFixed(2), back: O.back, pool: O.pool.visible };
+      // then 200 m off, facing away from them and their car
+      const cx = cop.wx,
+        cz = cop.wz,
+        ax = F.x - O.x,
+        az = F.z - O.z,
+        L = Math.hypot(ax, az);
+      F.x = O.x + (ax / L) * 200;
+      F.z = O.z + (az / L) * 200;
+      F.y = T.footGround(F.x, F.z);
+      F.h = F.cy = Math.atan2(ax, az);
+      for (let i = 0; i < 60 * 3; i++) T.driveUpdate(1 / 60);
+      // (the car is stood down; if the chase goes on, it can be called back somewhere out of sight)
+      return { locked: true, hit, watched, after: { on: O.on, shown: O.m.G.visible, carGone: !cop.e || Math.hypot(cop.wx - cx, cop.wz - cz) > 50, pool: O.pool.visible } };
+    }, spot);
+    expect(r.locked).toBe(true);
+    expect(r.hit).toEqual({ down: true, out: true });
+    expect(r.watched).toEqual({ on: true, down: true, lying: 1.57, back: false, pool: false });
+    expect(r.after).toEqual({ on: false, shown: false, carGone: true, pool: false });
+  });
+
+  test("on STRONG an officer shot bleeds; run over at speed they're knocked down too", async ({ game }) => {
+    await setup(game);
+    await game.key("f");
+    const spot = await offRoad(game);
+    expect(spot).not.toBeNull();
+    await placeCop(game, 0, 40);
+    const r = await game.eval((spot) => {
+      const T = __T,
+        F = T.FOOT,
+        O = T.OFFICER,
+        P = T.P,
+        cop = T.TRAFFIC.filter((t) => t.cop)[0],
+        out = {};
+      T.save.violence = 2;
+      T.save.armed = true;
+      T.GUN.ammo = 20;
+      F.x = spot.x;
+      F.z = spot.z;
+      F.y = T.footGround(spot.x, spot.z);
+      cop.stopT = 0;
+      T.crime("crash", F.x, F.z);
+      let n = 0;
+      while (!O.on && n++ < 60 * 20) T.driveUpdate(1 / 60);
+      while (O.on && Math.hypot(O.x - F.x, O.z - F.z) > 15 && n++ < 60 * 40) T.driveUpdate(1 / 60);
+      F.h = F.cy = Math.atan2(O.x - F.x, O.z - F.z);
+      T.driveUpdate(1 / 60);
+      out.locked = !!T.GUN.lock && T.GUN.lock.k === "officer";
+      T.GUN.cool = 0;
+      T.gunFire();
+      for (let i = 0; i < 60 * 3; i++) T.driveUpdate(1 / 60);
+      out.shot = { down: O.down > 0, pool: O.pool.visible };
+      // a fresh officer, beside the car: you drive into them at 8 m/s
+      T.copOfficerIn();
+      Object.assign(O, { on: true, car: cop, x: cop.wx + 6, z: cop.wz, y: T.footGround(cop.wx + 6, cop.wz), h: 0, v: 0, back: true, down: 0, out: false, fall: 0, caughtT: 0, outT: 0, best: 1e9 });
+      O.m.G.visible = true;
+      F.x = P.x + 2;
+      F.z = P.z;
+      T.footEnter();
+      P.h = Math.atan2(O.x - P.x, O.z - P.z);
+      const ux = Math.sin(P.h),
+        uz = Math.cos(P.h);
+      P.x = O.x - ux;
+      P.z = O.z - uz;
+      P.vx = ux * 8;
+      P.vz = uz * 8;
+      T.driveUpdate(1 / 60);
+      out.run = { down: O.down > 0, out: !!O.out };
+      return out;
+    }, spot);
+    expect(r).toEqual({ locked: true, shot: { down: true, pool: true }, run: { down: true, out: true } });
+  });
+
   test("back on the road while wanted: a chaser beside you drops back, it doesn't vanish", async ({ game }) => {
     await setup(game);
     await placeCop(game, 0, 6);

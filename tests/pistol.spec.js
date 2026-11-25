@@ -124,7 +124,7 @@ test.describe("pistol", () => {
     expect(await toasts(game)).toContain("OUT OF ROUNDS");
   });
 
-  test("someone shot is knocked down and gets up again; on LOW they stand still for as long; on STRONG a red mark fades", async ({ game }) => {
+  test("someone shot falls and stays down while you're near or looking; once you look away they're gone; on LOW they stand still a moment; on STRONG they bleed", async ({ game }) => {
     await game.open();
     await game.waitState("GARAGE");
     await game.eval(() => document.getElementById("gGun").click());
@@ -151,8 +151,18 @@ test.describe("pistol", () => {
       // the walker beside someone standing on an Old Quay pavement
       const e = T.PED_EDGES.find((e) => !e.cross && e.len > 40),
         p = T.PEDS[0];
+      // everyone else standing on the stretch farthest away, so nobody else is the nearest target
+      const far = T.PED_EDGES.filter((w) => !w.cross).reduce((b, w) => (Math.hypot(w.a.x - e.a.x, w.a.z - e.a.z) > Math.hypot(b.a.x - e.a.x, b.a.z - e.a.z) ? w : b));
       const one = (viol) => {
         T.save.violence = viol;
+        T.PEDS.forEach((q, k) => {
+          if (q === p) return;
+          q.e = far;
+          q.from = far.a;
+          q.s = 4 + k * 3;
+          q.st = "idle";
+          q.t = 999;
+        });
         p.e = e;
         p.from = e.a;
         p.s = 20;
@@ -165,7 +175,7 @@ test.describe("pistol", () => {
           L = Math.hypot(ax, az);
         F.x = p.x - (ax / L) * 6;
         F.z = p.z - (az / L) * 6;
-        F.h = Math.atan2(p.x - F.x, p.z - F.z);
+        F.h = F.cy = Math.atan2(p.x - F.x, p.z - F.z);
         F.y = T.footGround(F.x, F.z);
         T.driveUpdate(1 / 60);
         const q = T.gunPick();
@@ -178,19 +188,32 @@ test.describe("pistol", () => {
           lay = Math.max(lay, Math.abs(p.m.G.rotation.x));
         }
         const st = p.st,
-          mark = T.GUN.marks.some((k) => k.m.visible);
+          mark = T.GUN.marks.some((k) => k.m.visible),
+          pool = p.pool.visible;
+        // 9 s more, with you still standing 6 m away: they used to get up after 6 s, in front of you
         for (let i = 0; i < 60 * 9; i++) T.driveUpdate(1 / 60);
-        return { locked: true, st, lay: +lay.toFixed(2), mark, up: p.st !== "down" && Math.abs(p.m.G.rotation.x) < 0.05 };
+        const up = p.st !== "down" && Math.abs(p.m.G.rotation.x) < 0.05;
+        if (!viol) return { locked: true, st, lay: +lay.toFixed(2), mark, pool, up };
+        // then 120 m further off, facing away: they're gone from where they lay, walking somewhere you can't see
+        const x0 = p.x,
+          z0 = p.z;
+        F.x = p.x - (ax / L) * 126;
+        F.z = p.z - (az / L) * 126;
+        F.h = F.cy = Math.atan2(-ax, -az);
+        F.y = T.footGround(F.x, F.z);
+        for (let i = 0; i < 60 * 3; i++) T.driveUpdate(1 / 60);
+        const gone = p.st !== "down" && Math.hypot(p.x - x0, p.z - z0) > 20 && !p.pool.visible;
+        return { locked: true, st, lay: +lay.toFixed(2), mark, pool, up, gone };
       };
       out.standard = one(1);
       out.low = one(0);
       out.strong = one(2);
       return out;
     });
-    expect(r.standard).toEqual({ locked: true, st: "down", lay: 1.57, mark: false, up: true });
-    // LOW changes only what you see: down for as long, standing instead of lying
-    expect(r.low).toMatchObject({ locked: true, st: "down", lay: 0, mark: false, up: true });
-    expect(r.strong).toMatchObject({ locked: true, st: "down", mark: true, up: true });
+    expect(r.standard).toEqual({ locked: true, st: "down", lay: 1.57, mark: false, pool: false, up: false, gone: true });
+    // LOW: nobody falls, so nobody lies there either: they stand still for 6 s and walk on
+    expect(r.low).toEqual({ locked: true, st: "down", lay: 0, mark: false, pool: false, up: true });
+    expect(r.strong).toMatchObject({ locked: true, st: "down", mark: true, pool: true, up: false, gone: true });
   });
 
   test("the VIOLENCE setting cycles LOW, STANDARD, STRONG from the pause menu and is saved", async ({ game, page }) => {

@@ -7,7 +7,7 @@
 | Question | Decision for now |
 | --- | --- |
 | Platforms first | Steam and itch.io, rated for mature players. Not CrazyGames or Poki (they don't allow graphic violence); a milder version for them may come later |
-| What can be shot | Police officers, police cars and other cars. Pedestrians are knocked down, never killed, and get up again |
+| What can be shot | Police officers, police cars and other cars. People and officers shot, or hit by a car faster than about 20 km/h, are knocked down and stay down while the player is near or looking; then they're gone (Jo Yee, 25 November: getting up again after 6 s wasn't logical). On LOW nobody falls, and a hit stops them for 6 s |
 | How graphic | Stylised: sparks and a flash where a shot hits, people fall. No blood by default. A setting turns effects down or up |
 | Zero health | You wake up at your house and lose 10% of your credits (at most 5,000). Taken cars are gone; a contract in progress ends; the wanted level clears |
 | Police capture | Keeps the fine. Once you have a weapon, being caught is an **arrest**: the fine, the weapon taken away, and you start again outside the Harbour Hall |
