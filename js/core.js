@@ -359,10 +359,24 @@ try{
 save.owned=[...new Set(save.owned.filter(id=>CARS.some(c=>c.id===id)))].slice(0,GARAGE_CAP);
 if(!save.owned.length)save.owned=STARTERS.slice();
 if(!save.owned.includes(save.cur))save.cur=save.owned[0];
-// if the browser refuses to store the save (private mode, storage full) the game carries on, and says so once
+// if the browser refuses to store the save (private mode, storage full) the game carries on, and says so once (see
+// saveWrite for what it tries)
 let saveWarned=false,CL=null,tabIdle=false;   // tabIdle: the game is open in a newer tab, and this one has stopped   // CL: the cloud save's state, set up with it below (null until then, or with no cloud)
 // (the needs are kept with fractions while you play, js/life.js; the save gets them as whole numbers, here)
-function persist(){if(tabIdle)return;if(typeof needsCommit==="function")needsCommit();if(CL){if(CL.applying)return;clChanged()}if(typeof aspireCheck==="function")aspireCheck();try{localStorage.setItem(SAVE_KEY,JSON.stringify(save))}catch(e){if(!saveWarned&&typeof toast==="function"){saveWarned=true;toast("PROGRESS NOT SAVED","This browser isn't letting the game store your progress","bad")}}}
+function persist(){if(tabIdle)return;if(typeof needsCommit==="function")needsCommit();if(CL){if(CL.applying)return;clChanged()}if(typeof aspireCheck==="function")aspireCheck();
+  const r=saveWrite();SAVE.ok=r>0;
+  if(typeof toast==="function"){
+    if(!r&&!saveWarned){saveWarned=true;toast("PROGRESS NOT SAVED","This browser isn't letting the game store your progress","bad")}
+    if(r===1&&!SAVE.liteWarned){SAVE.liteWarned=true;toast("GHOST LAPS NOT SAVED","Storage is full: your progress is saved, but not your time trial ghost laps","bad")}}
+  if(typeof saveMark==="function")saveMark()}
+// The whole save; if that won't go in, the same without the time trial ghost laps (replays, not progress), and for
+// five minutes only that (each try writes the whole save). If neither goes in, what's stored stays as it was: the last
+// save that went in, never removed to make room. 2: the whole save went in, 1: all but the ghost laps, 0: nothing
+const SAVE={ok:true,liteUntil:0,liteWarned:false};
+function saveWrite(){
+  if(Date.now()>=SAVE.liteUntil)try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));SAVE.liteUntil=0;return 2}catch(e){SAVE.liteUntil=Date.now()+300000}
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},save,{ghost:{}})));return 1}catch(e){}
+  return 0}
 const paintOf=id=>STREET.has(id)?STREET.get(id).paint:save.paint[id]!==undefined?save.paint[id]:carById(id).body;
 
 /* ================================================================ RENDERER */

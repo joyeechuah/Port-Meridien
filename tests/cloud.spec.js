@@ -75,7 +75,8 @@ const progress = (game, cr) =>
     // a customisation, where this version of the game has them
     if (T.save.mods) T.save.mods.golf = { wing: 4, plate: "JO 1" };
     T.save.found[Object.keys(T.save.found)[0] || "lm1"] = 1;
-    T.save.ghost.e1 = { c: "golf", t: 61, d: [1, 2, 3, 4, 5, 6, 7, 8] };
+    // (a ghost lap is kept only for a time trial of this version: js/progress.js saveTrim)
+    T.save.ghost.south = { c: "golf", t: 61, d: [1, 2, 3, 4, 5, 6, 7, 8] };
     T.persist();
   }, cr);
 
@@ -226,7 +227,7 @@ test.describe("cloud save", () => {
         await page.locator("#cpkKeepAcc").click();
         await page.waitForEvent("load");
         await game.boot();
-        const r = await game.eval(() => ({ cr: __T.save.cr, tt: __T.save.owned.includes("tt"), mini: __T.save.owned.includes("mini"), ghost: !!__T.save.ghost.e1 }));
+        const r = await game.eval(() => ({ cr: __T.save.cr, tt: __T.save.owned.includes("tt"), mini: __T.save.owned.includes("mini"), ghost: !!__T.save.ghost.south }));
         // exactly the account's credits and cars; this device's ghost laps stay
         expect(r).toEqual({ cr: 500000, tt: true, mini: false, ghost: true });
         // and the account still holds exactly its own progress

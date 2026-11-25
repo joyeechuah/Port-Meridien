@@ -198,7 +198,7 @@ function boot(){
       stepI++;$("lf").style.width=stepI/STEPS.length*100+"%";boot()},window.__autostart?0:30);
     return;
   }
-  layoutHUD();updateMoney();syncPause();applyDayNight();
+  saveTrim();layoutHUD();updateMoney();syncPause();applyDayNight();
   gSel=Math.max(0,save.owned.indexOf(save.cur));buildGarageUI();gPick(gSel);
   const g=garageWant();camP.copy(g.pos).add(new V3(0,2,0));camL.copy(g.look);
   $("chCam").textContent="CAM: "+CAMS[camMode];
