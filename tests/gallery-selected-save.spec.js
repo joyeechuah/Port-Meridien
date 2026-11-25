@@ -5,7 +5,7 @@ test("selling the selected owned car while driving a street car saves an owned r
   const save={cur:"golf",owned:["golf","other"],mods:{}};
   const record=()=>log.push({cur:save.cur,owned:[...save.owned]});
   const g={CARS:[{id:"golf",price:10000}],dSel:0,save,curId:"st0",carMeshes:{},showMeshes:{},
-    $:()=>sell,earn:record,persist:record,parkAll(){},toast(){},fmtCr:String,dPick(){}};
+    $:()=>sell,earn:record,persist:record,updateMoney(){},parkAll(){},toast(){},fmtCr:String,dPick(){}};
   vm.runInNewContext(s.slice(s.indexOf('$("dSell").onclick'),s.indexOf('$("dTest").onclick')),g);
   sell.onclick();
   expect(log.length).toBeGreaterThan(0);

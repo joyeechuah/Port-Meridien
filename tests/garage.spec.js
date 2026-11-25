@@ -65,8 +65,10 @@ test.describe("dealership", () => {
     const cur = await game.eval(() => __T.curId);
     const other = await game.eval(() => __T.save.owned.find((id) => id !== __T.curId));
     const { sell } = await pick(game, other);
+    const xp = await game.eval(() => __T.save.xp);
     await page.locator("#dSell").click();
-    expect(await game.eval((id) => ({ cr: __T.save.cr, has: __T.save.owned.includes(id) }), other)).toEqual({ cr: 100000 + sell, has: false });
+    // credits, but no driver XP: a sale isn't driving (buying and selling over and over used to raise your level)
+    expect(await game.eval((id) => ({ cr: __T.save.cr, has: __T.save.owned.includes(id), xp: __T.save.xp }), other)).toEqual({ cr: 100000 + sell, has: false, xp });
     expect((await game.readSave()).owned).not.toContain(other);
     // a second press of the (now hidden) button pays nothing
     await game.eval(() => document.getElementById("dSell").onclick());
