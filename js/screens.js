@@ -1025,7 +1025,7 @@ function clLoadMeta(){let m=null;try{m=JSON.parse(localStorage.getItem(CLOUD_KEY
     try{localStorage.setItem(CLOUD_KEY,JSON.stringify(o))}catch(e){}
   }
   return o}
-function clSaveMeta(){try{localStorage.setItem(CLOUD_KEY,JSON.stringify(CL.meta))}catch(e){}}
+function clSaveMeta(){if(tabIdle)return;try{localStorage.setItem(CLOUD_KEY,JSON.stringify(CL.meta))}catch(e){}}
 CL={meta:clLoadMeta(),ad:null,user:null,st:"guest",msg:"",busy:false,timer:0,pick:null,lastPut:0,other:false,signingOut:null};
 const clOwn=()=>{CL.meta.owner=CL.user.uid;CL.other=false};
 // state: guest | connecting | synced | pending | offline | signedout (session ended) | conflict | error
