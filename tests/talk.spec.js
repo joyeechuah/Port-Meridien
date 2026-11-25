@@ -391,7 +391,8 @@ for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone l
           at: [+v.x.toFixed(2), +v.y.toFixed(2), Math.round(headY), Math.round(t.top)]
         };
       });
-      expect(r.n).toBe(8);
+      // six lines, the ride and the invitation home (a friend), and goodbye
+      expect(r.n).toBe(9);
       expect(r.minH).toBeGreaterThanOrEqual(40);
       expect(r.inside).toBe(true);
       expect(r.padHit, "buttons under the touch controls").toBe(0);
