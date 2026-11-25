@@ -8,7 +8,7 @@ const part = (file, a, b) => { const s = read(file), i = s.indexOf(a), j = s.ind
 function kitchen(completed = 0, cookXp = 0) {
   const toasts = [], wants = [], nodes = new Map();
   const g = {
-    save: { cr: 0, work: { completed, cool: 0 } }, clamp: (v, a, b) => Math.min(b, Math.max(a, v)), persist() {},
+    needsMood:()=>"Okay", save: { cr: 0, work: { completed, cool: 0 } }, clamp: (v, a, b) => Math.min(b, Math.max(a, v)), persist() {},
     toast: (...a) => toasts.push(a), wantEvent: (id) => { wants.push(id); return false; }, earn(v) { g.save.cr += v; },
     $: (id) => { if (!nodes.has(id)) nodes.set(id, {}); return nodes.get(id); },
     WORK_ITEMS: ["Bread", "Bowl", "Stew"], WORK: { panel: true, active: true, served: 2, wait: 0, hp: 1 }, HEALTH: { hp: 1 },

@@ -111,7 +111,7 @@ test("furniture gates each button and reward; TV and computer share PLAY",()=>{
   run('homePlace("computer",5,4);homePlace("fridge",10,4);NEEDS.hunger=0;NEEDS.fun=0');
   expect($("gPlay").visible&&$("gSnack").visible).toBe(true);
   expect(run('homeUse("play") && homeUse("snack") && [NEEDS.fun,NEEDS.hunger]')).toEqual([25,30]);
-  expect(run('homeUse("snack");save.skills.cooking')).toBe(5);
+  expect(run('homeUse("snack");save.skills.cooking')).toBe(4);
   expect(run('homeSell(0);homePlace("tv",5,4);homeUse("play")')).toBe(false);
   run("homeSell(0)");expect($("gSnack").visible).toBe(false);
 });

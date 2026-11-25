@@ -191,9 +191,18 @@ function skillLevel(k){
   return level;
 }
 function skillFactor(k){return 1+SKILL_RATE[k]*skillLevel(k)}
+// Hundredths of XP stay in this session. Each skill carries its own change of mood.
+const skillCarry={driving:0,cooking:0,charisma:0,fitness:0,photography:0,handiness:0};
+function moodPercent(mood,k){
+  if(mood==="Content")return 115;
+  if(mood==="Lonely"&&k==="charisma")return 150;
+  return mood==="Okay"?100:85;
+}
 function skillAward(k,xp){
   const before=skillLevel(k);
-  save.skills[k]=Math.min(skillThreshold(10),save.skills[k]+xp);
+  const scaled=xp*moodPercent(needsMood(),k)+skillCarry[k];
+  save.skills[k]=Math.min(skillThreshold(10),save.skills[k]+Math.floor(scaled/100));
+  skillCarry[k]=save.skills[k]===skillThreshold(10)?0:scaled%100;
   const after=skillLevel(k);if(after>before)wantEvent("level");
   for(let level=before+1;level<=after;level++)toast("SKILL LEVEL UP",k[0].toUpperCase()+k.slice(1)+" · level "+level,"gold");
 }
