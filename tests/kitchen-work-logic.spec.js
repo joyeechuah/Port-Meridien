@@ -8,7 +8,7 @@ function part(s, start, end) {
 }
 function kitchen(stored) {
   const nodes = new Map(), payments=[];
-  const g = { needsMood:()=>"Okay", wantEvent:()=>false, window:{}, document:{hidden:false}, state:"DRIVE", save:{cr:0}, QUAY:{kitchen:{x:0,z:0}},
+  const g = { needsMood:()=>"Okay", wantEvent:()=>false, wantsTidy:()=>false, window:{}, document:{hidden:false}, state:"DRIVE", save:{cr:0}, QUAY:{kitchen:{x:0,z:0}},
     FOOT:{on:true,x:0,z:0}, BOAT:{on:false}, FOOT_V:{reach:3.4}, WANTED:{lvl:0}, HEALTH:{hp:100},
     ev:null, job:null, testDrive:null, TALK:{}, SIT:{}, STARTERS:[], show(){},toast(){},clearInput(){},persist(){},
     $: id=>{if(!nodes.has(id))nodes.set(id,{focus(){}});return nodes.get(id);},

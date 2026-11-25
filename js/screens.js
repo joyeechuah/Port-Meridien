@@ -1009,6 +1009,8 @@ const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PR
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
+  // (an aspiration step paid is progress, even with the credits spent back to the start: js/progress.js)
+  if(sv.aspire&&typeof aspireClean==="function"&&Object.keys(aspireClean(sv.aspire).claimed).length)return false;
   const skills=skillsClean(sv.skills);if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))return false;
   return !(sv.wants&&Object.keys(wantsClean(sv.wants).completed).length)&&!homeProgress(sv.home)&&!workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
     (!sv.jobs||!Object.values(sv.jobs).some(v=>typeof v==="number"?v>0:!e(v)))}
@@ -1151,6 +1153,9 @@ function clNeeds(cloud){
 function clApply(doc,cloud){const lost=[],sv=Object.assign({},cloud,{home:homeClean(cloud.home,lost),ghost:save.ghost||{}});
   // (an old back-row piece with no room is paid back: see homeClean)
   if(lost.length)sv.cr=(Number.isFinite(sv.cr)?sv.cr:0)+homeRefund(lost);
+  // the day's photos counted on this device stay counted when the same account's save, with an older count, is restored
+  // over it (that reopened the five a day); another account's save keeps its own
+  if(!CL.other){const a=photoDayClean(save.photoDay),b=photoDayClean(sv.photoDay);if(a.day>b.day||a.day===b.day&&a.count>b.count)sv.photoDay=a}
   CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   // if the browser won't store it, nothing changed: saving and backing up carry on, and the choice stays to try again
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(sv))}catch(e){CL.applying=false;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}
