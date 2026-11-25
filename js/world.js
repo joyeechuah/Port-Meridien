@@ -800,6 +800,8 @@ function townBlockGeo(w,h,d){
 const ROOF_GEO=(()=>{const a=[-.5,0,-.5],b=[.5,0,-.5],c=[0,1,-.5],d=[-.5,0,.5],e=[.5,0,.5],f=[0,1,.5],
   g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute([a,d,f,a,f,c,b,c,f,b,f,e,a,c,b,d,e,f].flat(),3));g.computeVertexNormals();return g})();
 const DRUM_GEO=new THREE.CylinderGeometry(.5,.5,1,14);
+// a café parasol's canopy: a low eight-sided cone, 1 wide and 1 high before scaling
+const PARASOL_GEO=new THREE.ConeGeometry(.5,1,8);
 // what was built, for the map, the tests and anything that later needs to know where the town's places are
 // (benches: where you can sit, round the fountain; kitchen: the market stall that serves a meal, and the spot in the
 // aisle in front of it where you ask for one. Both are for js/life.js's needs)
@@ -974,6 +976,18 @@ function buildOldQuay(){
         if(flowering)box(x+dx*.44,py+1.44,z+dz*.44,.19,.12,.16,i%2?0xae4666:0xcc687c,angle,VGEO.shrub);
       }
       addBox(x,z,.75,.75,0);
+    }
+    // a café's terrace each side of the square's south half: four tables apiece under parasols, each with two chairs
+    // facing across it and a candle that lights at night (it's in the lamp batch); a table and its chairs are solid
+    const PARASOL=[0xb8312f,0x2b5d87,0xf2efe8,0x2f6b4f],CHAIR=0x3b3f44;
+    for(const[cx,cz]of[[645,163],[665,163]])for(let i=0;i<4;i++){
+      const tx=cx+(i%2?2.6:-2.6),tz=cz+(i<2?-2.8:2.8),a=(i*.7+cx*.01)%TAU,ca=Math.cos(a),sa=Math.sin(a);
+      box(tx,py+.76,tz,.9,.05,.9,0xe9e2d2,0,DRUM_GEO);box(tx,py+.4,tz,.07,.72,.07,CHAIR);box(tx,py+.05,tz,.5,.04,.5,CHAIR,0,DRUM_GEO);
+      for(const s of[-1,1]){const x=tx+sa*s*.78,z=tz+ca*s*.78;
+        box(x,py+.46,z,.44,.05,.44,0x7d5c3e,a);box(x+sa*s*.2,py+.72,z+ca*s*.2,.44,.48,.05,0x7d5c3e,a);box(x,py+.22,z,.06,.44,.06,CHAIR)}
+      box(tx,py+1.5,tz,.05,2.1,.05,0xd9d4c8);box(tx,py+2.62,tz,2.7,.42,2.7,PARASOL[(i+(cx>655?2:0))%4],a,PARASOL_GEO);
+      tileOf(tx,tz).glow.push({g:GEO.box,m:mat(tx,py+.83,tz,0,.07,.09,.07),c:0xffffff});
+      addBox(tx,tz,.55,1.05,a);
     }
   }
   // 6. beside the Auto Gallery, south-east: a short ring of houses south of its forecourt
