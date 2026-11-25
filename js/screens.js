@@ -1114,7 +1114,7 @@ const clOwn=()=>{CL.meta.owner=CL.user.uid;CL.other=false};
 // Later changes don't push a backup already waiting further back (steady progress would otherwise postpone it for good)
 function clChanged(){if(!CL.user||CL.st==="conflict"||CL.timer)return;
   CL.timer=setTimeout(clSync,Math.max(4000,(window.__cloudGap!==undefined?window.__cloudGap:30000)-(Date.now()-CL.lastPut)))}
-function clSet(st,msg){CL.st=st;CL.msg=msg||"";clRender()}
+function clSet(st,msg){CL.st=st;CL.msg=msg||"";clRender();saveMark()}
 function clBoot(){
   CL.ad=clAdapter();
   // straight after a restore from the account: the save as this game reads it is the version now in step
@@ -1278,6 +1278,18 @@ function clLine(){const m=CL.meta;
   if(CL.st==="pending"||CL.st==="error")return m.uid?"Not backed up · last "+clAgo(m.at):"";
   if(CL.user)return "Backed up "+clAgo(m.at);
   return ""}
+// NOT SAVED (js/core.js persist) shows on the drive HUD and in the garage until a save goes in. Signed in, with the
+// account holding all of the progress so far, it says IN YOUR ACCOUNT ONLY: the next start brings it back from there
+function saveMark(){
+  const acct=!SAVE.ok&&!!CL&&!!CL.user&&!!CL.meta.full&&clHash(clCanon(clPayload(save)))===CL.meta.full;
+  for(const id of ["saveHud","gSave"]){const b=$(id);if(!b)continue;
+    b.textContent=acct?"IN YOUR ACCOUNT ONLY":"NOT SAVED";b.classList.toggle("acct",acct);show(id,!SAVE.ok)}}
+function saveWhy(){const acct=$("saveHud").classList.contains("acct");
+  toast(acct?"IN YOUR ACCOUNT ONLY":"PROGRESS NOT SAVED",acct?"This browser isn't storing your progress, but your account has all of it, for next time":
+    CL&&CL.user?"This browser isn't storing your progress. It goes to your account a few seconds after each change":
+    CL&&CL.ad?"This browser isn't storing your progress. SAVE MY PROGRESS in the garage backs it up to your Google account":
+    "This browser isn't storing your progress: its storage is full or turned off, as in some private windows","bad")}
+$("saveHud").onclick=saveWhy;$("gSave").onclick=saveWhy;
 function clRender(){if(!CL)return;const on=!!CL.user,line=clLine(),bad=CL.st==="offline"||CL.st==="pending"||CL.st==="error"||CL.st==="signedout"||CL.st==="conflict";
   const g=$("gCloud");g.textContent=on||CL.meta.uid?(line||"SAVED").toUpperCase():"SAVE MY PROGRESS";g.classList.toggle("warn",bad&&!!CL.meta.uid);show("gCloud",!!CL.ad);
   $("pCloud").textContent=on?"CLOUD SAVE: "+(bad?"CHECK":"ON"):"SAVE MY PROGRESS";

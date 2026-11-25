@@ -367,3 +367,15 @@ function aspireRender(){
   }
 }
 
+// What a save keeps by id, once the lists exist (js/core.js reads the save before them; js/main.js calls this when
+// loaded): every record, discovery, colour and contract count for a race, radar, landmark, car or contract in this
+// version, and at most 64 others (from an older or a newer version) with ids of up to 64 characters; a ghost lap only
+// for a time trial in this version. So a save can't grow without end with entries nothing reads
+function saveTrim(){
+  const keep=(o,ids)=>{let n=0;for(const k of Object.keys(o))if(!ids.has(k)&&(k.length>64||++n>64))delete o[k]};
+  keep(save.rec,new Set(EVENTS.map(E=>E.id)));keep(save.radar,new Set(RADARS.map(r=>r.id)));
+  keep(save.found,new Set(LANDMARKS.map(l=>l.id)));keep(save.paint,new Set(CARS.map(c=>c.id)));
+  keep(save.jobs.runs,new Set(JOBS.map(J=>J.id)));
+  const trials=new Set(EVENTS.filter(E=>E.type==="tt").map(E=>E.id));
+  for(const k of Object.keys(save.ghost))if(!trials.has(k))delete save.ghost[k];
+}

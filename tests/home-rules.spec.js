@@ -160,3 +160,15 @@ test("the cooldown clock advances during visible play and stops while paused or 
   run('state="DRIVE";for(let i=0;i<180;i++)needsTick(1);state="GARAGE"');
   expect(run('homeUse("snack")')).toBe(true);
 });
+test("an oversized old layout: only so many entries are looked at, and only a piece that fitted in the old layout is moved or paid back",()=>{
+  const {run}=game();
+  // 200 copies of one canopy bed against the old back wall, behind a stool that leaves it no room: one bed stood there
+  const r=run(`const lost=[],plan=homeClean({v:1,items:[{id:"stool",x:10,z:17,r:0},
+    ...Array.from({length:200},()=>({id:"canopy",x:10,z:18,r:0}))]},lost);({items:plan.items,lost})`);
+  expect(r).toEqual({items:[{id:"stool",x:10,z:17,r:0}],lost:["canopy"]});
+  // a piece over where an old back-row piece stood never stood there: it goes (unpaid), and the bed moves forward
+  const s=run(`const lost2=[],plan2=homeClean({v:1,items:[{id:"canopy",x:10,z:18,r:0},{id:"lamp",x:11,z:19,r:0}]},lost2);({items:plan2.items,lost:lost2})`);
+  expect(s).toEqual({items:[{id:"canopy",x:10,z:17,r:0}],lost:[]});
+  // past twice the cap's worth of entries, nothing more is looked at
+  expect(run(`homeClean({v:1,items:[...Array(120).fill(null),{id:"lamp",x:4,z:4,r:0}]}).items.length`)).toBe(0);
+});
