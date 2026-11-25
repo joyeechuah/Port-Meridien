@@ -53,6 +53,7 @@ function netFirebase(){
   return{
     connect(){
       return fbLoad("firebase-app-compat.js").then(()=>Promise.all([fbLoad("firebase-auth-compat.js"),fbLoad("firebase-database-compat.js")])).then(()=>{
+        if(dead)throw new Error("closed");
         const fb=window.firebase,app=fb.apps.find(a=>a.name==="play")||fb.initializeApp(FIREBASE_CONFIG,"play");
         auth=app.auth();db=app.database();db.goOnline();
         return auth.currentUser?auth.currentUser:auth.signInAnonymously().then(r=>r.user)}).then(u=>u.uid)},
@@ -122,7 +123,9 @@ function netBegin(code,create){
   // joining, the players already there count as arrived; starting, anyone answering means the code is taken
   const attempt=c=>{NET.at=performance.now()/1000;NET.joining=!create;return tx.open(c,create,on).then(()=>c,e=>{if(e.message==="taken"&&create&&++tries<6)return attempt(netNewCode());throw e})};
   // an answer within 20 s, or "Couldn't connect" (a blocked or very slow connection would otherwise wait forever)
-  netWithin(tx.connect().then(uid=>{NET.uid=uid;return attempt(code)}),20).then(c=>{if(NET.tx!==tx)return;
+  netWithin(tx.connect().then(uid=>{
+    if(NET.tx!==tx)throw new Error("closed");
+    NET.uid=uid;return attempt(code)}),20).then(c=>{if(NET.tx!==tx)return;
     NET.busy=false;NET.joining=false;NET.room=c;NET.sent="";NET.sendT=NET.beatT=0;netNote("");netSend(true);
     toast(create?"ROOM "+c:"JOINED ROOM "+c,create?"Share the code: your friends join with PLAY TOGETHER in the pause menu":"You're playing together","gold");
   }).catch(e=>{if(NET.tx===tx)netFail(e)});
