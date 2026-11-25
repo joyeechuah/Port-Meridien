@@ -637,6 +637,21 @@ function updatePrompt(){
 $("prompt").onclick=()=>{if(state==="DRIVE"&&promptAct)promptAct()};
 // The repair screen uses PAUSE so the car stays still and the menu cannot charge credits while driving.
 // Damage is session-only. Credits are saved only after the player confirms a roadside repair.
+/* ---------- first-time hints: once on each device, as each newer part of life comes into reach (kept apart from the
+   save, so they're neither progress nor a setting the account carries) ---------- */
+const HINT_KEY=SAVE_KEY+"-hints",HINT_TEXT={
+  home:["NEW AT HOME","DESIGN HOME furnishes your mezzanine. Friends you invite over wait there."],
+  you:["YOU","SKILLS has your skills and aspirations; NEEDS, your wants and mood."],
+  friends:["FRIENDS",isTouch?"Ask a friend along for a ride, or over to your place.":"Ask a friend along for a ride (7), or over to your place (8)."],
+  kitchen:["KITCHEN CAREER","Shifts and Cooking take you from Dishwasher to Head chef, with better pay at each rank."]};
+const HINTS=(()=>{try{const h=JSON.parse(localStorage.getItem(HINT_KEY)||"{}");return h&&typeof h==="object"&&!Array.isArray(h)?h:{}}catch(e){return {}}})();
+function hint(id){
+  if(window.__noHints||tabIdle||HINTS[id]||!HINT_TEXT[id])return false;
+  HINTS[id]=1;try{localStorage.setItem(HINT_KEY,JSON.stringify(HINTS))}catch(e){}
+  toast(HINT_TEXT[id][0],HINT_TEXT[id][1]);return true;
+}
+// home's: a moment after the garage opens, unless something else is on screen (then the next time)
+function hintHome(){setTimeout(()=>{if(state==="GARAGE"&&!document.querySelector(".ov:not(.hide)"))hint("home")},1500)}
 let repairConfirm=false,repairReturnPause=false;
 const damagePct=()=>Math.ceil(Math.max(0,P.damage||0));
 const repairPrice=()=>Math.round((1000+20*damagePct())*skillFactor("handiness"));
@@ -700,21 +715,6 @@ $("repairNow").onclick=()=>{
   show("damageHud",false);
   toast("VEHICLE REPAIRED","Roadside repair: -"+fmtCr(price)+" CR","gold");
 };
-/* ---------- first-time hints: once on each device, as each newer part of life comes into reach (kept apart from the
-   save, so they're neither progress nor a setting the account carries) ---------- */
-const HINT_KEY=SAVE_KEY+"-hints",HINT_TEXT={
-  home:["NEW AT HOME","DESIGN HOME furnishes your mezzanine. Friends you invite over wait there."],
-  you:["YOU","SKILLS has your skills and aspirations; NEEDS, your wants and mood."],
-  friends:["FRIENDS",isTouch?"Ask a friend along for a ride, or over to your place.":"Ask a friend along for a ride (7), or over to your place (8)."],
-  kitchen:["KITCHEN CAREER","Shifts and Cooking take you from Dishwasher to Head chef, with better pay at each rank."]};
-const HINTS=(()=>{try{const h=JSON.parse(localStorage.getItem(HINT_KEY)||"{}");return h&&typeof h==="object"&&!Array.isArray(h)?h:{}}catch(e){return {}}})();
-function hint(id){
-  if(window.__noHints||tabIdle||HINTS[id]||!HINT_TEXT[id])return false;
-  HINTS[id]=1;try{localStorage.setItem(HINT_KEY,JSON.stringify(HINTS))}catch(e){}
-  toast(HINT_TEXT[id][0],HINT_TEXT[id][1]);return true;
-}
-// home's: a moment after the garage opens, unless something else is on screen (then the next time)
-function hintHome(){setTimeout(()=>{if(state==="GARAGE"&&!document.querySelector(".ov:not(.hide)"))hint("home")},1500)}
 function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audioOn(false);
   $("pTitle").textContent=ev?ev.E.name:testDrive?"Test drive · "+carById(testDrive.id).md:job?"Contract · "+job.def.title:"Free ride";
   $("pHome").textContent=job?"GO HOME · ENDS CONTRACT":"GO HOME · REPAIR FREE";
