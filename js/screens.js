@@ -565,7 +565,7 @@ function dealerCam(dt){
   camera.fov+=(48-camera.fov)*.1;camera.updateProjectionMatrix();
 }
 $("dBuy").onclick=()=>{const c=CARS[dSel];if(save.cr<c.price||save.owned.includes(c.id)||save.owned.length>=GARAGE_CAP)return;
-  earn(-c.price);save.owned.push(c.id);save.paint[c.id]=dPaint;getCar(c.id).paint(dPaint);persist();parkAll(curId);
+  save.owned.push(c.id);save.paint[c.id]=dPaint;earn(-c.price);getCar(c.id).paint(dPaint);parkAll(curId);
   toast("PURCHASED",c.mk+" "+c.md+" is in your garage","gold");dPick(dSel)};
 $("dDrive").onclick=()=>{const c=CARS[dSel];if(!save.owned.includes(c.id))return;
   attachCar(c.id);parkAll(c.id);persist();dPick(dSel);toast("CAR SWAPPED",c.mk+" "+c.md)};
