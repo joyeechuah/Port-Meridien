@@ -4,6 +4,7 @@ function measureBends(T = globalThis.__T) {
     out = {};
   for (const t of T.TRAFFIC || []) {
     t.e = null;
+    t.lost = false; // else spawnTraffic brings it back mid-test
     t.c.G.visible = false;
     t.wx = t.wz = 1e6;
   }
@@ -58,6 +59,7 @@ function measureJunctions(T = globalThis.__T) {
     ang = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   for (const t of T.TRAFFIC || []) {
     t.e = null;
+    t.lost = false; // else spawnTraffic brings it back mid-test
     t.c.G.visible = false;
     t.wx = t.wz = 1e6;
   }

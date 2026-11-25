@@ -160,7 +160,12 @@ function netSend(force){
 addEventListener("visibilitychange",()=>{if(document.hidden&&NET.room&&NET.tx){const d=netState();d.m=3;d.t=Date.now();NET.tx.put(d);NET.sent=""}});
 
 /* ---------- the others ---------- */
-const NET_OK=d=>d&&typeof d==="object"&&[d.x,d.y,d.z,d.h,d.v].every(v=>typeof v==="number"&&Number.isFinite(v))&&[0,1,2,3].includes(d.m);
+// a friend's message: finite numbers, and a place on or around the island at a speed a car can reach. The room's rules
+// only check they're numbers, so a message from a broken or hostile client with 1e308 for a position used to be drawn,
+// and the maths that placed its car and name tag came out as Infinity and NaN
+const NET_LIM={xz:6000,y:[-60,600],v:200};   // roads reach about 1.2 km out; the fastest car tops out near 122 m/s
+const NET_OK=d=>d&&typeof d==="object"&&[d.x,d.y,d.z,d.h,d.v].every(v=>typeof v==="number"&&Number.isFinite(v))&&[0,1,2,3].includes(d.m)&&
+  Math.abs(d.x)<=NET_LIM.xz&&Math.abs(d.z)<=NET_LIM.xz&&d.y>=NET_LIM.y[0]&&d.y<=NET_LIM.y[1]&&Math.abs(d.v)<=NET_LIM.v;
 // a car's rotation: four finite numbers, or none (then the heading is used). The rules accept part of one, and the
 // database may hand it back as an object, so it's checked here rather than trusted
 const NET_Q=q=>{const a=Array.isArray(q)?q:q&&typeof q==="object"?[q[0],q[1],q[2],q[3]]:null;

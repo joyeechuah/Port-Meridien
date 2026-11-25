@@ -140,6 +140,7 @@ test.describe("driving", () => {
         runs = [];
       for (const t of T.TRAFFIC) {
         t.e = null;
+        t.lost = false; // else spawnTraffic brings it back mid-test
         t.c.G.visible = false;
         t.wx = t.wz = 1e6;
       }
@@ -392,6 +393,7 @@ test.describe("driving", () => {
         out = [];
       for (const t of T.TRAFFIC) {
         t.e = null;
+        t.lost = false; // else spawnTraffic brings it back mid-test
         t.c.G.visible = false;
         t.wx = 1e6;
         t.wz = 1e6;
@@ -464,6 +466,7 @@ test.describe("driving", () => {
         };
       for (const t of T.TRAFFIC) {
         t.e = null;
+        t.lost = false; // else spawnTraffic brings it back mid-test
         t.wx = t.wz = 1e6;
       }
       T.save.radar = {};
