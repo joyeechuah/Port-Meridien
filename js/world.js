@@ -759,10 +759,10 @@ function windowTex(lit){
   x.fillStyle=lit?"#000":"#f4f1ea";x.fillRect(0,0,256,256);
   if(!lit){for(let i=0;i<260;i++){const v=225+R()*25|0;x.fillStyle=`rgba(${v},${v-3},${v-10},.35)`;x.fillRect(R()*256,R()*256,6+R()*30,4+R()*20)}
     const g=x.createLinearGradient(0,0,0,256);g.addColorStop(0,"rgba(0,0,0,0)");g.addColorStop(.75,"rgba(0,0,0,0)");g.addColorStop(1,"rgba(120,100,80,.18)");x.fillStyle=g;x.fillRect(0,0,256,256)}
-  const SH=["#2f6b4f","#2b5d87","#7a5232","#3d7f8a","#2f6b4f"],AW=[["#b8312f","#f2efe8"],["#2b5d87","#f2efe8"],["#2f6b4f","#e9e2cf"],["#c47a2c","#f2efe8"]];
+  const SH=["#2f6b4f","#2b5d87","#7a5232","#3d7f8a","#2f6b4f"];
   // upper floors: rows 0-2
   for(let r=0;r<3;r++)for(let k=0;k<4;k++){
-    const X=k*64+19,Y=r*64+14,sh=SH[(k+r*2)%SH.length],open=R()<.55,bal=R()<.45;
+    const X=k*64+19,Y=r*64+14,sh=SH[(k+r*2)%SH.length],open=R()<.55;
     if(lit){if(R()<.38){x.fillStyle=R()<.7?"#ffd49a":"#fff0d0";x.fillRect(X+2,Y+2,22,30)}continue}
     x.fillStyle="#2a3238";x.fillRect(X,Y,26,34);
     x.fillStyle="rgba(150,180,200,.25)";x.fillRect(X+3,Y+3,9,12);
@@ -770,16 +770,15 @@ function windowTex(lit){
     if(open){x.fillRect(X-12,Y,11,34);x.fillRect(X+27,Y,11,34)}else{x.fillRect(X,Y,13,34);x.fillRect(X+13,Y,13,34);x.fillStyle="rgba(0,0,0,.25)";x.fillRect(X+12.5,Y,1,34)}
     x.fillStyle="rgba(0,0,0,.18)";for(let q=0;q<34;q+=4)x.fillRect(open?X-12:X,Y+q,open?50:26,1);
     x.fillStyle="#e6e1d6";x.fillRect(X-4,Y+34,34,4);
-    if(bal){x.fillStyle="#3a3a3a";x.fillRect(X-8,Y+38,42,3);x.fillRect(X-8,Y+24,42,2);for(let q=X-8;q<=X+34;q+=5)x.fillRect(q,Y+24,1.4,15)}
+    // (balconies are built on the houses now, not painted: see buildOldQuay)
   }
   // ground floor: row 3
   for(let k=0;k<2;k++){const X=k*128+10,Y=192+8;
     if(lit){x.fillStyle="#ffcf8a";x.fillRect(X+4,Y+22,100,30);x.fillStyle="#fff2d6";x.fillRect(X+10,Y+26,30,10);continue}
-    const aw=AW[Math.floor(R()*AW.length)];
     x.fillStyle="#1f262b";x.fillRect(X+4,Y+20,100,34);x.fillStyle="rgba(170,200,215,.22)";x.fillRect(X+8,Y+24,40,14);
     x.fillStyle="#6b4a2e";x.fillRect(X+82,Y+22,18,32);
-    for(let q=0;q<9;q++){x.fillStyle=aw[q%2];x.beginPath();x.moveTo(X+q*12.4,Y);x.lineTo(X+(q+1)*12.4,Y);x.lineTo(X+(q+1)*12.4+1,Y+16);x.lineTo(X+q*12.4+1,Y+16);x.fill()}
-    x.fillStyle="rgba(0,0,0,.25)";x.fillRect(X,Y+15,112,3);
+    // (the awnings over the shopfronts, and the shade under them, are built on the street side: see buildOldQuay.
+    // Painted here, the shade showed on walls with no awning)
   }
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;
 }
@@ -816,14 +815,57 @@ function buildOldQuay(){
     box(x,y,z,w,h,d,color);
     QUAY.floors.push({x,z,hx:w/2,hz:d/2,top:y+h/2});
   };
+  // the details have their own run of chances, so the town's plots, floors and colours stay as they were
+  let sdd=7001;const RD=k=>rnd(sdd++,k);
+  // a box on a house's face f (n, s, w or e): u metres along it from its left edge seen from outside, its middle at
+  // height hgt, standing p metres out; a, b, c its size along the face, up and out; tilt leans the outer edge down
+  const FN={n:[0,-1],s:[0,1],w:[-1,0],e:[1,0]};
+  const onFace=(cx,cz,w,d,f,u,hgt,p,a,b,c,col,tilt=0)=>{const[nx,nz]=FN[f],along=nz?w:d,ux=nz,uz=-nx,
+      x=cx+nx*w/2+ux*(u-along/2)+nx*p,z=cz+nz*d/2+uz*(u-along/2)+nz*p;
+    tileOf(x,z).solid.push({g:GEO.box,m:mat(x,hgt,z,Math.atan2(nx,nz),a,b,c,tilt),c:col})};
+  const IRON=0x33383c,SILL=0xe6e1d6,AWN=[[0xb8312f,0xf2efe8],[0x2b5d87,0xf2efe8],[0x2f6b4f,0xe9e2cf],[0xc47a2c,0xf2efe8]];
+  // depth on a face, lined up with the facade picture (windowTex): its windows stand every 4 m, 2 m in from the face's
+  // left edge, the first floor's sills 3.5 m up and then every 3.2 m; its two shopfronts every 8 m, 4.1 m in. A
+  // band runs between the shop and the floors above. The side onto a street also gets balconies on some upper
+  // windows and a striped awning over each shopfront, leaning out over the pavement. All of it goes in the tile's
+  // batch: no extra draws
+  const facade=(cx,cz,w,d,fl,y,f,street,col)=>{const along=FN[f][1]?w:d;
+    onFace(cx,cz,w,d,f,along/2,y+2.75,.06,along+.1,.16,.12,TRIM);
+    for(let fi=1;fi<fl&&fi<4;fi++){const wb=y+3.5+3.2*(fi-1);
+      for(let u=2;u+1<=along;u+=4){
+        onFace(cx,cz,w,d,f,u,wb-.07,.1,1.95,.12,.2,SILL);
+        if(!street||RD(1)>=.34)continue;
+        // a balcony: its floor, a rail along the top and the bottom, the sides, and five bars
+        onFace(cx,cz,w,d,f,u,wb-.16,.42,2.5,.12,.84,STONE);
+        onFace(cx,cz,w,d,f,u,wb+.88,.82,2.5,.06,.06,IRON);onFace(cx,cz,w,d,f,u,wb+.05,.82,2.5,.05,.05,IRON);
+        for(const s of[-1,1])onFace(cx,cz,w,d,f,u+s*1.22,wb+.88,.42,.06,.06,.84,IRON);
+        for(let q=-2;q<=2;q++)onFace(cx,cz,w,d,f,u+q*.6,wb+.46,.82,.04,.86,.04,IRON);
+      }
+    }
+    // each awning spans the painted shopfront under it, 3.48 m either side of u; a house too narrow for the whole of
+    // its first shopfront gets the part of it that stops 0.4 m short of the house's edge. Under each, on the wall, the
+    // shade it casts: the wall picture's colour there, tinted like the house and 16% darker
+    const shade=new THREE.Color(col).multiply(new THREE.Color(0xc8c5be)).convertLinearToSRGB().getHex();
+    if(street)for(let u=4.11;u-3.5<along;u+=8){const fit=u+3.5<=along,aw=AWN[Math.floor(RD(2)*AWN.length)];
+      if(!fit&&(u>4.2||along<4))break;
+      const lo=u-3.48,hi=fit?u+3.48:along-.4,c=(lo+hi)/2,a=hi-lo,n=Math.max(3,Math.round(a/1.16)),sw=a/n;
+      for(let q=0;q<n;q++)onFace(cx,cz,w,d,f,c-a/2+sw*(q+.5),y+2.12,.62,sw,.06,1.25,aw[q%2],.32);
+      onFace(cx,cz,w,d,f,c,y+1.84,1.22,a,.26,.04,aw[0]);onFace(cx,cz,w,d,f,c,y+1.65,.03,a,.5,.02,shade);
+    }
+  };
   // a house: walls with windows and a shopfront (the town's facade picture, tinted) and a roof. Its collider comes
   // from the row it stands in.
-  // roof 0 is flat behind a parapet; 1 has its ridge along x, 2 along z
-  const house=(cx,cz,w,d,fl,col,roof)=>{
+  // roof 0 is flat behind a parapet; 1 has its ridge along x, 2 along z. street: the face onto the street, inner the
+  // one onto the block's middle, ends any end face that stands on a street too (the corner houses)
+  const house=(cx,cz,w,d,fl,col,roof,street,inner,ends=[])=>{
     const h=fl*3.2+.5,y=meshH(cx,cz),top=y+h-.5;
     tileOf(cx,cz).town.push({g:townBlockGeo(w,h,d),m:mat(cx,y+h/2-.5,cz),c:col});
     if(!roof)box(cx,top+.16,cz,w+.3,.34,d+.3,TRIM);
-    else{const ax=roof===1,span=ax?d:w,len=ax?w:d;box(cx,top+.1,cz,w+.5,.22,d+.5,TRIM);box(cx,top+.2,cz,span+.7,span*.26,len+.7,TILE_C[Math.floor(R(5)*TILE_C.length)],ax?Math.PI/2:0,ROOF_GEO)}
+    else{const ax=roof===1,span=ax?d:w,len=ax?w:d;box(cx,top+.1,cz,w+.5,.22,d+.5,TRIM);box(cx,top+.2,cz,span+.7,span*.26,len+.7,TILE_C[Math.floor(R(5)*TILE_C.length)],ax?Math.PI/2:0,ROOF_GEO);
+      // a chimney on most tiled roofs, part way down one slope
+      if(RD(3)<.6){const s=(RD(4)-.5)*len*.5,o=span*.18,hh=span*.26*.55+1.2,x=cx+(ax?s:o),z=cz+(ax?o:s);
+        box(x,top+.2+hh/2,z,.75,hh,.75,0x9a6a52);box(x,top+.27+hh,z,.95,.14,.95,0x6f5a4c)}}
+    if(street){facade(cx,cz,w,d,fl,y,street,true,col);facade(cx,cz,w,d,fl,y,inner,false,col);for(const f of ends)if(f)facade(cx,cz,w,d,fl,y,f,true,col)}
     QUAY.houses++;
   };
   // houses wall to wall round the edge of a block, leaving the middle open. o.gaps are ways in: [side, from, to]
@@ -834,9 +876,9 @@ function buildOldQuay(){
     // one collider for each unbroken run of houses, not one a house: where two colliders met inside a wall, a car
     // pushed into the wall there was shoved along it and stopped dead, where anywhere else it slides
     for(const[side,zz]of[["n",z0+o.dep/2],["s",z1-o.dep/2]]){let x=x0,a=null;const end=b=>{if(a!==null)addBox((a+b)/2,zz,(b-a)/2,o.dep/2,0);a=null};
-      while(x1-x>.5){const w=plot(x1-x);if(gap(side,x,x+w))end(x);else{if(a===null)a=x;house(x+w/2,zz,w,o.dep,fl(),col(),R(4)<o.pitch?1:0)}x+=w}end(x)}
+      while(x1-x>.5){const w=plot(x1-x);if(gap(side,x,x+w))end(x);else{if(a===null)a=x;house(x+w/2,zz,w,o.dep,fl(),col(),R(4)<o.pitch?1:0,side,side==="n"?"s":"n",[x<=x0+.01?"w":null,x+w>=x1-.01?"e":null])}x+=w}end(x)}
     for(const[side,xx]of[["w",x0+o.dep/2],["e",x1-o.dep/2]]){let z=z0+o.dep,a=null;const end=b=>{if(a!==null)addBox(xx,(a+b)/2,o.dep/2,(b-a)/2,0);a=null};
-      while(z1-o.dep-z>.5){const w=plot(z1-o.dep-z);if(gap(side,z,z+w))end(z);else{if(a===null)a=z;house(xx,z+w/2,o.dep,w,fl(),col(),R(4)<o.pitch?2:0)}z+=w}end(z)}
+      while(z1-o.dep-z>.5){const w=plot(z1-o.dep-z);if(gap(side,z,z+w))end(z);else{if(a===null)a=z;house(xx,z+w/2,o.dep,w,fl(),col(),R(4)<o.pitch?2:0,side,side==="w"?"e":"w")}z+=w}end(z)}
   };
   const gy=(x,z)=>meshH(x,z);
   // 1. terraces with shops, north-west: narrow plots, two to four floors, a line of olive trees behind
