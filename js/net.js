@@ -177,7 +177,7 @@ function netGot(uid,d){
   if(!NET_OK(d)||(!NET.room&&!NET.joining))return;
   d=Object.assign({},d,{q:NET_Q(d.q)});
   let p=NET.peers.get(uid);const now=performance.now()/1000;
-  if(!p){if(NET.peers.size>=NET.MAX-1)return;p={uid,buf:[],model:null,key:"",tag:null,name:"",phase:0,seen:now,shown:false};NET.peers.set(uid,p);
+  if(!p){if(NET.peers.size>=NET.MAX-1)return;p={uid,buf:[],model:null,key:"",tag:null,name:"",phase:0,seen:now,shown:false,lost:false};NET.peers.set(uid,p);
     // whoever was already there when I joined "is here"; anyone after that "joined"
     toast(netName(d.n).toUpperCase()||"A FRIEND",now-NET.at<3?"is in the room":"joined the room","gold")}
   p.seen=now;p.buf.push({t:now,d});if(p.buf.length>12)p.buf.shift();
@@ -185,7 +185,9 @@ function netGot(uid,d){
   if(!$("play").classList.contains("hide"))netRender();
 }
 function netGone(uid){const p=NET.peers.get(uid);if(!p)return;netDrop(p);NET.peers.delete(uid);toast(p.name.toUpperCase(),"left the room");if(!$("play").classList.contains("hide"))netRender()}
-function netDropModel(p){if(!p.model)return;if(p.model.kind==="car")disposeHeroCar(p.model);else scene.remove(p.model.G);p.model=null}
+// a friend's car is theirs alone and goes with them; a walker's shapes are shared by outfit (netLook) and its face's
+// picture by everyone with that face, but the face's material is its own (a friend in and out of cars left one each time)
+function netDropModel(p){if(!p.model)return;if(p.model.kind==="car")disposeHeroCar(p.model);else{scene.remove(p.model.G);if(p.model.face)p.model.face.m.dispose()}p.model=null}
 function netDrop(p){netDropModel(p);if(p.tag){scene.remove(p.tag);p.tag.material.map.dispose();p.tag.material.dispose()}p.model=p.tag=null}
 // a name above each friend, readable from a distance and through walls, so you can find each other
 function netTag(p){
@@ -198,13 +200,16 @@ function netTag(p){
   const t=new THREE.CanvasTexture(cv),m=new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true});
   p.tag=new THREE.Sprite(m);p.tag.scale.set(2.4,.6,1);p.tag.renderOrder=30;p.tag.visible=false;scene.add(p.tag);
 }
+// a friend on foot in an outfit: the body, legs and arms, made once per outfit (each new walker made three new shapes)
+const NET_LOOKS=new Map();
+function netLook(o){let L=NET_LOOKS.get(o.id);if(!L)NET_LOOKS.set(o.id,L=figureLook(o.shirt,o.pants,0xc49a7a,0x2a1d16,false));return L}
 // the model a friend needs now: their car in its paint, a person in their outfit, or a copy of the boat
 function netModel(p,d){
   const key=d.m===0?"car:"+d.c+":"+d.p:d.m===1?"foot:"+d.o:d.m===2?"boat":"away";
   if(key===p.key)return;
   netDropModel(p);p.key=key;
   if(d.m===0){const cd=carById(d.c)||CARS[0],col=Number.isInteger(d.p)&&d.p>=0&&d.p<=0xffffff?d.p:cd.body;p.model={kind:"car",G:buildHeroCar(cd,col,Object.assign({},MOD_STOCK)).G};scene.add(p.model.G)}
-  else if(d.m===1){const o=OUTFITS.find(x=>x.id===d.o)||OUTFITS[0],m=pedModel(0,1,figureLook(o.shirt,o.pants,0xc49a7a,0x2a1d16,false));p.model={kind:"foot",G:m.G,legs:m.legs,arms:m.arms}}
+  else if(d.m===1){const o=OUTFITS.find(x=>x.id===d.o)||OUTFITS[0],m=pedModel(0,1,netLook(o));p.model={kind:"foot",G:m.G,legs:m.legs,arms:m.arms,face:m.face}}
   else if(d.m===2&&BOAT.m){const G=BOAT.m.clone();G.traverse(o=>{if(o===BOAT.wake||o.material===BOAT.wake.material)o.visible=false});scene.add(G);p.model={kind:"boat",G}}
 }
 // where a friend is now: between the two messages either side of a fifth of a second ago, or a little past the
@@ -228,6 +233,8 @@ function netTick(dt){
   const now=performance.now()/1000,me=activePlayer();
   for(const p of NET.peers.values()){
     const d=netAt(p,now-NET.DELAY),stale=now-p.seen>NET.STALE;
+    // going quiet (or back) shows in the open room list at once; it said "driving" until something else redrew it
+    if(stale!==!!p.lost){p.lost=stale;if(!$("play").classList.contains("hide"))netRender()}
     if(!d||stale||d.m===3){if(p.model)p.model.G.visible=false;if(p.tag)p.tag.visible=false;p.shown=false;continue}
     netModel(p,d);if(!p.model)continue;
     const G=p.model.G,far=Math.hypot(d.x-me.x,d.z-me.z)>NET.FAR;
@@ -275,8 +282,11 @@ $("plLeave").onclick=()=>{netLeave();netRender()};
 $("plCode").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();netJoin()}});
 $("plCode").addEventListener("input",()=>{const c=netCodeOf($("plCode").value);if($("plCode").value!==c)$("plCode").value=c});
 $("plName").addEventListener("change",()=>{save.nick=netName($("plName").value);$("plName").value=save.nick;persist();if(NET.room)netSend(true);netRender()});
+// the invitation: the room and this page, keeping ?mp=local in a room on the local relay, or a friend following the
+// link would look for the room on the other service
+const netInvite=()=>"Play Port Meridien with me: room "+NET.room+". "+location.origin+location.pathname+(netLocal()?"?mp=local":"");
 $("plShare").onclick=()=>{
-  const text="Play Port Meridien with me: room "+NET.room+". "+location.origin+location.pathname;
+  const text=netInvite();
   if(navigator.share)navigator.share({title:"Port Meridien",text}).catch(()=>{});
   else if(navigator.clipboard)navigator.clipboard.writeText(text).then(()=>netNote("Copied. Send it to your friends."),()=>netNote("Room "+NET.room+": tell your friends this code."));
   else netNote("Room "+NET.room+": tell your friends this code.");

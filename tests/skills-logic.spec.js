@@ -126,3 +126,16 @@ test("pause skills panel shows six level bars and restores focus through Escape 
   run(part("cars","const PAUSE_SUBS=","// a controller"));run(read("cars").split("\n").find(l=>l.includes('const sub=PAUSE_SUBS.find')).trim().replace(/^else /,""));
   expect($("pause").inert).toBe(false);expect(g.document.activeElement).toBe($("pSkills"));
 });
+test("a clock set ahead and put right neither blocks Photography XP nor resets the day's five",()=>{
+  const {g,run}=game(),xp=()=>g.save.skills.photography;
+  g.Date.now=()=>86400000*20007;run("skillPhoto()");expect(xp()).toBe(10);
+  // put right and loaded again: the day to come is today, with its photo counted
+  g.Date.now=()=>86400000*20000;run("save.photoDay=photoDayClean(save.photoDay)");expect(g.save.photoDay).toEqual({day:20000,count:1});
+  run("skillPhoto()");expect(xp()).toBe(20);
+  // put right while playing: the same, and the five already taken stay taken
+  g.Date.now=()=>86400000*20005;run("for(let i=0;i<4;i++)skillPhoto()");expect(xp()).toBe(60);
+  g.Date.now=()=>86400000*20003;run("skillPhoto();skillPhoto()");expect(xp()).toBe(70);expect(g.save.photoDay).toEqual({day:20003,count:5});
+  g.Date.now=()=>86400000*20004;run("skillPhoto()");expect(xp()).toBe(80);
+  // from the account too
+  expect(run("photoDayClean({day:20010,count:3})")).toEqual({day:20004,count:3});
+});
