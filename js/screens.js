@@ -15,7 +15,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(s==="GARAGE")gunSync();if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
+function setState(s){if(s==="GARAGE")gunSync();if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
@@ -283,6 +283,7 @@ function gPick(i){
   selSpot.position.copy(gW(s[0],s[1]+1,8.8));selSpot.target.position.copy(p);
 }
 function garageWant(){
+  if(HV.on)return hvCam();   // designing your home (js/homeview.js): over the mezzanine
   const car=getCar(save.owned[gSel]).G,h=car.rotation.y,fw=new V3(Math.sin(h),0,Math.cos(h)),sd=new V3(-fw.z,0,fw.x),big=getCar(save.owned[gSel]).shape==="suv"?1.15:1;
   const o=fw.clone().multiplyScalar(7.4).addScaledVector(sd,1.2+(GO.user?0:Math.sin(gT*.35)*1.3)).applyAxisAngle(new V3(0,1,0),GO.yawS).multiplyScalar(big*GO.zoom);
   const centre=car.position.clone().setY(gY+.9*big),look=centre.clone(),w={pos:car.position.clone().add(o).setY(gY+Math.max(.35,(3.1+GO.pitch)*big*GO.zoom)),look};
@@ -302,7 +303,7 @@ function garageCam(dt){
   if(GO.spin)GO.yaw+=dt*.4;GO.yawS+=(GO.yaw-GO.yawS)*(1-Math.exp(-dt*6));const g=garageWant();
   camP.lerp(g.pos,1-Math.exp(-dt*4));camL.lerp(g.look,1-Math.exp(-dt*6));
   camera.position.copy(camP);camera.lookAt(camL);camera.fov+=(50-camera.fov)*.06;camera.updateProjectionMatrix();
-  selRing.material.opacity=.6+Math.sin(gT*3)*.25;
+  selRing.material.opacity=.6+Math.sin(gT*3)*.25;selRing.visible=!HV.on;
 }
 /* ---------- customise: options for the car picked in the garage, seen on the car as you choose, paid on APPLY ---------- */
 let cuId=null,cuBase=null,cuDraft=null;

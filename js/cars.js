@@ -809,6 +809,7 @@ function pollPad(){
   // times as fast at 120 fps as at 30)
   {const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8;GO.stick[0]=state==="GARAGE"?dz(g.axes[2]||0):0;GO.stick[1]=state==="GARAGE"?dz(g.axes[3]||0):0}
   if(state==="GARAGE"&&cuOpen()){if(hit(1))custClose(false);else if(hit(0))custClose(true)}
+  else if(state==="GARAGE"&&HV.on){if(hit(1)||hit(9))hvClose();else if(hit(3))hvTurn()}
   else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(2))needsRest();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick()}
   // in the dealership A buys the car shown (or drives it, if it's yours), X takes it for a test drive
   else if(state==="DEALER"){const on=id=>{const b=$(id);return !b.classList.contains("hide")&&!b.disabled};

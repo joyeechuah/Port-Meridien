@@ -1082,16 +1082,11 @@ function buildHouse(){
   put(B(13,.08,6),new THREE.MeshPhongMaterial({color:0x3fc1d6,shininess:120}),-34,.12,12);
   doorMesh=put(B(13.6,6.4,.28),new THREE.MeshPhongMaterial({color:0x8e98a1,shininess:60}),0,3.3,-.1,true);
   for(let x=-16;x<=16;x+=8)put(B(1.1,.9,29),darkM,x,9.5,15,true);
-  // mezzanine, railing, stairs, bookshelf, person, plant
+  // mezzanine, railing and stairs (what stands on the mezzanine is yours to choose: js/home.js, js/homeview.js)
   put(B(21,.5,11),darkM,11,5,24.5,true);
   for(let x=1;x<=21;x+=1.5)put(B(.09,1.5,.09),darkM,x,6,19.1);
   put(B(21,.12,.12),darkM,11,6.75,19.1);
   for(let s=0;s<10;s++)put(B(3.2,.28,.9),darkM,-1.6,.35+s*.5,19.4+s*.9,true);
-  put(B(6,3,.9),new THREE.MeshPhongMaterial({color:0x8d7a5f}),6,7,29.3,true);
-  for(let i=0;i<12;i++)put(B(.35,1.6,.6),new THREE.MeshPhongMaterial({color:new THREE.Color(`hsl(${i*29},30%,40%)`).getHex()}),3.6+i*.42,7.2,29);
-  put(B(.7,1.9,.4),new THREE.MeshPhongMaterial({color:0xf2f2f2}),14,6.2,25.5,true);
-  put(new THREE.SphereGeometry(.34,10,8),new THREE.MeshPhongMaterial({color:0xd2a77c}),14,7.5,25.5,true);
-  put(new THREE.ConeGeometry(1,2.4,7),new THREE.MeshPhongMaterial({color:0x2c6b32}),19.5,6.5,27.5,true);
   // TVs
   const tvTex=draw=>{const c=document.createElement("canvas");c.width=256;c.height=144;draw(c.getContext("2d"));return new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)})};
   const tvRoad=tvTex(x=>{const g=x.createLinearGradient(0,0,0,144);g.addColorStop(0,"#16314f");g.addColorStop(1,"#79a6d4");x.fillStyle=g;x.fillRect(0,0,256,144);x.fillStyle="#2a2a2e";x.beginPath();x.moveTo(40,144);x.lineTo(118,80);x.lineTo(138,80);x.lineTo(216,144);x.fill();x.fillStyle="#e8821a";x.fillRect(104,112,48,18)});

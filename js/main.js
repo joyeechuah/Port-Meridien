@@ -165,7 +165,7 @@ const STEPS=[
   ["Planting pines and palms",buildScenery],
   ["Growing the garrigue",buildVegetation],
   ["Building walls and signs",buildRoadside],
-  ["Opening your house",buildHouse],
+  ["Opening your house",()=>{buildHouse();homeBuild()}],
   ["Stocking the dealership",buildDealer],
   ["Building the harbour",buildHarbour],
   ["Waking the town",()=>{buildPeds();initGun();initKits()}],

@@ -22,6 +22,6 @@ test("without the 3D engine the loading screen says so, and nothing else runs or
 
 test("every script the page loads keeps ?v=dev in the repository: the published copy is stamped (stage-site.js)", () => {
   const files = scriptFiles();
-  expect(files.map((f) => f.rel)).toEqual(["js/core.js", "js/world.js", "js/cars.js", "js/play.js", "js/media.js", "js/progress.js", "js/screens.js", "js/people.js", "js/life.js", "js/home.js", "js/work.js", "js/net.js", "js/main.js"]);
+  expect(files.map((f) => f.rel)).toEqual(["js/core.js", "js/world.js", "js/cars.js", "js/play.js", "js/media.js", "js/progress.js", "js/screens.js", "js/people.js", "js/life.js", "js/home.js", "js/homeview.js", "js/work.js", "js/net.js", "js/main.js"]);
   for (const f of files) expect(f.stamp, `${f.rel}: run npm run stamp to put it back to ?v=dev`).toBe("dev");
 });
