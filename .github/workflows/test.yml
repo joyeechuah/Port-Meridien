@@ -52,7 +52,7 @@ jobs:
           SHARD: ${{ matrix.shard }}
         run: npx playwright test --test-list="$RUNNER_TEMP/test-lists/$SHARD"
 
-      # the Node driving simulator (8 s, no browser), on a shard that finishes well before the one with render.spec.js
+      # the Node driving simulator (8 s, no browser), on one shard only
       - name: Run the driving simulator
         if: ${{ !cancelled() && matrix.shard == 2 }}
         run: npm run test:physics

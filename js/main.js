@@ -191,7 +191,7 @@ function boot(){
   if(stepI<STEPS.length){
     const[msg,fn]=STEPS[stepI];$("lmsg").textContent=msg;
     setTimeout(()=>{try{fn()}catch(err){loadFailed("Something went wrong while loading: "+err.message);console.error(err);return}
-      stepI++;$("lf").style.width=stepI/STEPS.length*100+"%";boot()},30);
+      stepI++;$("lf").style.width=stepI/STEPS.length*100+"%";boot()},window.__autostart?0:30);
     return;
   }
   layoutHUD();updateMoney();syncPause();applyDayNight();
@@ -203,9 +203,9 @@ function boot(){
   let entered=false;
   const enter=(openCloud=false)=>{if(entered)return;entered=true;removeEventListener("keydown",onKey,true);
     if(window.__autostart){
-      // Existing automated gameplay fixtures begin at the car selector.
-      $("load").style.opacity=0;
-      setTimeout(()=>{show("load",false);show("gui",true);setState("GARAGE")},600);
+      // Existing automated gameplay fixtures begin at the car selector, without the loading bar's pauses between
+      // steps or the cover's fade (about 1.2 s on every test's start)
+      $("load").style.opacity=0;show("load",false);show("gui",true);setState("GARAGE");
       return;
     }
     firstGesture();
@@ -218,7 +218,7 @@ function boot(){
     })};
   const onKey=e=>{if(clOverlayOpen()||e.target===$("lcloud")&&(e.key==="Enter"||e.key===" "))return;if(e.key!=="Tab"&&e.key!=="Shift"&&e.key!=="Control"&&e.key!=="Alt"&&e.key!=="Meta")enter()};
   clBoot();
-  if(window.__autostart){setTimeout(enter,200);return}
+  if(window.__autostart){enter();return}
   $("lmsg").textContent="Ready";$("lf").parentNode.classList.add("hide");
   show("lstart",true);show("lhint",true);$("lstart").onclick=()=>enter();addEventListener("keydown",onKey,true);
   // signed in: PLAY carries on (the backup runs by itself); a guest can choose SAVE MY PROGRESS, which plays and opens it

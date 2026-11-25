@@ -40,6 +40,9 @@ module.exports = defineConfig({
       // smaller window, since a software GPU's time grows with the number of pixels
       name: "webgl",
       grep: /@webgl/,
+      // each WebGL test opens its own game and shares nothing, so the two workers can split a file's tests; with
+      // ci-shards.js placing each one on its own, a file of five-minute tests no longer sets a CI run's length
+      fullyParallel: true,
       timeout: 600_000,
       use: { browserName: "chromium", viewport: { width: 800, height: 450 }, launchOptions: { args: GL_ARGS } },
     },

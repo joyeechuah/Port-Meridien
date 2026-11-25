@@ -4,7 +4,11 @@
 // The hooks only add ways to look inside the game, plus two small helpers:
 //   window.__T      read access to the game's internal state and functions, as live getters (the scripts' top-level
 //                   names are global, but a const or let isn't a property of window, so this keeps one way in)
-//   window.__DTMAX  lets a test take bigger time steps through scripted scenes (the garage exit)
+//   window.__DTMAX  raises the 0.05 s cap on a frame's time step (a slow drawn frame keeps its real length),
+//                   and 1e-9 freezes the page's own frames
+//   window.__WARP   runs the garage exit (state EXIT) that many times faster, up to __DTMAX a frame. The cap alone
+//                   never sped it up: a fast frame's step is its real length, so every drive-out took the scene's
+//                   full 4 s. The car is placed from the end of the path either way
 //   window.__AUD    counts impact sounds
 //   window.__NORENDER  set by a test before the page loads: the 3D scene is never drawn (much faster)
 // Each edit must match exactly once across the scripts. If the game's code changes so that one no longer matches,
@@ -44,7 +48,7 @@ const EDITS = [
   {
     name: "time step cap (window.__DTMAX)",
     find: ",dt=Math.min(.05,raw)",
-    replace: ",dt=Math.min(window.__DTMAX||.05,raw)",
+    replace: ",dt=Math.min(window.__DTMAX||.05,state===\"EXIT\"&&window.__WARP?raw*window.__WARP:raw)",
   },
   {
     name: "impact sound counter (window.__AUD)",
