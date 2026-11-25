@@ -55,6 +55,36 @@ test("a friend asked over waits on the mezzanine at home, and hanging out there 
   expect(await game.eval(() => __T.guestHangOut())).toBe(false);
 });
 
+test("an invitation is called off when you hurt them, or when they're no longer a Friend by the time you're home", async ({ game }) => {
+  await game.open();
+  const r = await game.eval(() => {
+    const T = __T, said = (i) => document.getElementById("toasts").textContent.includes(T.PEOPLE[i].name.toUpperCase());
+    T.save.rel[0] = { f: 60, n: 3 };
+    T.GUEST.who = T.PEOPLE[0]; T.GUEST.done = false;
+    T.lifeHurt(T.PEDS[0], 5);
+    const hurt = [T.GUEST.who, said(0)];
+    // asked as a Friend, then the friendship cooled (a rude line, say)
+    T.save.rel[1] = { f: 30, n: 4 };
+    T.GUEST.who = T.PEOPLE[1]; T.GUEST.done = false;
+    T.guestSync("GARAGE");
+    return { hurt, cooled: [T.GUEST.who, said(1), document.getElementById("gGuest").classList.contains("hide")] };
+  });
+  expect(r).toEqual({ hurt: [null, true], cooled: [null, true, true] });
+});
+
+test("a friend over counts as something done at home: a Homebody gets 20% more social and fun from it", async ({ game }) => {
+  await game.open();
+  const r = await game.eval(() => {
+    const T = __T;
+    T.save.traits = { v: 1, ids: ["homebody"], day: -1 };
+    T.GUEST.who = T.PEOPLE[0]; T.GUEST.done = false;
+    T.NEEDS.social = 40; T.NEEDS.fun = 50;
+    return { comfort: T.homeComfort(T.save.home), ok: T.guestHangOut(), social: T.NEEDS.social, fun: T.NEEDS.fun };
+  });
+  // an empty home: comfort 0, so all of the lift is Homebody's
+  expect(r).toEqual({ comfort: 0, ok: true, social: 76, fun: 62 });
+});
+
 test("only a Friend (40 or more) can be asked over; a comfortable home is worth more friendship", async ({ game, page }) => {
   await withFriend(game, 0, 39);
   await talk(game);
@@ -76,7 +106,7 @@ test("a guest sits on your comfiest seat, facing the way it faces; with no seat 
     const T = __T, G = T.GUEST.m.G, floor = T.gY + T.HOME_ORIGIN.y;
     return { seat: T.GUEST.seat && T.GUEST.seat.id, lift: +(G.position.y - floor + .92 * T.GUEST.h).toFixed(3), legs: T.GUEST.m.legs.map((l) => l.rotation.x), turn: +(G.rotation.y - T.gYaw).toFixed(3) };
   });
-  await game.eval(() => { const T = __T; T.save.home.items = [{ id: "stool", x: 6, z: 6, r: 0 }, { id: "armchair", x: 24, z: 6, r: 1 }]; T.homeBuild(); T.GUEST.who = T.PEOPLE[1]; T.guestSync("GARAGE"); });
+  await game.eval(() => { const T = __T; T.save.home.items = [{ id: "stool", x: 6, z: 6, r: 0 }, { id: "armchair", x: 24, z: 6, r: 1 }]; T.homeBuild(); T.save.rel[1] = { f: 50, n: 3 }; T.GUEST.who = T.PEOPLE[1]; T.guestSync("GARAGE"); });
   // the reading chair before the stool, turned a quarter: the guest faces round with it
   expect(await pose()).toEqual({ seat: "armchair", lift: 0.47, legs: [-1.05, -1.05], turn: +(Math.PI - Math.PI / 2).toFixed(3) });
   // a sofa is comfier still; moving furniture reseats them
