@@ -803,7 +803,7 @@ const DRUM_GEO=new THREE.CylinderGeometry(.5,.5,1,14);
 // what was built, for the map, the tests and anything that later needs to know where the town's places are
 // (benches: where you can sit, round the fountain; kitchen: the market stall that serves a meal, and the spot in the
 // aisle in front of it where you ask for one. Both are for js/life.js's needs)
-const QUAY={floors:[],houses:0,tower:[655,-41],fountain:[655,135],hall:[655,70,20,12],market:[639,671,-101,18],plaza:[629,681,90,181],
+const QUAY={floors:[],houses:0,lights:/** @type {{x0:number,z0:number,x1:number,z1:number,low:number}[]} */ ([]),tower:[655,-41],fountain:[655,135],hall:[655,70,20,12],market:[639,671,-101,18],plaza:[629,681,90,181],
   gaps:[["w",629,-41],["e",681,-41],["s",655,29]],sheds:[],benches:[],kitchen:null};
 function buildOldQuay(){
   const WARM=[0xf2d49a,0xeeb38c,0xf3e3c2,0xe9c7a0,0xf6efdd,0xe2a98f],MARKET=[0xf3e3c2,0xf0c987,0xd9dfc2,0xf6efdd,0xe8b89a],
@@ -817,6 +817,9 @@ function buildOldQuay(){
   };
   // the details have their own run of chances, so the town's plots, floors and colours stay as they were
   let sdd=7001;const RD=k=>rnd(sdd++,k);
+  // a second sequence for the window boxes, shop signs and string lights, so the balconies and awnings keep theirs; and
+  // the street fronts, for the lights strung across to the front facing them
+  let sd2=9101;const RD2=k=>rnd(sd2++,k);const FRONTS=[];
   // a box on a house's face f (n, s, w or e): u metres along it from its left edge seen from outside, its middle at
   // height hgt, standing p metres out; a, b, c its size along the face, up and out; tilt leans the outer edge down
   const FN={n:[0,-1],s:[0,1],w:[-1,0],e:[1,0]};
@@ -829,12 +832,19 @@ function buildOldQuay(){
   // band runs between the shop and the floors above. The side onto a street also gets balconies on some upper
   // windows and a striped awning over each shopfront, leaning out over the pavement. All of it goes in the tile's
   // batch: no extra draws
+  const PLANTER=[0xa8553a,0x2f5a45,0x6b4a2e],BLOOM=[0xd2373c,0xe58fb0,0xf2c84b,0xf4f1ea,0x8a5ac2];
   const facade=(cx,cz,w,d,fl,y,f,street,col)=>{const along=FN[f][1]?w:d;
+    if(street)FRONTS.push({cx,cz,w,d,f,y,fl});
     onFace(cx,cz,w,d,f,along/2,y+2.75,.06,along+.1,.16,.12,TRIM);
     for(let fi=1;fi<fl&&fi<4;fi++){const wb=y+3.5+3.2*(fi-1);
       for(let u=2;u+1<=along;u+=4){
         onFace(cx,cz,w,d,f,u,wb-.07,.1,1.95,.12,.2,SILL);
-        if(!street||RD(1)>=.34)continue;
+        if(!street||RD(1)>=.34){
+          // a window box on some of the others: the planter under the sill, leaves and five flowers in front of the glass
+          if(RD2(1)<.38){const pc=PLANTER[Math.floor(RD2(2)*3)],b0=Math.floor(RD2(3)*5);
+            onFace(cx,cz,w,d,f,u,wb-.24,.17,1.5,.2,.26,pc);onFace(cx,cz,w,d,f,u,wb-.07,.19,1.42,.12,.22,0x4f8a3c);
+            for(let q=0;q<5;q++)onFace(cx,cz,w,d,f,u-.6+q*.3,wb+.03,.22,.15,.13,.13,BLOOM[(b0+q*(q%2?2:1))%5])}
+          continue}
         // a balcony: its floor, a rail along the top and the bottom, the sides, and five bars
         onFace(cx,cz,w,d,f,u,wb-.16,.42,2.5,.12,.84,STONE);
         onFace(cx,cz,w,d,f,u,wb+.88,.82,2.5,.06,.06,IRON);onFace(cx,cz,w,d,f,u,wb+.05,.82,2.5,.05,.05,IRON);
@@ -851,6 +861,11 @@ function buildOldQuay(){
       const lo=u-3.48,hi=fit?u+3.48:along-.4,c=(lo+hi)/2,a=hi-lo,n=Math.max(3,Math.round(a/1.16)),sw=a/n;
       for(let q=0;q<n;q++)onFace(cx,cz,w,d,f,c-a/2+sw*(q+.5),y+2.12,.62,sw,.06,1.25,aw[q%2],.32);
       onFace(cx,cz,w,d,f,c,y+1.84,1.22,a,.26,.04,aw[0]);onFace(cx,cz,w,d,f,c,y+1.65,.03,a,.5,.02,shade);
+      // on about half the shops, a hanging sign over the awning's end: an iron arm, a board across the pavement in the
+      // awning's colour, and a cream panel on both its faces
+      if(RD2(4)<.5){const us=c-a/2+.35;
+        onFace(cx,cz,w,d,f,us,y+3.34,.42,.04,.04,.84,IRON);onFace(cx,cz,w,d,f,us,y+3.08,.47,.05,.42,.62,aw[0]);
+        onFace(cx,cz,w,d,f,us,y+3.08,.47,.07,.3,.48,0xf2efe8)}
     }
   };
   // a house: walls with windows and a shopfront (the town's facade picture, tinted) and a roof. Its collider comes
@@ -964,6 +979,27 @@ function buildOldQuay(){
   // 6. beside the Auto Gallery, south-east: a short ring of houses south of its forecourt
   ring(699,751,130,181,{dep:11,w:[8,12],fl:[2,3],pal:WARM,pitch:.7,gaps:[["n",720,730]]});
   palm(725,155,gy(725,155),1.1);
+  // string lights across the streets: from a street front of two floors or more to the one facing it 12 to 30 m away,
+  // where the two overlap by 2.5 m or more, on about two in three of them. The wire sags a little more the longer it is; its
+  // bulbs are in the tiles' lamp batch, so they light up at night with the street lamps
+  QUAY.lights=[];
+  const plane=F=>{const[nx,nz]=FN[F.f];return nz?F.cz+nz*F.d/2:F.cx+nx*F.w/2},span=F=>FN[F.f][1]?[F.cx-F.w/2,F.cx+F.w/2]:[F.cz-F.d/2,F.cz+F.d/2];
+  for(const A of FRONTS){const[nx,nz]=FN[A.f];if(nx<0||nz<0||A.fl<2)continue;
+    for(const B of FRONTS){const[mx,mz]=FN[B.f];if(B.fl<2||mx!==-nx||mz!==-nz)continue;
+      const D=(plane(B)-plane(A))*(nx+nz);if(D<12||D>30)continue;
+      const[a0,a1]=span(A),[b0,b1]=span(B),lo=Math.max(a0,b0),hi=Math.min(a1,b1);if(hi-lo<2.5||RD2(5)>=.65)continue;
+      // (two strings over a long stretch of the two fronts facing each other)
+      for(const k of hi-lo>=14?[1/3,2/3]:[.35+RD2(6)*.3]){
+      const s=lo+(hi-lo)*k,P=(F,t)=>nz?{x:s,z:plane(F),y:F.y+5.9}:{x:plane(F),z:s,y:F.y+5.9};
+      const p0=P(A),p1=P(B),n=Math.max(8,Math.round(D/.9)),sag=.5+D*.012,pts=[];
+      for(let i=0;i<=n;i++){const t=i/n;pts.push({x:lerp(p0.x,p1.x,t),z:lerp(p0.z,p1.z,t),y:lerp(p0.y,p1.y,t)-4*sag*t*(1-t)})}
+      for(let i=0;i<n;i++){const a=pts[i],b=pts[i+1],dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,hz=Math.hypot(dx,dz),L=Math.hypot(hz,dy),mx2=(a.x+b.x)/2,mz2=(a.z+b.z)/2;
+        tileOf(mx2,mz2).solid.push({g:GEO.box,m:mat(mx2,(a.y+b.y)/2,mz2,Math.atan2(dx,dz),.035,.035,L,-Math.atan2(dy,hz)),c:0x2a2a2a});
+        if(i)tileOf(a.x,a.z).glow.push({g:GEO.box,m:mat(a.x,a.y-.1,a.z,0,.15,.19,.15),c:0xffffff})}
+      for(const p of[p0,p1])tileOf(p.x,p.z).solid.push({g:GEO.box,m:mat(p.x,p.y,p.z,0,.09,.09,.09),c:IRON});
+      // (for the tests: where each string runs, and its lowest bulb's height over the road beneath it)
+      const m=pts[n>>1];QUAY.lights.push({x0:p0.x,z0:p0.z,x1:p1.x,z1:p1.z,low:m.y-.2-meshH(m.x,m.z)});
+    }}}
 }
 // The Market Kitchen, dressed onto an ordinary market stall: its counter, posts, awning and collider are the stall's
 // own, so nothing new stands in the way. On the counter a pot of stew, a stack of bowls and bread; over the awning's
