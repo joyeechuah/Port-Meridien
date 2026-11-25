@@ -163,15 +163,17 @@ function camFloor(x,z,p){
 // aims far enough ahead, that the road and the cars in front show over the roof (it was 2 m up aiming 9 m ahead,
 // and the car hid two thirds of the road from 12 to 45 m ahead; now about a third)
 const CAMV={up:3.0,ahead:24,lookY:1.2};
-function camWant(at){
+function camWant(dt,at){
   const p=at||pc.G.position,v=Math.abs(speedF()),f={x:Math.sin(camYaw),z:Math.cos(camYaw)},big=pc.shape==="suv"?1.2:1;
   const full=(camMode===0?6.6+Math.min(1.6,v*.02):11.5+Math.min(3,v*.04))*big,clear=boomClear(p.x,p.z,f.x,f.z,full);
-  camBoom=camBoom===null?clear:clear<camBoom?lerp(camBoom,clear,.35):lerp(camBoom,clear,.05);
+  // Keep the original 60 Hz response as frame time varies.
+  const retain=clear<camBoom?.65:.95;
+  camBoom=camBoom===null?clear:lerp(camBoom,clear,1-Math.pow(retain,dt*60));
   const back=Math.min(full,camBoom),up=(camMode===0?CAMV.up:3.8)*big+(full-back)*.18,ah=camMode===0?CAMV.ahead:9;
   return{pos:new V3(p.x-f.x*back,p.y+up,p.z-f.z*back),look:new V3(p.x+f.x*ah,p.y+(camMode===0?CAMV.lookY:1.4)*big,p.z+f.z*ah),fov:(camMode===0?58:60)+Math.min(13,v*.15)};
 }
 // after a teleport the car mesh only moves on the next frame, so aim from the physics position
-function snapCam(){if(!pc)return;camYaw=P.h;camBoom=null;if(camMode<2){const c=camWant(new V3(P.x,P.y,P.z));camP.copy(c.pos);camL.copy(c.look)}}
+function snapCam(){if(!pc)return;camYaw=P.h;camBoom=null;if(camMode<2){const c=camWant(0,new V3(P.x,P.y,P.z));camP.copy(c.pos);camL.copy(c.look)}}
 function updateCam(dt){
   const v=Math.abs(speedF());
   const rear=!!(keys.b||pad.rear||GP.rear);
@@ -195,7 +197,7 @@ function updateCam(dt){
     camera.fov+=((camMode===3?66:70)+Math.min(12,v*.14)-camera.fov)*(1-Math.exp(-dt*6.3));
   }else{
     camYaw+=wrapA(P.h-camYaw)*(1-Math.exp(-dt*(camMode===0?4.5:3.5)));
-    const c=camWant(),base=pc.G.position;
+    const c=camWant(dt,null),base=pc.G.position;
     if(!camP.equals(camPSet)){camOff.subVectors(camP,base);camLOff.subVectors(camL,base)}
     // the old follow trailed the car by its speed over the follow rate (v/14 for the eye, v/20 for the look point), which
     // pulls the view back as you speed up; that lag is now asked for directly, so the look doesn't change
