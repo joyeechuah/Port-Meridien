@@ -10,7 +10,7 @@ function game(){
   const node=()=>({children:[],style:{},setAttribute(){},append(...v){this.children.push(...v)},appendChild(v){this.children.push(v)},replaceChildren(){this.children=[]},
     focus(){document.activeElement=this},classList:{contains:()=>false,add(){},remove(){}}});
   const $=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id)};
-  const g={wantEvent:()=>false,save:{cr:10000},document,$,state:"PAUSE",tabIdle:false,ev:null,testDrive:null,pc:null,
+  const g={needsMood:()=>"Okay", wantEvent:()=>false,save:{cr:10000},document,$,state:"PAUSE",tabIdle:false,ev:null,testDrive:null,pc:null,
     toast:(...args)=>alerts.push(args),persist(){},show:(id,on)=>{$(id).visible=on},clamp:(x,a,b)=>Math.min(b,Math.max(a,x)),
     fmtCr:String,earn(x){g.save.cr+=x},Date:{now:()=>86400000*20000}};
   const ctx=vm.createContext(g),run=s=>vm.runInContext(s,ctx);
@@ -138,4 +138,37 @@ test("a clock set ahead and put right neither blocks Photography XP nor resets t
   g.Date.now=()=>86400000*20004;run("skillPhoto()");expect(xp()).toBe(80);
   // from the account too
   expect(run("photoDayClean({day:20010,count:3})")).toEqual({day:20004,count:3});
+});
+
+test("every mood scales every skill, including Lonely Charisma",()=>{
+  for(const [mood,rate] of Object.entries({Content:115,Okay:100,Tired:85,Hungry:85,Bored:85,Tense:85,Lonely:85})){
+    const {g,run}=game();g.needsMood=()=>mood;
+    for(const k of Object.keys(g.save.skills).filter(k=>k!=="v")){
+      for(let i=0;i<100;i++)run('skillAward("'+k+'",1)');
+      expect(g.save.skills[k],mood+" "+k).toBe(mood==="Lonely"&&k==="charisma"?150:rate);
+    }
+  }
+});
+test("fractional gains cross moods independently and disappear on reload without changing cloud progress",()=>{
+  const {g,run}=game();g.homeProgress=()=>null;g.workClean=()=>({completed:0});
+  run(part("screens","const CL_PREFS=","function clSummary("));
+  const before=JSON.stringify(g.save),fingerprint=run("clProg(save)");
+  g.needsMood=()=>"Tired";run('skillAward("driving",1);skillAward("fitness",1)');
+  expect(JSON.stringify(g.save)).toBe(before);expect(run("clProg(save)")).toBe(fingerprint);
+  g.needsMood=()=>"Content";run('skillAward("driving",1)');
+  expect(g.save.skills.driving).toBe(2);expect(g.save.skills.fitness).toBe(0);
+  const fresh=game();fresh.g.save=JSON.parse(JSON.stringify(g.save));fresh.g.needsMood=()=>"Content";
+  fresh.run('skillAward("fitness",1)');expect(fresh.g.save.skills.fitness).toBe(1);
+});
+
+test("Needs shows the effect beside the mood, including the Lonely exception",()=>{
+  const {g,run,$}=game();
+  Object.assign(g,{NEED_ORDER:[],needsTip:()=>""});g.save.wants={active:[],day:-1};
+  run(part("life","function needsRender(","const needsLabel="));
+  for(const [mood,label] of Object.entries({Content:"Skills grow 15% faster",Okay:"Skills grow at their usual rate",
+    Tired:"Skills grow 15% slower",Hungry:"Skills grow 15% slower",Bored:"Skills grow 15% slower",
+    Tense:"Skills grow 15% slower",Lonely:"Charisma grows 50% faster · other skills grow 15% slower"})){
+    g.needsMood=()=>mood;run("needsRender()");
+    expect($("ndMood").textContent).toBe(mood);expect($("ndMoodEffect").textContent).toBe(label);
+  }
 });
