@@ -100,7 +100,7 @@ You can walk or drive into the market, the square, the garden and the lanes.
 
 ### People
 
-Up to ten people (six on a phone) walk the pavements round the six blocks. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. Drive at one and they step in towards the houses, or hurry off the crossing; run into someone and they stagger and stand a while, and it's a crime if a patrol sees it. They're only there while you're near the town.
+Up to ten people (six on a phone) walk the pavements round the six blocks. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. Drive at one and they step in towards the houses, or hurry off the crossing; run into someone slowly and they stagger and stand a while; faster than about 20 km/h you knock them down. Either is a crime if a patrol sees it. They're only there while you're near the town.
 
 Out in the country, a few people walk the verges beside the country roads: four at a time on a phone, eight on a computer. They appear out of sight, between 120 and 300 m from you, and step further off the road when a car comes. Running into one is a crime if a patrol sees it, and the pistol treats them like anyone on foot. They don't have names or friendships: those are Old Quay's people.
 
@@ -128,7 +128,7 @@ While you're wanted, your house, the Auto Gallery, races, contracts, going home 
 
 Take the pistol from the garage with **PISTOL**, top right under MUSIC (it stays chosen until you change it). You can use it on foot and while driving outside races and test drives. You leave the house with 48 rounds.
 
-It locks onto the nearest target in front of you, shown by a red ring: a car, a police car, someone walking, or an officer. Walls and cars are cover. Fire with `G`, the **FIRE** pad, or the controller's right shoulder. A car stops after about nine hits; someone shot is knocked down for 6 s and gets up again.
+It locks onto the nearest target in front of you, shown by a red ring: a car, a police car, someone walking, or an officer. Walls and cars are cover. Fire with `G`, the **FIRE** pad, or the controller's right shoulder. A car stops after about nine hits; someone shot is knocked down and stays down while you're near or looking their way; once you've looked away they're gone, and walk the town again later.
 
 The police see shooting as they see any crime: firing is one star, hitting a car or a person one, shooting at the police two. At three stars, an officer on foot fires back.
 
@@ -138,7 +138,7 @@ Two settings in the pause menu, both saved:
 
 | Setting | Choices |
 | --- | --- |
-| VIOLENCE | **LOW**: nobody falls. **STANDARD** (the default): people fall, no blood. **STRONG**: hits also leave a red mark that fades. It changes only what you see |
+| VIOLENCE | **LOW**: nobody falls; someone hit stands still a moment, then walks on. **STANDARD** (the default): people hit fall and stay down, no blood. **STRONG**: as STANDARD, with a red mark where a shot lands and a pool of blood under anyone lying down |
 | FLASHES | **ON**, or **OFF**: no muzzle flash and no red flash when you're hit |
 
 These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/STEP4_DECISIONS.md), and may change before release.

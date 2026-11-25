@@ -331,6 +331,63 @@ test.describe("pedestrians", () => {
     expect(Math.abs(r.back)).toBeLessThan(0.5);
   });
 
+  test("a car faster than about 20 km/h knocks someone down and they stay down; slower they stagger; the car never stands anyone up", async ({ game }) => {
+    await inTown(game);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        p = T.PEDS[0],
+        e = T.PED_EDGES.find((e) => !e.cross && e.len > 100),
+        ux = (e.b.x - e.a.x) / e.len,
+        uz = (e.b.z - e.a.z) / e.len;
+      // the car on the spot where they stand, moving along the pavement at v m/s
+      const onThem = (v) => {
+        P.x = p.x;
+        P.z = p.z;
+        P.h = Math.atan2(ux, uz);
+        P.vx = ux * v;
+        P.vz = uz * v;
+        p.hitAt = -99;
+        T.pedUpdate(1 / 60);
+        return { st: p.st, out: !!p.out, t: Math.round(p.t) };
+      };
+      const hit = (v) => {
+        p.e = e;
+        p.from = e.a;
+        p.s = 60;
+        p.st = "idle";
+        p.t = 99;
+        p.o = 0;
+        p.fall = 0;
+        p.out = false;
+        // the car stopped 55 m back along the pavement while they're put there (else it pushes them aside)
+        P.x = e.a.x + ux * 5;
+        P.z = e.a.z + uz * 5;
+        P.vx = P.vz = 0;
+        T.pedUpdate(1 / 60);
+        return onThem(v);
+      };
+      const fast = hit(8),
+        // run over again where they lie: they used to get straight up
+        again = onThem(8);
+      // beside them in the car, stopped, 9 s later: still there
+      P.vx = P.vz = 0;
+      for (let i = 0; i < 60 * 9; i++) T.pedUpdate(1 / 60);
+      const later = p.st;
+      const slow = hit(4);
+      T.save.violence = 0;
+      const low = hit(8);
+      T.save.violence = 1;
+      return { fast, again, later, slow, low };
+    });
+    expect(r.fast).toEqual({ st: "down", out: true, t: 6 });
+    expect(r.again.st).toBe("down");
+    expect(r.later).toBe("down");
+    expect(r.slow).toEqual({ st: "idle", out: false, t: 4 });
+    // LOW: nobody falls, so a hard hit only staggers them too
+    expect(r.low).toEqual({ st: "idle", out: false, t: 4 });
+  });
+
   test("away from the town they are hidden and not worked out", async ({ game }) => {
     await inTown(game, [-400, 300]);
     const r = await game.eval(() => {

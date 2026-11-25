@@ -13,7 +13,7 @@
 | Reactions | A bubble over their head: smile, laugh, heart, shrug, frown or anger. Friends wave when you walk past |
 | Tips | Friends point you towards a landmark you haven't found (its passport hint and which way it is). Others give general tips about the city |
 | Ending a conversation | Someone who comes to dislike you badly (-50 or less) walks off; someone in a hurry leaves after three lines; walking away or getting into a car ends it |
-| Violence | Knocking someone down with the pistol costs 25 friendship, running into them with your car 15. They show it once they're back on their feet |
+| Violence | Knocking someone down, with the pistol or a car faster than about 20 km/h, costs 25 friendship; a slower bump 15. They show it the next time you meet them on their feet |
 | Saving | Kept in the save as `rel` (friendship and conversations had), cleaned on loading, and counted as progress when choosing between a local and a cloud save |
 | Controls | Keyboard 1 to 6, mouse or touch on the buttons, a controller's D-pad and A |
 

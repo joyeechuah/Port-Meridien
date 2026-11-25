@@ -286,7 +286,7 @@ function emote(p,kind,secs=2.4){
 
 /* ================================================================ EACH FRAME (from pedUpdate, near Old Quay) */
 function lifeUpdate(dt){
-  LIFE.t+=dt;
+  LIFE.t+=dt;const me=BOAT.on?BOAT:FOOT.on?FOOT:P;
   if(TALK.p){
     const p=TALK.p;TALK.busy=Math.max(0,TALK.busy-dt);
     // the conversation ends when you leave it: back in a car, walked off, or they've been knocked down or startled away
@@ -296,7 +296,8 @@ function lifeUpdate(dt){
   for(const p of PEDS){
     if(p===RIDE.p)continue;   // with you (rideTick)
     const who=personOf(p);
-    if(p.mad&&p.st!=="down"){p.mad=false;emote(p,"angry")}
+    // someone you knocked down shows it the next time you're near them, on their feet again
+    if(p.mad&&p.st!=="down"&&p.m.G.visible&&Math.hypot(p.x-me.x,p.z-me.z)<40){p.mad=false;emote(p,"angry")}
     // a friend passing you on foot waves
     else if(who&&FOOT.on&&!TALK.p&&p.m.G.visible&&p.st!=="down"&&(save.rel[who.id]?.f??0)>=35&&LIFE.t-(p.waved??-99)>40&&Math.hypot(p.x-FOOT.x,p.z-FOOT.z)<7){
       p.waved=LIFE.t;emote(p,"wave",2)}

@@ -190,7 +190,7 @@ test.describe("talking to people", () => {
     expect(game.errors).toEqual([]);
   });
 
-  test("knocking someone down costs their friendship, they can't be talked to while down, and they show it when they're up", async ({ game }) => {
+  test("knocking someone down costs their friendship, they can't be talked to while down, and they show it the next time you meet", async ({ game }) => {
     await inTown(game, { gun: true });
     await meet(game, 0, 6);
     const r = await game.eval(() => {
@@ -203,11 +203,33 @@ test.describe("talking to people", () => {
       T.driveUpdate(1 / 60);
       const down = { st: p.st, f: T.save.rel[0].f, label: T.relLabel(T.save.rel[0]), talkable: T.talkable(p) };
       for (let i = 0; i < 60 * 7; i++) T.driveUpdate(1 / 60);
-      return { locked: true, down, upset: !!(p.emo && p.emo.kind === "angry" && p.emo.sp.visible) };
+      const still = p.st;
+      // you walk off and look away: they're gone from there, on their feet again somewhere you can't see
+      const F = T.FOOT,
+        dx = (p.x - F.x) / 6,
+        dz = (p.z - F.z) / 6;
+      F.x = p.x - dx * 126;
+      F.z = p.z - dz * 126;
+      F.h = F.cy = Math.atan2(-dx, -dz);
+      F.y = T.footGround(F.x, F.z);
+      for (let i = 0; i < 60 * 3; i++) T.driveUpdate(1 / 60);
+      const back = p.st !== "down";
+      // and when you meet them again, 5 m behind them on their pavement, they're angry with you
+      const a = p.from,
+        b = a === p.e.a ? p.e.b : p.e.a,
+        L = Math.hypot(b.x - a.x, b.z - a.z);
+      F.x = p.x - ((b.x - a.x) / L) * 5;
+      F.z = p.z - ((b.z - a.z) / L) * 5;
+      F.h = F.cy = Math.atan2(p.x - F.x, p.z - F.z);
+      F.y = T.footGround(F.x, F.z);
+      for (let i = 0; i < 10; i++) T.driveUpdate(1 / 60);
+      return { locked: true, down, still, back, upset: !!(p.emo && p.emo.kind === "angry" && p.emo.sp.visible) };
     });
     expect(r.locked).toBe(true);
     expect(r.down).toEqual({ st: "down", f: -25, label: "Dislikes you", talkable: false });
-    expect(r.upset, "an angry bubble once they're back up").toBe(true);
+    expect(r.still, "still lying there after 7 s, with you beside them").toBe("down");
+    expect(r.back).toBe(true);
+    expect(r.upset, "an angry bubble when you next meet").toBe(true);
   });
 
   test("the pause menu ends a conversation too, and the person carries on", async ({ game, page }) => {
