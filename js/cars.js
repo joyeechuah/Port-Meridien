@@ -903,13 +903,14 @@ function limitFromAngles(ang,sp,aC,jn){
   }
   return lim;
 }
-const lookAhead=sp=>Math.min(240,24+sp*2.4);
+// Include reaction travel and braking distance. The cap bounds each plan to 63 eight-metre samples.
+const lookAhead=sp=>Math.min(480,Math.max(24+sp*2.4,sp*.35+sp*sp/(2*HD.csPlan)));
 function cornerLimit(nr,dir,sp,aC){
   // the fastest speed at which the car can still take the bends coming up,
   // braking at a comfortable rate before each one. The look-ahead carries on
   // through junctions along the straightest way out (at a T-junction that is
   // the turn itself). Also reports how far ahead the next junction is.
-  const look=lookAhead(sp),ang=[],jn=[];let e=nr.e,s=nr.s,d=0,jD=1e9,jN=null;
+  const look=lookAhead(sp),ang=[],jn=[];let e=nr.e,s=nr.s,d=0,jD=1e9,jN=null,jLimit=1e9;
   while(d<=look+16){
     const q=edgePos(e,s),h=Math.atan2(q.dx*dir,q.dz*dir);ang.push(h);
     let ns=s+dir*8;d+=8;
@@ -920,11 +921,27 @@ function cornerLimit(nr,dir,sp,aC){
       for(const a of node.adj){if(a.e===e||(a.e.type==="drive"&&e.type!=="drive"))continue;
         const d2=a.end==="a"?1:-1,q2=edgePos(a.e,d2>0?0:a.e.len),dd=Math.abs(wrapA(Math.atan2(q2.dx*d2,q2.dz*d2)-h));
         if(dd<bd){bd=dd;best={e:a.e,dir:d2}}}
+      // A country approach can meet the coast at an oblique T. Until the driver
+      // chooses an exit, allow enough room for the tighter of the two arcs.
+      if(node.adj.length===3&&e.type==="country"){
+        const inPos=edgePos(e,dir>0?e.len-12:12),incoming=Math.atan2(node.x-inPos.x,node.z-inPos.z);
+        let minTurn=Infinity,maxTurn=0;
+        for(const arm of node.adj)if(arm.e!==e){
+          const out=edgePos(arm.e,arm.end==="a"?12:arm.e.len-12);
+          const turn=Math.abs(wrapA(Math.atan2(out.x-node.x,out.z-node.z)-incoming));
+          minTurn=Math.min(minTurn,turn);maxTurn=Math.max(maxTurn,turn);
+        }
+        if(minTurn>Math.PI/4){
+          const radius=HD.jR/Math.max(1,Math.tan(maxTurn/2));
+          const vc=vCorner(1/radius,aC);
+          jLimit=Math.min(jLimit,Math.sqrt(vc*vc+2*HD.csPlan*Math.max(0,d-over-HD.jR-sp*.35)));
+        }
+      }
       if(!best)break;
       e=best.e;dir=best.dir;s=dir>0?Math.min(over,e.len):Math.max(0,e.len-over);
     }else s=ns;
   }
-  return{lim:limitFromAngles(ang,sp,aC,jn),jD,jN};
+  return{lim:Math.min(jLimit,limitFromAngles(ang,sp,aC,jn)),jD,jN};
 }
 // the same along a known route (an event, or the GPS line), which knows which way it turns at junctions
 function pathLimit(R,s0,sp,aC){
