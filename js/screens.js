@@ -1026,7 +1026,7 @@ function clLoadMeta(){let m=null;try{m=JSON.parse(localStorage.getItem(CLOUD_KEY
   }
   return o}
 function clSaveMeta(){if(tabIdle)return;try{localStorage.setItem(CLOUD_KEY,JSON.stringify(CL.meta))}catch(e){}}
-CL={meta:clLoadMeta(),ad:null,user:null,st:"guest",msg:"",busy:false,timer:0,pick:null,lastPut:0,other:false,signingOut:null};
+CL={meta:clLoadMeta(),ad:null,user:null,st:"guest",msg:"",busy:false,timer:0,pick:null,lastPut:0,other:false,mustRead:false,signingOut:null};
 const clOwn=()=>{CL.meta.owner=CL.user.uid;CL.other=false};
 // state: guest | connecting | synced | pending | offline | signedout (session ended) | conflict | error
 // a backup a few seconds after a change, and at most every 30 s (the free Firebase plan allows 20,000 writes a day)
@@ -1067,7 +1067,11 @@ function clConnect(interactive){
     return clReadAccount()}).catch(clAccountError)}
 function clReconcile(doc){
   let cloud=null;try{cloud=doc&&typeof doc.save==="string"?JSON.parse(doc.save):null}catch(e){cloud=null}
-  if(!cloud){
+  // An existing document with an unreadable payload may still contain recoverable progress.
+  // Retry by reading it again before either copy can be replaced.
+  CL.mustRead=!!doc&&(!cloud||!Array.isArray(cloud.owned)||!Number.isFinite(cloud.cr));
+  if(CL.mustRead){clSet("error","Your account backup could not be read. Your progress is still on this device.");return}
+  if(!doc){
     // nothing in the account yet: back this device up, unless its progress belongs to another account (a shared browser)
     if(CL.other&&!clFresh(save)){CL.pick={doc,cloud:null};clSet("conflict","This device has another Google account's progress. Choose whether to use it.");clPickShow();return}
     return clUpload(doc&&doc.rev||0)}
@@ -1115,7 +1119,7 @@ function clUpload(rev,onlyIfChanged){if(tabIdle||CL.applying||CL.signingOut)retu
 // a backup after the progress changed (a few seconds after, on leaving the page, when back online, and BACK UP NOW)
 function clSync(){clearTimeout(CL.timer);CL.timer=0;if(!CL.user||CL.busy||CL.applying||CL.signingOut||tabIdle||CL.st==="conflict"||CL.st==="connecting")return Promise.resolve();
   // If the new account could not be read, retry the comparison before writing another player's local progress.
-  if(CL.other){clSet("connecting");return clReadAccount().catch(clAccountError)}
+  if(CL.other||CL.mustRead){clSet("connecting");return clReadAccount().catch(clAccountError)}
   const full=clHash(clCanon(clPayload(save)));if(full===CL.meta.full&&CL.st==="synced")return Promise.resolve();
   return clUpload(CL.meta.rev)}
 // If the service isn't loaded yet (loading it failed when the panel opened), the tap only loads it and the button
