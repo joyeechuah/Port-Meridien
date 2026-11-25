@@ -417,6 +417,7 @@ function footExit(){
   const m=footModel();
   P.vx=P.vz=0;P.r=0;P.steer=P.steerS=0;P.thr=0;P.brkHold=false;autoHold=true;
   FOOT.on=true;FOOT.x=spot[0];FOOT.z=spot[1];FOOT.y=footGround(FOOT.x,FOOT.z);FOOT.h=P.h;FOOT.v=0;FOOT.ph=0;FOOT.cy=P.h;FOOT.car=[P.x,P.z];
+  if(RIDE.st==="ride")rideEnd("out");
   m.G.visible=true;footPlace(0);
   pc.inside.visible=false;pc.glass.visible=pc.shell.visible=true;
   placeCarMesh(0);footCam(0,true);footHud(true);
