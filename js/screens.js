@@ -727,6 +727,7 @@ function skillsOpen(){
       (level===10?" · top level":" · "+(next-xp)+" XP to level "+(level+1));
     row.append(label,bar,num,note);rows.appendChild(row);
   }
+  if(typeof aspireRender==="function")aspireRender();
   $("pause").inert=true;show("skills",true);$("skClose").focus();
 }
 function skillsClose(){show("skills",false);$("pause").inert=false;$("pSkills").focus()}
@@ -996,6 +997,8 @@ function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PREFS.includes(k))o[k]=sv[k];
   delete o.wants;const counts=sv.wants&&wantsClean(sv.wants).completed;if(counts&&Object.keys(counts).length)o.wants=counts;
+  // aspiration steps paid count as progress, and none matches a save from before aspirations (js/progress.js)
+  delete o.aspire;if(sv.aspire&&typeof aspireClean==="function"){const paid=aspireClean(sv.aspire).claimed;if(Object.keys(paid).length)o.aspire=paid}
   const layout=homeProgress(sv.home);if(layout)o.home=layout;
   const skills=skillsClean(sv.skills);delete o.skills;delete o.photoDay;
   if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))o.skills=skills;
