@@ -229,7 +229,10 @@ function talkShow(line){
   bar.style.width=Math.abs(f)/2+"%";bar.style.left=(f<0?50-Math.abs(f)/2:50)+"%";bar.classList.toggle("neg",f<0);
   if(line!==undefined)$("tkLine").textContent=line;
   // friends can be asked along for a ride (40 or more: Friend and up)
-  const ride=$("tkRide"),was=!ride.classList.contains("hide");show("tkRide",f>=RIDE_AT);if(was!==(f>=RIDE_AT))talkSel(Math.min(TALK.sel,tkButtons().length-1));
+  const ride=$("tkRide"),was=!ride.classList.contains("hide");show("tkRide",f>=RIDE_AT);show("tkInvite",f>=RIDE_AT);
+  if(was!==(f>=RIDE_AT))talkSel(Math.min(TALK.sel,tkButtons().length-1));
+  const asked=GUEST.who===who&&!GUEST.done,inv=$("tkInvite");inv.disabled=asked;
+  inv.innerHTML=asked?"Coming over to your place":"Come over to my place <kbd>8</kbd>";
   show("talk",true);document.body.classList.add("talking");
 }
 // keys while talking: 1 to 6 say the lines, Escape, E or Backspace says goodbye. True when the key was used
@@ -238,6 +241,7 @@ function talkKey(k){
   if(k==="escape"||k==="e"||k==="backspace"){talkClose();return true}
   const i="123456".indexOf(k);if(k.length===1&&i>=0){talkPick(TALKS[i].id);return true}
   if(k==="7"&&!$("tkRide").classList.contains("hide")){talkRide();return true}
+  if(k==="8"&&!$("tkInvite").classList.contains("hide")){talkInvite();return true}
   return false;
 }
 // the line picked for a controller: its outline and the index A uses move together, and with keyboard focus (focusin)
@@ -649,5 +653,49 @@ const ridePrompt=()=>RIDE.st==="ride"&&RIDE.t>5&&kphNow()<5?{t:"Drop off "+RIDE.
   TALKS.forEach((t,i)=>{const b=document.createElement("button");b.className="btn tkAct"+(t.id==="rude"?" bad":"");b.dataset.k=t.id;
     b.innerHTML=t.label+" <kbd>"+(i+1)+"</kbd>";b.onclick=()=>talkPick(t.id);box.appendChild(b)});
   const ride=document.createElement("button");ride.className="btn tkAct hide";ride.id="tkRide";ride.dataset.k="ride";ride.innerHTML="Come for a ride <kbd>7</kbd>";ride.onclick=()=>talkRide();box.appendChild(ride);
+  const inv=document.createElement("button");inv.className="btn tkAct hide";inv.id="tkInvite";inv.dataset.k="invite";inv.innerHTML="Come over to my place <kbd>8</kbd>";inv.onclick=()=>talkInvite();box.appendChild(inv);
   const bye=document.createElement("button");bye.className="btn ghost tkAct";bye.dataset.k="bye";bye.innerHTML="Goodbye <kbd>Esc</kbd>";bye.onclick=talkClose;box.appendChild(bye);
   box.addEventListener("focusin",e=>{const i=tkButtons().indexOf(/** @type {HTMLElement} */(e.target));if(i>=0)talkSel(i)})}
+
+/* ================================================================ A FRIEND OVER: asked while talking (Friend and up), they
+   wait on the mezzanine at home until you hang out with them there; for this session */
+const GUEST={who:/** @type {any} */ (null),m:/** @type {any} */ (null),done:false};
+const GUEST_LINES={cheerful:"Love what you've done with the place!",grumpy:"It's... fine. Nice sofa, I suppose.",joker:"Is this a garage or a palace?",
+  chatty:"We talked for hours. Same again soon?",shy:"Thanks for having me.",busy:"Got to dash, but that was fun."};
+function talkInvite(){
+  const who=TALK.person;if(!who||TALK.busy>0||TALK.end>0||rel(who.id).f<RIDE_AT||GUEST.who===who&&!GUEST.done)return false;
+  if(GUEST.who&&!GUEST.done&&GUEST.who!==who)toast(GUEST.who.name.toUpperCase(),"won't be coming over after all");
+  guestDrop();GUEST.who=who;GUEST.done=false;TALK.busy=.7;
+  talkShow("“See you at your place, then!”");toast("INVITED",who.name+" will be at your home: go home to hang out","gold");return true;
+}
+// where a guest stands: in front of (or beside) a seat of yours, else by the railing; on a free half-metre cell
+function guestSpot(){
+  const plan=save.home,tries=[];
+  for(const p of plan.items){if(homeById.get(p.id).group!=="seating")continue;const r=homeRect(p.id,p.x,p.z,p.r);
+    tries.push([r.x+Math.floor(r.w/2),r.z-1],[r.x-1,r.z],[r.x+r.w,r.z],[r.x+Math.floor(r.w/2),r.z+r.d])}
+  tries.push([20,3],[14,3],[26,3],[10,6],[30,6]);
+  for(const[x,z]of tries)if(homeFits(plan,"stool",x,z,0))return{x,z};
+  return{x:20,z:3};
+}
+// at home (the garage, designing included) the guest stands there, facing the room's railing; elsewhere they're out of
+// sight, and once you've hung out they've gone home
+function guestSync(s=state){
+  if(GUEST.done||!GUEST.who){guestDrop();show("gGuest",false);return}
+  const home=s==="GARAGE";show("gGuest",home);$("gGuest").textContent="HANG OUT · "+GUEST.who.name.toUpperCase();
+  if(!home){if(GUEST.m)GUEST.m.G.visible=false;return}
+  if(!GUEST.m){const id=GUEST.who.id;GUEST.m=pedModel(id,.94+rnd(id,38)*.12,pedLook(id))}
+  const c=guestSpot(),G=GUEST.m.G,d=gW(0,-1,0).sub(gW(0,0,0));
+  G.position.copy(gW(HOME_ORIGIN.x+(c.x+.5)*HOME_CELL,HOME_ORIGIN.z+(c.z+.5)*HOME_CELL,HOME_ORIGIN.y));G.rotation.set(0,Math.atan2(d.x,d.z),0);G.visible=true;
+}
+// their own face material goes with them (the shapes and the face's picture are shared)
+function guestDrop(){if(!GUEST.m)return;scene.remove(GUEST.m.G);GUEST.m.face.m.dispose();GUEST.m=null}
+// hanging out: social +30 and fun +10, Charisma XP, and friendship +4, up to +8 in a comfortable home; then they go
+function guestHangOut(){
+  const who=GUEST.who;if(!who||GUEST.done||state!=="GARAGE"||tabIdle)return false;
+  const r=rel(who.id),comfy=typeof homeComfort==="function"?homeComfort(save.home):0,gain=4+Math.floor(comfy/25);
+  relSet(who.id,r.f+gain,r.n+1);needsAdd("social",30);needsAdd("fun",10);skillAward("charisma",4);
+  GUEST.done=true;guestSync();persist();restSync();
+  toast(who.name.toUpperCase(),GUEST_LINES[who.trait]+" · friendship +"+gain,"gold");return true;
+}
+$("gGuest").onclick=()=>guestHangOut();
+

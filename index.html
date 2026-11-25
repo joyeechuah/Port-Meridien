@@ -110,6 +110,7 @@ body.touch #lhint{display:none}
 #gSnack,#gPlay{position:absolute;right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gSnack:hover:not(:disabled),#gPlay:hover:not(:disabled){border-color:#fff}#gSnack:disabled,#gPlay:disabled{opacity:.55;cursor:default}
 #gSnack{top:calc(224px + var(--st))}#gPlay{top:calc(264px + var(--st))}
+#gGuest{position:absolute;top:calc(304px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;border-color:var(--acc);color:var(--acc)}
 #gRest{position:absolute;top:calc(184px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gRest:hover:not(:disabled){border-color:#fff}#gRest:disabled{opacity:.55;cursor:default}#gGun[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}#gCloud.warn{border-color:var(--acc);color:var(--acc)}
 .clp{font-size:13px;line-height:1.5;color:var(--mute);margin:10px 0 0}.clp b{color:var(--ink)}
@@ -437,9 +438,10 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   #dPrice{font-size:20px}
   #count{top:54%;font-size:88px}
   body.touch #prompt{bottom:calc(92px + var(--sb))}
-  /* landscape phones: the lines in one or two rows of four, so the panel stays low */
+  /* landscape phones: the lines in one or two rows of four, so the panel stays low; five to a row with a friend's
+     two extra lines (the ride and the invitation home), still two rows */
   #talk{bottom:calc(8px + var(--sb));width:min(560px,calc(100% - 28px));padding:8px 12px 10px}
-  #tkActs{grid-template-columns:repeat(4,1fr)}
+  #tkActs{grid-template-columns:repeat(4,1fr)}#tkActs:has(>#tkInvite:not(.hide)){grid-template-columns:repeat(5,1fr)}
   #tkLine{margin:4px 0 6px}
 }
 @media (max-width:900px),(max-height:520px){
@@ -619,6 +621,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
     <button id="gGun" class="pill" aria-pressed="false">PISTOL: LEFT HERE</button>
     <button id="gSnack" class="pill hide">SNACK</button>
     <button id="gPlay" class="pill hide">PLAY</button>
+    <button id="gGuest" class="pill hide">HANG OUT</button>
     <button id="gRest" class="pill">REST · ENERGY 80</button>
   </div>
   <div id="hd" class="hide" role="region" aria-label="Design your home">
