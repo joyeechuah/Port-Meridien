@@ -142,4 +142,15 @@ test.describe("Old Quay", () => {
     expect(r.n).toBeGreaterThan(400);
     expect(r.along).toBeLessThan(0.01);
   });
+  test("string lights hang across two streets between facing fronts, at least 4.5 m over the road", async ({ game }) => {
+    await game.open();
+    const L = await game.eval(() => __T.QUAY.lights.map((l) => ({ len: Math.hypot(l.x1 - l.x0, l.z1 - l.z0), low: l.low, across: Math.abs(l.x1 - l.x0) < 1e-6 || Math.abs(l.z1 - l.z0) < 1e-6 })));
+    expect(L.length).toBeGreaterThanOrEqual(10);
+    for (const l of L) {
+      expect(l.across, "straight across the street").toBe(true);
+      expect(l.len).toBeGreaterThanOrEqual(12);
+      expect(l.len).toBeLessThanOrEqual(30);
+      expect(l.low, "clearance over the road at the middle").toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });
