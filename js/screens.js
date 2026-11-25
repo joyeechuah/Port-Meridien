@@ -372,7 +372,7 @@ function goGarage(fromFade){
   workCancel();
   const doIt=()=>{
     const repaired=(testDrive?testDrive.damage:P.damage)>0;
-    endEvent();if(testDrive)finishTestDrive(false);streetReset();if(repaired)skillAward("handiness",15);
+    endEvent();if(testDrive)finishTestDrive(false);streetReset();if(repaired){wantEvent("repair");skillAward("handiness",15)}
     P.damage=P.damageT=0;repairWarnLevel=0;if(pc)showDamageSmoke(pc,0);
     // going home ends a contract; the garage hides the HUD, so the message waits for the next drive
     if(job&&jobEnd("abandoned"))jobNotices.push(["CONTRACT ABANDONED","You went home, so it ended without a reward"]);
@@ -689,7 +689,7 @@ $("repairNow").onclick=()=>{
   if(!repairConfirm){repairConfirm=true;repairPanel();return}
   const price=repairPrice();
   if(price>save.cr||repairBlocked()){repairPanel();return}
-  skillAward("handiness",15);save.cr-=price;P.damage=P.damageT=0;repairWarnLevel=0;
+  wantEvent("repair");skillAward("handiness",15);save.cr-=price;P.damage=P.damageT=0;repairWarnLevel=0;
   if(pc)showDamageSmoke(pc,0);
   persist();updateMoney();repairConfirm=false;
   show("repair",false);
@@ -990,6 +990,7 @@ const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","tod
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PREFS.includes(k))o[k]=sv[k];
+  delete o.wants;const counts=sv.wants&&wantsClean(sv.wants).completed;if(counts&&Object.keys(counts).length)o.wants=counts;
   const layout=homeProgress(sv.home);if(layout)o.home=layout;
   const skills=skillsClean(sv.skills);delete o.skills;delete o.photoDay;
   if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))o.skills=skills;
@@ -1001,7 +1002,7 @@ const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
   const skills=skillsClean(sv.skills);if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))return false;
-  return !homeProgress(sv.home)&&!workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
+  return !(sv.wants&&Object.keys(wantsClean(sv.wants).completed).length)&&!homeProgress(sv.home)&&!workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
     (!sv.jobs||!Object.values(sv.jobs).some(v=>typeof v==="number"?v>0:!e(v)))}
 function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:foundCount(sv.found||{}),
   cups:Object.values(champ).filter(c=>c&&c.won).length,mods:Object.keys(sv.mods||{}).length}}
@@ -1112,6 +1113,7 @@ function clReconcile(doc){
   const L=clProg(save),C=clProg(cloud),rev=doc.rev||0;
   // the same progress, or neither side moved on since this device last synced: in step (settings are sent if changed)
   if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();
+    if(L===C&&cloud.wants&&wantsSync(cloud.wants))persist();
     const day=photoDayClean(cloud.photoDay);
     if(day.day>save.photoDay.day||day.day===save.photoDay.day&&day.count>save.photoDay.count){save.photoDay=day;persist()}
     clWork(cloud);clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}

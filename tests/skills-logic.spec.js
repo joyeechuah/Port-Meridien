@@ -10,7 +10,7 @@ function game(){
   const node=()=>({children:[],style:{},setAttribute(){},append(...v){this.children.push(...v)},appendChild(v){this.children.push(v)},replaceChildren(){this.children=[]},
     focus(){document.activeElement=this},classList:{contains:()=>false,add(){},remove(){}}});
   const $=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id)};
-  const g={save:{cr:10000},document,$,state:"PAUSE",tabIdle:false,ev:null,testDrive:null,pc:null,
+  const g={wantEvent:()=>false,save:{cr:10000},document,$,state:"PAUSE",tabIdle:false,ev:null,testDrive:null,pc:null,
     toast:(...args)=>alerts.push(args),persist(){},show:(id,on)=>{$(id).visible=on},clamp:(x,a,b)=>Math.min(b,Math.max(a,x)),
     fmtCr:String,earn(x){g.save.cr+=x},Date:{now:()=>86400000*20000}};
   const ctx=vm.createContext(g),run=s=>vm.runInContext(s,ctx);

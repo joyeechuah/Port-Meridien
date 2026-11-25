@@ -108,6 +108,65 @@ const OUTFITS=[
 ];
 // what each of the four needs (js/life.js) starts at, out of 100
 const NEEDS_START={energy:80,hunger:75,fun:65,social:65};
+// Active slots hold catalogue ids. Only completed wants count towards cloud progress.
+const WANT_CATALOG=[
+  {id:"meet",label:"Talk to someone new",cr:600},{id:"friendly",label:"Reach Friendly with someone",cr:1000},
+  {id:"race",label:"Finish a race",cr:1200},{id:"shift",label:"Finish a kitchen shift",cr:1000},
+  {id:"landmark",label:"Discover a landmark",cr:900},{id:"photo",label:"Take a photo",cr:400},
+  {id:"place",label:"Place a new piece of furniture",cr:650},{id:"home",label:"Have a snack or play at home",cr:500},
+  {id:"walk",label:"Walk 500 m",cr:750},{id:"level",label:"Gain a skill level",cr:1500},
+  {id:"repair",label:"Repair real damage",cr:800}
+];
+const wantIds=WANT_CATALOG.map(w=>w.id);
+function wantsClean(raw){
+  const data=raw&&typeof raw==="object"&&!Array.isArray(raw)&&raw.v===1?raw:{};
+  const active=[],completed={};
+  if(Array.isArray(data.active))for(const id of data.active.slice(0,3)){
+    if(wantIds.includes(id)&&!active.includes(id))active.push(id);
+  }
+  for(const id of ["meet","walk","friendly"])if(active.length<3&&!active.includes(id))active.push(id);
+  for(const id of wantIds){
+    const n=data.completed?.[id];
+    if(Object.prototype.hasOwnProperty.call(data.completed||{},id)&&Number.isSafeInteger(n)&&n>0)completed[id]=Math.min(n,1e9);
+  }
+  const today=Math.floor(Date.now()/86400000);
+  const day=Number.isSafeInteger(data.day)&&data.day>=0?Math.min(today,data.day):-1;
+  const metres=active.includes("walk")&&Number.isFinite(data.metres)?clamp(data.metres,0,499.999):0;
+  return {v:1,active,completed,day,metres};
+}
+function wantsSync(remoteRaw){
+  const local=save.wants,remote=wantsClean(remoteRaw);
+  if(remote.day>local.day){
+    local.day=remote.day;local.active=remote.active;local.metres=remote.metres;return true;
+  }
+  if(local.day===remote.day&&local.active.includes("walk")&&remote.active.includes("walk")&&remote.metres>local.metres){
+    local.metres=remote.metres;return true;
+  }
+  return false;
+}
+function wantDraw(exclude){
+  const choices=wantIds.filter(id=>!exclude.includes(id));
+  return choices[Math.floor(Math.random()*choices.length)];
+}
+function wantEvent(id,metres=0){
+  const w=save.wants,slot=w.active.indexOf(id);
+  if(slot<0)return false;
+  if(id==="walk"){
+    if(!Number.isFinite(metres)||metres<=0)return false;
+    w.metres+=metres;if(w.metres<500)return false;w.metres=0;
+  }
+  const item=WANT_CATALOG.find(it=>it.id===id);
+  w.active[slot]=wantDraw(w.active);w.completed[id]=Math.min(1e9,(w.completed[id]||0)+1);
+  save.cr+=item.cr;updateMoney();toast("WANT COMPLETE",item.label+" · +"+fmtCr(item.cr)+" CR","gold");
+  return true;
+}
+function wantsReroll(){
+  const w=save.wants,today=Math.floor(Date.now()/86400000);
+  if(state!=="PAUSE"||tabIdle||document.hidden||w.day>=today)return false;
+  const previous=w.active.slice(),next=[];
+  while(next.length<3)next.push(wantDraw(previous.concat(next)));
+  w.active=next;w.day=today;w.metres=0;persist();return true;
+}
 const SKILL_RATE={driving:.02,cooking:.03,charisma:.04,fitness:-.03,photography:.02,handiness:-.03};
 const skillThreshold=level=>25*level*(level+1);
 function skillsClean(raw){
@@ -128,7 +187,7 @@ function skillFactor(k){return 1+SKILL_RATE[k]*skillLevel(k)}
 function skillAward(k,xp){
   const before=skillLevel(k);
   save.skills[k]=Math.min(skillThreshold(10),save.skills[k]+xp);
-  const after=skillLevel(k);
+  const after=skillLevel(k);if(after>before)wantEvent("level");
   for(let level=before+1;level<=after;level++)toast("SKILL LEVEL UP",k[0].toUpperCase()+k.slice(1)+" · level "+level,"gold");
 }
 // Distance remainders belong to this session. Teleports never enter the physics/footstep samples.
@@ -156,7 +215,7 @@ function workClean(w){
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
+const save={wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
 // the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
 // version starts again from the starting values; a missing or broken number is put back to its own starting value,
@@ -224,7 +283,7 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
-  save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
+  save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
   save.needs=needsClean(save.needs);save.work=workClean(save.work);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};

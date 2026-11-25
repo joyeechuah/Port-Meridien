@@ -23,7 +23,7 @@ function walker(peds, footClear) {
     gasIn: () => input.gas, brakeIn: () => input.brake,
     updateTraffic: noop, jobTick: noop, footPlace: noop, gunFoot: noop,
     footPrompt: noop, audioUpd: noop, placeCarMesh: noop, showDamageSmoke: noop,
-    footCam: noop, drawMini: noop, skillDistance: noop
+    footCam: noop, drawMini: noop, skillDistance: noop, wantEvent: noop
   });
   return { F, input, advance(frames) { for (let i=0; i<frames; i++) step(1/60); } };
 }
