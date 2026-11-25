@@ -74,7 +74,7 @@ function workTick(dt){
 function workOpen(){
   if(state!=="DRIVE"||!workNear()||WANTED.lvl)return false;
   clearInput();FOOT.v=0;TALK.fireHold=true;WORK.panel=true;WORK.label="";
-  show("work",true);workRender();$(WORK.active?"wk0":"wkEat").focus();return true;
+  show("work",true);workRender();$(WORK.active?"wk0":"wkEat").focus();hint("kitchen");return true;
 }
 function workRender(){
   const a=WORK.active,w=Math.ceil(WORK.wait),c=Math.ceil(WORK.cool);

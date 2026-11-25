@@ -72,7 +72,7 @@ class Game {
   //   save               a save (object or raw string) put in localStorage before the game loads
   //   police     (false) let the police see crimes. Off, patrol cars still drive and can be hit, but nothing makes
   //              you wanted, so a crash in some other test never starts a chase by chance
-  async open({ instrument = true, autostart = true, render = false, police = false, save, path = "/index.html" } = {}) {
+  async open({ instrument = true, autostart = true, render = false, police = false, hints = false, save, path = "/index.html" } = {}) {
     const page = this.page;
     if (!this._wired) {
       this._wired = true;
@@ -125,6 +125,13 @@ class Game {
       this._auto = true;
       await page.addInitScript(() => {
         window.__autostart = 1;
+      });
+    }
+    // the first-time hints (js/screens.js) are off unless a test asks for them, so their notices don't mix with others
+    if (!hints && !this._nohints) {
+      this._nohints = true;
+      await page.addInitScript(() => {
+        window.__noHints = 1;
       });
     }
     if (!police && !this._nocrime) {

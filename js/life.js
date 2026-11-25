@@ -233,7 +233,7 @@ function talkShow(line){
   if(was!==(f>=RIDE_AT))talkSel(Math.min(TALK.sel,tkButtons().length-1));
   const asked=GUEST.who===who&&!GUEST.done,inv=$("tkInvite");inv.disabled=asked;
   inv.innerHTML=asked?"Coming over to your place":"Come over to my place <kbd>8</kbd>";
-  show("talk",true);document.body.classList.add("talking");
+  show("talk",true);document.body.classList.add("talking");if(f>=RIDE_AT)hint("friends");
 }
 // keys while talking: 1 to 6 say the lines, Escape, E or Backspace says goodbye. True when the key was used
 function talkKey(k){
