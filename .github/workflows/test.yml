@@ -18,13 +18,13 @@ concurrency:
 
 jobs:
   shards:
-    name: Chromium shard ${{ matrix.shard }}/4
+    name: Chromium shard ${{ matrix.shard }}/6
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v5
 
@@ -42,32 +42,28 @@ jobs:
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
 
-      # Playwright starts the local server itself (tests/support/server.js, see playwright.config.js),
-      # and the job fails if any test fails
-      # Shard each project separately so the slower software-rendered tests run on all four runners.
-      - name: Run both projects and summarise each report
+      - name: Balance the test files by measured running time
+        env:
+          SHARD_COUNT: ${{ strategy.job-total }}
+        run: node tests/support/ci-shards.js "$RUNNER_TEMP/test-lists" "$SHARD_COUNT"
+
+      - name: Run the assigned Chromium and WebGL tests
         env:
           SHARD: ${{ matrix.shard }}
-        run: |
-          status=0
-          for project in chromium webgl; do
-            npx playwright test --project="$project" --shard="$SHARD/4" || status=1
-            echo "## $project · shard $SHARD/4" >> "$GITHUB_STEP_SUMMARY"
-            node tests/support/summary.js >> "$GITHUB_STEP_SUMMARY"
-            mkdir -p "reports/$project"
-            for dir in playwright-report test-results; do
-              if [ -d "$dir" ]; then mv "$dir" "reports/$project/"; fi
-            done
-          done
-          exit "$status"
+        run: npx playwright test --test-list="$RUNNER_TEMP/test-lists/$SHARD"
 
-      # the HTML report, with screenshots and traces for any test that failed
+      - name: Summarise results
+        if: ${{ !cancelled() }}
+        run: node tests/support/summary.js >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload the report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
         with:
           name: playwright-report-${{ matrix.shard }}
-          path: reports/
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 14
 
   chromium:
