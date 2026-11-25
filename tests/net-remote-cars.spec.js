@@ -47,3 +47,12 @@ test("test drive paint is sent until the loan ends", () => {
   const send=run("function netState(", "function netSend(",g);
   expect(send().p).toBe(0); g.testDrive=null; expect(send().p).toBe(111);
 });
+test("a friend's message is drawn only with a place on or around the island and a speed a car can reach", () => {
+  const a = src.indexOf("const NET_LIM="), b = src.indexOf("// a car's rotation", a);
+  const ok = vm.runInNewContext(src.slice(a, b) + "\n;NET_OK", {});
+  const base = { m: 0, x: 120.5, y: 14.2, z: -380, h: 1.2, v: 33 };
+  expect(ok(base)).toBe(true);
+  expect(ok({ ...base, m: 1, x: -2700, z: 2700, v: -4 })).toBe(true);
+  for (const bad of [{ x: 1e308 }, { z: -9000 }, { y: 1e6 }, { y: -500 }, { v: 1e9 }, { x: NaN }, { m: 7 }, { h: Infinity }])
+    expect(ok({ ...base, ...bad }), JSON.stringify(bad)).toBe(false);
+});

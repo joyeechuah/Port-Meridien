@@ -15,7 +15,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(s==="GARAGE")gunSync();if(s!=="DRIVE"){talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
+function setState(s){if(s==="GARAGE")gunSync();if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
@@ -163,15 +163,17 @@ function camFloor(x,z,p){
 // aims far enough ahead, that the road and the cars in front show over the roof (it was 2 m up aiming 9 m ahead,
 // and the car hid two thirds of the road from 12 to 45 m ahead; now about a third)
 const CAMV={up:3.0,ahead:24,lookY:1.2};
-function camWant(at){
+function camWant(dt,at){
   const p=at||pc.G.position,v=Math.abs(speedF()),f={x:Math.sin(camYaw),z:Math.cos(camYaw)},big=pc.shape==="suv"?1.2:1;
   const full=(camMode===0?6.6+Math.min(1.6,v*.02):11.5+Math.min(3,v*.04))*big,clear=boomClear(p.x,p.z,f.x,f.z,full);
-  camBoom=camBoom===null?clear:clear<camBoom?lerp(camBoom,clear,.35):lerp(camBoom,clear,.05);
+  // Keep the original 60 Hz response as frame time varies.
+  const retain=clear<camBoom?.65:.95;
+  camBoom=camBoom===null?clear:lerp(camBoom,clear,1-Math.pow(retain,dt*60));
   const back=Math.min(full,camBoom),up=(camMode===0?CAMV.up:3.8)*big+(full-back)*.18,ah=camMode===0?CAMV.ahead:9;
   return{pos:new V3(p.x-f.x*back,p.y+up,p.z-f.z*back),look:new V3(p.x+f.x*ah,p.y+(camMode===0?CAMV.lookY:1.4)*big,p.z+f.z*ah),fov:(camMode===0?58:60)+Math.min(13,v*.15)};
 }
 // after a teleport the car mesh only moves on the next frame, so aim from the physics position
-function snapCam(){if(!pc)return;camYaw=P.h;camBoom=null;if(camMode<2){const c=camWant(new V3(P.x,P.y,P.z));camP.copy(c.pos);camL.copy(c.look)}}
+function snapCam(){if(!pc)return;camYaw=P.h;camBoom=null;if(camMode<2){const c=camWant(0,new V3(P.x,P.y,P.z));camP.copy(c.pos);camL.copy(c.look)}}
 function updateCam(dt){
   const v=Math.abs(speedF());
   const rear=!!(keys.b||pad.rear||GP.rear);
@@ -195,7 +197,7 @@ function updateCam(dt){
     camera.fov+=((camMode===3?66:70)+Math.min(12,v*.14)-camera.fov)*(1-Math.exp(-dt*6.3));
   }else{
     camYaw+=wrapA(P.h-camYaw)*(1-Math.exp(-dt*(camMode===0?4.5:3.5)));
-    const c=camWant(),base=pc.G.position;
+    const c=camWant(dt,null),base=pc.G.position;
     if(!camP.equals(camPSet)){camOff.subVectors(camP,base);camLOff.subVectors(camL,base)}
     // the old follow trailed the car by its speed over the follow rate (v/14 for the eye, v/20 for the look point), which
     // pulls the view back as you speed up; that lag is now asked for directly, so the look doesn't change
@@ -1016,7 +1018,13 @@ function clLoadMeta(){let m=null;try{m=JSON.parse(localStorage.getItem(CLOUD_KEY
   // another account signing in here is asked before that progress goes to it. Only the id: no name or email of a
   // signed-out account is kept on the device (older saves stored the name; it's dropped here)
   const o=Object.assign({uid:null,name:"",email:"",rev:0,prog:"",full:"",needs:"",at:0,rehash:false,owner:null,ownerName:""},m&&typeof m==="object"?m:{});
-  if(o.uid&&!o.owner)o.owner=o.uid;o.ownerName="";return o}
+  if(o.uid&&!o.owner)o.owner=o.uid;
+  // Migrate even when the remembered session has expired or Firebase is offline.
+  if(o.name||o.email||o.ownerName){
+    o.name="";o.email="";o.ownerName="";
+    try{localStorage.setItem(CLOUD_KEY,JSON.stringify(o))}catch(e){}
+  }
+  return o}
 function clSaveMeta(){try{localStorage.setItem(CLOUD_KEY,JSON.stringify(CL.meta))}catch(e){}}
 CL={meta:clLoadMeta(),ad:null,user:null,st:"guest",msg:"",busy:false,timer:0,pick:null,lastPut:0,other:false,signingOut:null};
 const clOwn=()=>{CL.meta.owner=CL.user.uid;CL.other=false};
@@ -1055,7 +1063,7 @@ function clConnect(interactive){
     if(!u){if(CL.meta.uid){clSet("signedout","You're signed out. Sign in again to keep backing up; your progress is safe on this device.")}else clSet("guest");return}
     CL.user=u;CL.other=!!(CL.meta.owner&&CL.meta.owner!==u.uid);
     if(CL.meta.uid&&CL.meta.uid!==u.uid||CL.other){CL.meta.rev=0;CL.meta.prog="";CL.meta.full="";CL.meta.needs="";CL.meta.at=0}
-    CL.meta.uid=u.uid;CL.meta.name=u.name;CL.meta.email=u.email;clSaveMeta();
+    CL.meta.uid=u.uid;clSaveMeta();
     return clReadAccount()}).catch(clAccountError)}
 function clReconcile(doc){
   let cloud=null;try{cloud=doc&&typeof doc.save==="string"?JSON.parse(doc.save):null}catch(e){cloud=null}
@@ -1175,9 +1183,9 @@ function clLine(){const m=CL.meta;
 function clRender(){if(!CL)return;const on=!!CL.user,line=clLine(),bad=CL.st==="offline"||CL.st==="pending"||CL.st==="error"||CL.st==="signedout"||CL.st==="conflict";
   const g=$("gCloud");g.textContent=on||CL.meta.uid?(line||"SAVED").toUpperCase():"SAVE MY PROGRESS";g.classList.toggle("warn",bad&&!!CL.meta.uid);show("gCloud",!!CL.ad);
   $("pCloud").textContent=on?"CLOUD SAVE: "+(bad?"CHECK":"ON"):"SAVE MY PROGRESS";
-  $("lcl").textContent=CL.meta.uid?(CL.meta.name?"Signed in as "+CL.meta.name+" · ":"")+line:CL.ad?"Sign in with Google to back up your cars and credits and play on any device":"";
+  $("lcl").textContent=CL.meta.uid?(CL.user&&CL.user.name?"Signed in as "+CL.user.name+" · ":"")+line:CL.ad?"Sign in with Google to back up your cars and credits and play on any device":"";
   show("clIntro",!on);show("clWho",on);show("clIn",!on);show("clNow",on);show("clOut",on||CL.st==="signedout");
-  $("clWho").innerHTML=on?"Signed in as <b>"+(CL.meta.name||"you").replace(/[<>&]/g,"")+"</b>"+(CL.meta.email?" ("+CL.meta.email.replace(/[<>&]/g,"")+")":"")+". Your progress backs up by itself, and a copy stays on this device for playing offline.":"";
+  $("clWho").innerHTML=on?"Signed in as <b>"+(CL.user.name||"you").replace(/[<>&]/g,"")+"</b>"+(CL.user.email?" ("+CL.user.email.replace(/[<>&]/g,"")+")":"")+". Your progress backs up by itself, and a copy stays on this device for playing offline.":"";
   $("clIn").disabled=!CL.ad||CL.st==="connecting"||!!CL.signingOut;$("clIn").textContent=CL.st==="connecting"?"CONNECTING…":"SIGN IN WITH GOOGLE";$("clNow").disabled=CL.busy||!!CL.signingOut;$("clOut").disabled=CL.applying||!!CL.signingOut;
   const st=$("clStat"),txt=!CL.ad?(FIREBASE_CONFIG.apiKey&&!CLOUD_HOSTS.includes(location.hostname)?"Cloud saves work on the game's own site, joyeechuah.github.io/Port-Meridien.":"Cloud saves aren't set up on this copy of the game."):CL.msg||(on?"Last backed up: "+(CL.meta.at?new Date(CL.meta.at).toLocaleString()+" ("+clAgo(CL.meta.at)+")":"not yet"):"Playing as a guest. Progress is saved in this browser only.");
   st.textContent=txt;st.classList.toggle("bad",bad||!CL.ad)}

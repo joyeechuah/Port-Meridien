@@ -255,6 +255,7 @@ test.describe("photo mode", () => {
         P = T.P;
       for (const t of T.TRAFFIC) {
         t.e = null;
+        t.lost = false; // else spawnTraffic brings it back mid-test
         t.wx = 1e6;
         t.wz = 1e6;
       }

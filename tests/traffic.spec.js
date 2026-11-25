@@ -223,6 +223,7 @@ test.describe("traffic", () => {
       }
       for (const t of T.TRAFFIC) {
         t.e = null;
+        t.lost = false; // else spawnTraffic brings it back mid-test
         t.wx = t.wz = 1e6;
       }
       const place = (t, p) => {

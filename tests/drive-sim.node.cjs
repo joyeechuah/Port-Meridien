@@ -26,3 +26,12 @@ test("Old Quay T-junctions from 130 km/h with gas held", t => {
     }
   }
 });
+
+test("country T-junctions at nodes 1 and 2 from 180 and 200 km/h", () => {
+  const sim = createDrivingSim();
+  for (const speed of [180, 200]) {
+    const turns = measureJunctions(sim, speed);
+    assert.deepEqual(turns.map(turn => turn.n), [1, 1, 2, 2]);
+    for (const turn of turns) assert.ok(turn.made, JSON.stringify({speed, ...turn}));
+  }
+});

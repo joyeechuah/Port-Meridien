@@ -4,6 +4,7 @@ function measureBends(T = globalThis.__T) {
     out = {};
   for (const t of T.TRAFFIC || []) {
     t.e = null;
+    t.lost = false; // else spawnTraffic brings it back mid-test
     t.c.G.visible = false;
     t.wx = t.wz = 1e6;
   }
@@ -52,12 +53,14 @@ function measureBends(T = globalThis.__T) {
   return out;
 }
 
-function measureJunctions(T = globalThis.__T) {
+function measureJunctions(T = globalThis.__T, countrySpeed = 0) {
+  const approach = countrySpeed ? 275 : 130;
   const P = T.P,
     out = [],
     ang = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   for (const t of T.TRAFFIC || []) {
     t.e = null;
+    t.lost = false; // else spawnTraffic brings it back mid-test
     t.c.G.visible = false;
     t.wx = t.wz = 1e6;
   }
@@ -67,10 +70,10 @@ function measureJunctions(T = globalThis.__T) {
   const S = T.save.side === "R" ? 1 : -1;
   // every T-junction in town met head on: a straight street of 130 m or more into it, roads both ways out
   for (const n of T.NODES) {
-    if (n.adj.length !== 3) continue;
+    if (n.adj.length !== 3 || (countrySpeed && ![1, 2].includes(n.id))) continue;
     for (const a of n.adj) {
       const e = a.e;
-      if (e.type !== "town" || e.len < 140) continue;
+      if (e.type !== (countrySpeed ? "country" : "town") || e.len < approach + 10) continue;
       const toB = n === e.b,
         dirS = toB ? 1 : -1,
         sAt = (d) => (toB ? e.len - d : d),
@@ -87,20 +90,20 @@ function measureJunctions(T = globalThis.__T) {
             const q2 = T.edgePos(b.e, b.end === "a" ? 12 : b.e.len - 12);
             return { e: b.e, turn: ang(Math.atan2(q2.x - n.x, q2.z - n.z) - h0) };
           });
-      if (!straight || exits.some((x) => Math.abs(x.turn) < 1.2)) continue;
+      if (!countrySpeed && (!straight || exits.some((x) => Math.abs(x.turn) < 1.2))) continue;
       // the turn begun about a turning circle out, and late, at the zebra crossing
       for (const ex of exits)
-        for (const lead of [1, 0.6]) {
+        for (const lead of (countrySpeed ? [1] : [1, 0.6])) {
           const lane = T.RT[e.type].lanes[0],
-            q = T.edgePos(e, sAt(130)),
+            q = T.edgePos(e, sAt(approach)),
             ux = q.dx * dirS,
             uz = q.dz * dirS,
             hx = h0 + ex.turn;
           P.x = q.x - uz * lane * S;
           P.z = q.z + ux * lane * S;
           P.h = Math.atan2(ux, uz);
-          P.vx = ux * 36;
-          P.vz = uz * 36;
+          P.vx = ux * (countrySpeed / 3.6 || 36);
+          P.vz = uz * (countrySpeed / 3.6 || 36);
           P.vy = 0;
           P.r = P.steer = P.steerS = P.brkT = P.holdT = P.holdDir = 0;
           P.thr = 1;
@@ -111,11 +114,12 @@ function measureJunctions(T = globalThis.__T) {
             done = false,
             vMin = 999,
             slow = 0,
+            entered = false,
             made = false;
-          for (let i = 0; i < 900 && !made; i++) {
+          for (let i = 0; i < (countrySpeed ? 1500 : 900) && !made; i++) {
             const v = Math.hypot(P.vx, P.vz),
               fwd = (n.x - P.x) * Math.sin(h0) + (n.z - P.z) * Math.cos(h0);
-            if (!key && !done && fwd < lead * (5 + 0.7 * v))
+            if (!key && !done && fwd < lead * (5 + 0.7 * v) * (countrySpeed ? Math.tan(Math.abs(ex.turn) / 2) : 1))
               key = Math.sin(hx) * -Math.cos(P.h) + Math.cos(hx) * Math.sin(P.h) > 0 ? "d" : "a";
             if (key && Math.abs(ang(P.h - hx)) < 0.2) {
               T.keys[key] = false;
@@ -129,7 +133,8 @@ function measureJunctions(T = globalThis.__T) {
             if (fwd < 60) vMin = Math.min(vMin, kmh);
             if (kmh < 60) slow += 1 / 60;
             const nr = T.nearestRoad(P.x, P.z, 12);
-            made = !!nr && nr.e === ex.e && Math.hypot(P.x - n.x, P.z - n.z) > 30;
+            if (Math.hypot(P.x-n.x,P.z-n.z) <= n.r + 4) entered = true;
+            made = (!countrySpeed || entered) && !!nr && nr.e === ex.e && Math.hypot(P.x - n.x, P.z - n.z) > 30;
           }
           out.push({ n: T.NODES.indexOf(n), turn: Math.round((ex.turn * 180) / Math.PI), lead, made, vMin: Math.round(vMin), slow: +slow.toFixed(1) });
         }

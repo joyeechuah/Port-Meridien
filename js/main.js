@@ -14,7 +14,7 @@ function driveUpdate(dt){
   const steps=Math.ceil(dt/.017),h=dt/steps;
   for(let i=0;i<steps;i++){stepPlayer(h);collidePlayer()}
   P.hitT-=dt;
-  if(FOOT.stop)footStopTick(dt);
+  if(FOOT.stop){footStopTick(dt);if(FOOT.on)return}
   updateTraffic(dt);
   if(ev)updateEvent(dt);
   if(state!=="DRIVE")return;

@@ -13,6 +13,7 @@ async function ready(game) {
     for (const r of T.RADARS) T.save.radar[r.id] = 999;
     for (const t of T.TRAFFIC) {
       t.e = null;
+      t.lost = false; // else spawnTraffic brings it back mid-test
       t.c.G.visible = false;
       t.wx = 1e6;
       t.wz = 1e6;
