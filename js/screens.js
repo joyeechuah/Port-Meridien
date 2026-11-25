@@ -1138,7 +1138,8 @@ function clNeeds(cloud){
 // the account's save becomes this device's (its ghost laps stay), and the game starts again from it
 // From here until the page reloads, this tab neither saves nor backs up: the progress still in memory would otherwise
 // go back over the restored save (on leaving the page) and up to the account
-function clApply(doc,cloud){const sv=Object.assign({},cloud,{home:homeClean(cloud.home),ghost:save.ghost||{}});CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
+function clApply(doc,cloud){const lost=[],sv=Object.assign({},cloud,{home:homeClean(cloud.home,lost),ghost:save.ghost||{}});
+  if(lost.length)sv.cr=(Number.isFinite(sv.cr)?sv.cr:0)+homeRefund(lost);   // (see homeClean: an old back-row piece with no room)CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   // if the browser won't store it, nothing changed: saving and backing up carry on, and the choice stays to try again
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(sv))}catch(e){CL.applying=false;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}
   CL.meta.rev=doc.rev||0;CL.meta.rehash=true;clOwn();CL.meta.at=clAt(doc);clSaveMeta();

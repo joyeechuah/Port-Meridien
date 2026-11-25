@@ -163,4 +163,37 @@ test.describe("design your home", () => {
     await page.waitForTimeout(600);
     expect(await game.eval(() => ({ yaw: __T.GO.yaw, stick: __T.GO.stick.slice() }))).toEqual({ yaw, stick: [0, 0] });
   });
+  test("a two-finger drag is no tap: it buys nothing and cancels a waiting touch; the mouse's preview goes when it leaves the floor", async ({ game, page }) => {
+    await game.open();
+    await design(game, page);
+    await page.locator("#hdg_seating").click();
+    await card(page, "Woven stool").click();
+    const p = await cellPoint(game, 10, 8),
+      q = await cellPoint(game, 20, 12),
+      cr0 = await game.eval(() => __T.save.cr);
+    const ptr = (type, id, at) =>
+      game.eval(([type, id, x, y]) => {
+        document.getElementById("c").dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", isPrimary: id === 1, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+        return { tap: !!__T.HV.tap, n: __T.save.home.items.length, cr: __T.save.cr };
+      }, [type, id, at.x, at.y]);
+    // one touch on P, and the stool waits there for a second
+    await ptr("pointerdown", 1, p);
+    expect(await ptr("pointerup", 1, p)).toEqual({ tap: true, n: 0, cr: cr0 });
+    // finger A down at Q, then finger B on P, which cancels the waiting touch; A dragged onto P and lifted, then B
+    await ptr("pointerdown", 2, q);
+    expect(await ptr("pointerdown", 3, p)).toEqual({ tap: false, n: 0, cr: cr0 });
+    await ptr("pointermove", 2, p);
+    expect(await ptr("pointerup", 2, p)).toEqual({ tap: false, n: 0, cr: cr0 });
+    expect(await ptr("pointerup", 3, p)).toEqual({ tap: false, n: 0, cr: cr0 });
+    // every finger off: two taps on P place it as before
+    await ptr("pointerdown", 4, p);
+    await ptr("pointerup", 4, p);
+    await ptr("pointerdown", 5, p);
+    expect(await ptr("pointerup", 5, p)).toEqual({ tap: false, n: 1, cr: cr0 - 160 });
+    // the mouse: a preview over the floor, and none once it's past the room's edge
+    await page.mouse.move(q.x, q.y);
+    expect(await game.eval(() => !!__T.HV.at && __T.HV.ghost.visible)).toBe(true);
+    await page.mouse.move(4, 4);
+    expect(await game.eval(() => ({ at: __T.HV.at, ghost: __T.HV.ghost.visible }))).toEqual({ at: null, ghost: false });
+  });
 });
