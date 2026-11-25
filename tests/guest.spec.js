@@ -69,3 +69,24 @@ test("only a Friend (40 or more) can be asked over; a comfortable home is worth 
   expect(await game.eval(() => __T.homeComfort(__T.save.home))).toBe(50);
   expect(await game.eval(() => { __T.guestHangOut(); return __T.save.rel[0].f; })).toBe(66);
 });
+
+test("a guest sits on your comfiest seat, facing the way it faces; with no seat they stand, and selling it stands them up", async ({ game }) => {
+  await game.open();
+  const pose = () => game.eval(() => {
+    const T = __T, G = T.GUEST.m.G, floor = T.gY + T.HOME_ORIGIN.y;
+    return { seat: T.GUEST.seat && T.GUEST.seat.id, lift: +(G.position.y - floor + .92 * T.GUEST.h).toFixed(3), legs: T.GUEST.m.legs.map((l) => l.rotation.x), turn: +(G.rotation.y - T.gYaw).toFixed(3) };
+  });
+  await game.eval(() => { const T = __T; T.save.home.items = [{ id: "stool", x: 6, z: 6, r: 0 }, { id: "armchair", x: 24, z: 6, r: 1 }]; T.homeBuild(); T.GUEST.who = T.PEOPLE[1]; T.guestSync("GARAGE"); });
+  // the reading chair before the stool, turned a quarter: the guest faces round with it
+  expect(await pose()).toEqual({ seat: "armchair", lift: 0.47, legs: [-1.05, -1.05], turn: +(Math.PI - Math.PI / 2).toFixed(3) });
+  // a sofa is comfier still; moving furniture reseats them
+  await game.eval(() => { const T = __T; T.save.home.items.push({ id: "sofa", x: 12, z: 10, r: 0 }); T.homeBuild(); });
+  expect((await pose()).seat).toBe("sofa");
+  // no seats: standing, legs straight
+  await game.eval(() => { const T = __T; T.save.home.items = []; T.homeBuild(); });
+  const stand = await pose();
+  expect(stand.seat).toBe(null);
+  expect(stand.legs).toEqual([0, 0]);
+  expect(stand.lift).toBeCloseTo(0.92 * (await game.eval(() => __T.GUEST.h)), 3);
+});
+
