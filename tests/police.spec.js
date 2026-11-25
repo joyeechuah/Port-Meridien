@@ -517,7 +517,8 @@ test.describe("police", () => {
       return { lvl: T.WANTED.lvl, st: p.st, t: p.t };
     });
     expect(r.lvl).toBe(1);
-    expect(r.st).toBe("idle");
+    // at 7 m/s (25 km/h) it knocks them down; slower than about 20 km/h they'd only stagger (pedestrians.spec.js)
+    expect(r.st).toBe("down");
     expect(r.t).toBeGreaterThan(3);
   });
   // Off the road the cars can't get beside you: an officer gets out and comes on foot. You get there the way a
