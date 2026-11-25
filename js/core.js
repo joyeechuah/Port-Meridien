@@ -115,7 +115,7 @@ const WANT_CATALOG=[
   {id:"landmark",label:"Discover a landmark",cr:900},{id:"photo",label:"Take a photo",cr:400},
   {id:"place",label:"Place a new piece of furniture",cr:650},{id:"home",label:"Have a snack or play at home",cr:500},
   {id:"walk",label:"Walk 500 m",cr:750},{id:"level",label:"Gain a skill level",cr:1500},
-  {id:"repair",label:"Repair real damage",cr:800}
+  {id:"repair",label:"Repair real damage",cr:800},{id:"promote",label:"Get a promotion at the kitchen",cr:1500}
 ];
 const wantIds=WANT_CATALOG.map(w=>w.id);
 function wantsClean(raw){
@@ -144,8 +144,10 @@ function wantsSync(remoteRaw){
   }
   return false;
 }
+// (no promotion to want once you're the kitchen's head chef)
+const wantOpen=id=>id!=="promote"||typeof workRank!=="function"||workRank()<WORK_RANKS.length-1;
 function wantDraw(exclude){
-  const choices=wantIds.filter(id=>!exclude.includes(id));
+  const choices=wantIds.filter(id=>!exclude.includes(id)&&wantOpen(id));
   return choices[Math.floor(Math.random()*choices.length)];
 }
 function wantEvent(id,metres=0){

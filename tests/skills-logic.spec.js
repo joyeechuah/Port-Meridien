@@ -42,7 +42,7 @@ test("a completed shift pays the cooking bonus once; only a home hunger gain awa
   Object.assign(g,{WORK:{panel:true,active:true,served:2,wait:0,hp:1},HEALTH:{hp:1},workAvailable:()=>true,
     WORK_ITEMS:["Bread","Bowl","Stew"],workCancel(){g.WORK.active=false},NEEDS:{hunger:90}});
   g.save.work={completed:0};run('save.skills.cooking=skillThreshold(5)');
-  run(part("work","function workServe(","// Only called")+part("life","function needsAdd(","// your mood"));
+  run(part("work","const WORK_RANKS=","// Only called")+part("life","function needsAdd(","// your mood"));
   expect(run("workServe(2)")).toBe(true);expect(run("workServe(2)")).toBe(false);
   expect(g.save.cr).toBe(10345);expect(g.save.skills.cooking).toBe(775);
   run('state="DRIVE";needsAdd("hunger",1);state="GARAGE";needsAdd("hunger",30);needsAdd("hunger",30)');

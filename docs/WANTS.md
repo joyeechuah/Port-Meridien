@@ -15,5 +15,6 @@ Pause → Needs shows three wants under Mood. New players start with meeting som
 | Walk | Travel 500 actual metres on foot while the want is active. Running counts metre for metre | 750 |
 | Skill | Increase any skill's level | 1,500 |
 | Repair | Complete a roadside repair or return home with actual damage | 800 |
+| Promotion | Reach the next kitchen rank (see CAREERS.md). Not drawn once you are head chef | 1,500 |
 
 The version 1 wants record stores three activity IDs, per-activity completion counts, partial walking distance and the last reroll UTC day. Loading repairs invalid slots and discards unrecognised counts. Cloud progress compares completion counts. Empty counts match older saves. A newer reroll from an otherwise equal account save carries its list and partial walking distance. Two disconnected devices can each use a reroll before syncing.

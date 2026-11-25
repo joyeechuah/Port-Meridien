@@ -25,15 +25,34 @@ function workStart(){
   WORK.active=true;WORK.served=WORK.wait=0;WORK.hp=HEALTH.hp;
   workRender();$("wk0").focus();return true;
 }
+// A career at the kitchen: the rank follows the shifts finished and the Cooking level, so it needs nothing saved of its
+// own (nor anything new for the account to compare). Each rank pays its own rate, times Cooking's bonus
+const WORK_RANKS=[{name:"Dishwasher",shifts:0,cook:0,pay:300},{name:"Prep cook",shifts:3,cook:0,pay:360},
+  {name:"Line cook",shifts:8,cook:2,pay:440},{name:"Sous chef",shifts:15,cook:4,pay:540},{name:"Head chef",shifts:25,cook:6,pay:660}];
+function workRank(done=save.work.completed,cook=skillLevel("cooking")){
+  let r=0;while(r<WORK_RANKS.length-1&&done>=WORK_RANKS[r+1].shifts&&cook>=WORK_RANKS[r+1].cook)r++;return r;
+}
+const workPay=()=>Math.round(WORK_RANKS[workRank()].pay*skillFactor("cooking"));
+// the rank, and what the next one needs
+function workRankText(){
+  const R=WORK_RANKS[workRank()],N=WORK_RANKS[workRank()+1];if(!N)return R.name+": the top of the kitchen.";
+  const n=Math.max(0,N.shifts-save.work.completed),cook=skillLevel("cooking")<N.cook;
+  return R.name+". "+N.name+" after "+(n?n+" more shift"+(n===1?"":"s"):"")+(n&&cook?" and ":"")+(cook?"Cooking level "+N.cook:"")+".";
+}
+// after a shift: promoted, if the shift (or the Cooking it taught) took you to the next rank
+function workPromoted(was){const now=workRank();if(now<=was)return false;
+  toast("PROMOTED",WORK_RANKS[now].name+" · "+workPay()+" CR a shift","gold");wantEvent("promote");return true}
 function workServe(i){
   if(!WORK.panel||!WORK.active)return false;
   if(!workAvailable()||HEALTH.hp<WORK.hp){workCancel();return false}
   if(WORK.wait>0)return false;
   if(i!==WORK.served){$("wkStatus").textContent="Still waiting for "+WORK_ITEMS[WORK.served].toLowerCase()+".";return false}
   if(++WORK.served===WORK_ITEMS.length){
+    // paid at the rank the shift was worked at; finishing it may then promote you
+    const rank=workRank(),pay=workPay();
     WORK.cool=120;save.work.cool=120;save.work.completed=Math.min(9999,save.work.completed+1);
-    const pay=Math.round(300*skillFactor("cooking"));wantEvent("shift");skillAward("cooking",25);
-    workCancel();earn(pay);toast("SHIFT COMPLETE","+"+pay+" CR","gold");
+    wantEvent("shift");skillAward("cooking",25);
+    workCancel();earn(pay);toast("SHIFT COMPLETE","+"+pay+" CR","gold");workPromoted(rank);
   }else{WORK.wait=10;workRender()}
   return true;
 }
@@ -55,11 +74,11 @@ function workOpen(){
 function workRender(){
   const a=WORK.active,w=Math.ceil(WORK.wait),c=Math.ceil(WORK.cool);
   const text=a?(w?"Next order in "+w+" s":"Order "+(WORK.served+1)+" of 3: "+WORK_ITEMS[WORK.served]):"Eat here or take a short shift.";
-  const available=workAvailable(),key=[a,text,c,available].join("|");
+  const available=workAvailable(),rank=workRankText(),key=[a,text,c,available,rank].join("|");
   if(key===WORK.label)return;
-  WORK.label=key;$("wkStatus").textContent=text;
+  WORK.label=key;$("wkStatus").textContent=text;$("wkRank").textContent=rank;
   show("wkEat",!a);show("wkStart",!a);show("wkOrders",a);show("wkLeave",a);
-  const b=$("wkStart");b.disabled=c>0||!available;b.textContent=c?"Next shift in "+c+" s":"Work a shift · "+Math.round(300*skillFactor("cooking"))+" CR";
+  const b=$("wkStart");b.disabled=c>0||!available;b.textContent=c?"Next shift in "+c+" s":"Work a shift · "+workPay()+" CR";
 }
 function workButtons(){return Array.from($("work").querySelectorAll("button")).filter(b=>b.offsetParent&&!b.disabled)}
 function workKey(e,k){
