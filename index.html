@@ -492,7 +492,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 /* contracts */
 #jobs{z-index:62}
 /* needs (js/life.js): four bars, each with its number and a word for its colour, the mood and one suggestion */
-#work .mbtn{min-height:44px;width:100%;text-transform:uppercase}#work .card{overflow:auto;max-height:100%}
+#work .mbtn{min-height:44px;width:100%;text-transform:uppercase}#wkRank{font-size:12px;line-height:1.45;color:var(--mute);margin:-4px 0 6px}#work .card{overflow:auto;max-height:100%}
 /* skills (js/core.js): a row each, with its level, a bar to the next one, and what builds it and what it gives */
 .skr{display:grid;grid-template-columns:minmax(0,7.2em) 1fr 3.6em;align-items:center;gap:6px 10px;padding:9px 0;border-top:1px solid var(--line);font-size:13px}
 .skr b{font-family:var(--f-num);font-size:15px;text-align:right}.skr b.top{color:var(--acc)}
@@ -852,7 +852,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 </div></div>
 
 <div id="work" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="wkTitle">
-  <h3>OLD QUAY MARKET</h3><h2 id="wkTitle">Market Kitchen</h2><p id="wkStatus" role="status"></p>
+  <h3>OLD QUAY MARKET</h3><h2 id="wkTitle">Market Kitchen</h2><p id="wkStatus" role="status"></p><p id="wkRank"></p>
   <button class="mbtn" id="wkEat">Eat · free</button><button class="mbtn" id="wkStart">Work a shift · 300 CR</button>
   <div id="wkOrders" class="hide"><button class="mbtn" id="wk0">1 · Bread</button><button class="mbtn" id="wk1">2 · Bowl</button><button class="mbtn" id="wk2">3 · Stew</button></div>
   <button class="mbtn hide" id="wkLeave">Leave shift</button><button class="mbtn" id="wkClose">Close</button>
