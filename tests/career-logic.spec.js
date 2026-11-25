@@ -66,7 +66,8 @@ test("a want to be promoted isn't drawn for a head chef", () => {
   const drawn = new Set();
   for (let i = 0; i < 400; i++) drawn.add(run("wantDraw([])"));
   expect(drawn.has("promote")).toBe(false);
-  expect(drawn.size).toBe(11);
+  // every other want in the catalogue
+  expect(drawn.size).toBe(run("WANT_CATALOG.length") - 1);
   run("save.work.completed=0");
   for (let i = 0; i < 400 && !drawn.has("promote"); i++) drawn.add(run("wantDraw([])"));
   expect(drawn.has("promote")).toBe(true);

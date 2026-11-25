@@ -1035,7 +1035,8 @@ const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PR
   // aspiration steps paid count as progress, and none matches a save from before aspirations (js/progress.js)
   delete o.aspire;if(sv.aspire&&typeof aspireClean==="function"){const paid=aspireClean(sv.aspire).claimed;if(Object.keys(paid).length)o.aspire=paid}
   const layout=homeProgress(sv.home);if(layout)o.home=layout;
-  const skills=skillsClean(sv.skills);delete o.skills;delete o.photoDay;
+  // (today's gifts, like today's photos, are a limit on the day, not progress)
+  const skills=skillsClean(sv.skills);delete o.skills;delete o.photoDay;delete o.gift;
   if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))o.skills=skills;
   const shifts=workClean(sv.work).completed;if(shifts)o.work={completed:shifts};
   // no friendships yet (js/life.js) is the same progress as a save from before they existed, so the new empty field

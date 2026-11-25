@@ -115,7 +115,8 @@ const WANT_CATALOG=[
   {id:"landmark",label:"Discover a landmark",cr:900},{id:"photo",label:"Take a photo",cr:400},
   {id:"place",label:"Place a new piece of furniture",cr:650},{id:"home",label:"Have a snack or play at home",cr:500},
   {id:"walk",label:"Walk 500 m",cr:750},{id:"level",label:"Gain a skill level",cr:1500},
-  {id:"repair",label:"Repair real damage",cr:800},{id:"promote",label:"Get a promotion at the kitchen",cr:1500}
+  {id:"repair",label:"Repair real damage",cr:800},{id:"promote",label:"Get a promotion at the kitchen",cr:1500},
+  {id:"gift",label:"Give someone a gift",cr:700}
 ];
 const wantIds=WANT_CATALOG.map(w=>w.id);
 function wantsClean(raw){
@@ -254,6 +255,14 @@ function skillDistance(k,metres){
 // the UTC day of the photos counted, and how many. A day still to come (the clock was set ahead, here or on another
 // device) is taken as today with its count, on loading, from the account and at a capture: putting the clock right
 // then neither blocks the photos until that day nor gives five more
+// who has had a gift from you today (js/life.js talkGift), once a day each, by UTC day: another day's list is as good
+// as none, and a day still to come (a clock put back) counts as today
+function giftClean(raw){
+  const today=Math.floor(Date.now()/86400000),none={v:1,day:-1,ids:/** @type {number[]} */ ([])};
+  if(!raw||typeof raw!=="object"||raw.v!==1||!Number.isSafeInteger(raw.day)||raw.day<0)return none;
+  const ids=[];if(Array.isArray(raw.ids))for(const id of raw.ids.slice(0,32))if(Number.isInteger(id)&&id>=0&&id<16&&!ids.includes(id))ids.push(id);
+  return {v:1,day:Math.min(raw.day,today),ids};
+}
 function photoDayClean(raw){
   const today=Math.floor(Date.now()/86400000);
   return Number.isSafeInteger(raw?.day)&&raw.day>=0&&Number.isInteger(raw.count)?
@@ -270,7 +279,7 @@ function workClean(w){
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
+const save={gift:giftClean(null),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
 // the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
 // version starts again from the starting values; a missing or broken number is put back to its own starting value,
@@ -338,7 +347,7 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
-  save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
+  save.gift=giftClean(save.gift);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
   save.needs=needsClean(save.needs);save.work=workClean(save.work);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};
