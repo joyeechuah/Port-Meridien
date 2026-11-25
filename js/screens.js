@@ -572,7 +572,9 @@ $("dDrive").onclick=()=>{const c=CARS[dSel];if(!save.owned.includes(c.id))return
 $("dSell").onclick=()=>{const c=CARS[dSel];if(!save.owned.includes(c.id)||c.id===curId||save.owned.length<2)return;delete save.mods[c.id];
   // its models go too: kept, they still wore the old upgrades when you looked at it, test-drove it or bought it back
   for(const M of [carMeshes,showMeshes])if(M[c.id]){disposeHeroCar(M[c.id]);delete M[c.id]}
-  const v=Math.round(c.price*.6/100)*100;save.owned=save.owned.filter(id=>id!==c.id);if(save.cur===c.id)save.cur=save.owned[0];earn(v);persist();parkAll(curId);
+  // the sale's credits without driver XP: earn() counts every credit earned as XP, so buying and selling cars over
+  // and over used to raise your level
+  const v=Math.round(c.price*.6/100)*100;save.owned=save.owned.filter(id=>id!==c.id);if(save.cur===c.id)save.cur=save.owned[0];save.cr+=v;updateMoney();persist();parkAll(curId);
   toast("SOLD",c.mk+" "+c.md+" · +"+fmtCr(v)+" CR","gold");dPick(dSel)};
 $("dTest").onclick=()=>startTestDrive(CARS[dSel].id);
 $("dExit").onclick=closeDealer;
