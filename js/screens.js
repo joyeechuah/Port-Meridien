@@ -698,7 +698,7 @@ function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audi
   $("pHome").textContent=job?"GO HOME · ENDS CONTRACT":"GO HOME · REPAIR FREE";
   $("pRepair").textContent="VEHICLE CONDITION · "+damagePct()+"%";$("pNeeds").textContent=needsLabel();
   show("pQuit",!!(ev||testDrive));$("pQuit").textContent=testDrive?"END TEST DRIVE":ev&&ev.fin?"SEE RESULT":"QUIT EVENT";show("pHome",!testDrive);
-  syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);show("pause",true)}
+  syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);$("pause").inert=false;show("pause",true)}
 function pauseOff(){show("pause",false);if(state==="PAUSE"){setState("DRIVE");audioOn(true);TILT.zero=TILT.phi}}
 /** @type {[string, number|null][]} */
 const TODS=[["AUTO",null],["MORNING",8.5],["NOON",13],["SUNSET",17.75],["NIGHT",22.5]];
