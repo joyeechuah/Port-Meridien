@@ -30,6 +30,7 @@ const NAMES = (
   "openMap openMapPopup pad passportClose passportOpen pauseOff pauseOn pc persist photoCapture photoEnter " +
   "photoExit photoLook photoLookSet photoReset prNow promptAct renderer resetToRoad routeBetween save scene " +
   "VERGE vergeSites toast toastFit " +
+  "GIFT_CR GIFT_TAKES talkGift giftGiven giftClean " +
   "TRAITS traitsClean traitsApply hasTrait traitLoss " +
   "NET netAt netState netTick fbLoad FB_LOADS " +
   "seaT setGPS clearGPS setState skyClock skyU startEvent startTestDrive state streakReset testDrive " +

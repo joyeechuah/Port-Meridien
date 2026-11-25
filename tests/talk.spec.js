@@ -190,6 +190,63 @@ test.describe("talking to people", () => {
     expect(game.errors).toEqual([]);
   });
 
+  test("a gift: 250 CR for friendship by how they take presents, Charisma XP and company; once a day each, and saved", async ({ game }) => {
+    await inTown(game);
+    // someone shy, who takes a present best
+    const i = await game.eval(() => __T.PEOPLE.findIndex((q) => q.trait === "shy"));
+    await meet(game, i);
+    const before = await game.eval((i) => {
+      const T = __T, b = document.getElementById("tkGift");
+      T.save.rel[i] = { f: 20, n: 2 };
+      T.save.wants.active[2] = "gift";
+      T.NEEDS.social = 50;
+      // (saved first, so the Social butterfly step for someone Friendly is paid before the count starts)
+      T.persist();
+      T.talkOpen(T.PEDS[i]);
+      return { cr: T.save.cr, xp: T.save.skills.charisma, shown: !b.classList.contains("hide"), off: b.disabled, text: b.textContent };
+    }, i);
+    // (the price kept together on one line)
+    expect(before).toMatchObject({ shown: true, off: false, text: "Give a gift ·\u00a0250\u00a0CR 9" });
+    await game.key("9");
+    const after = await game.eval((i) => {
+      const T = __T, b = document.getElementById("tkGift");
+      return { cr: T.save.cr, xp: T.save.skills.charisma, rel: T.save.rel[i], social: T.NEEDS.social, line: document.getElementById("tkLine").textContent,
+        off: b.disabled, text: b.textContent, want: T.save.wants.active.includes("gift"), gift: T.save.gift };
+    }, i);
+    const today = await game.eval(() => Math.floor(Date.now() / 86400000));
+    // 10 for a gift, half as much again for someone shy, and less at friendship 20: 10 × 1.5 × (1 − 20/125) = 12.6
+    // (and, the first thing in this conversation, it counts the conversation)
+    expect(after.rel).toEqual({ f: 33, n: 3 });
+    // the gift's 250 CR, and the want's 700 back
+    expect(after.cr).toBe(before.cr - 250 + 700);
+    expect(after.xp).toBeGreaterThan(before.xp);
+    // company, +8 (less what the clock has taken since)
+    expect(after.social).toBeCloseTo(58, 1);
+    expect(after).toMatchObject({ off: true, text: "Gift given today", want: false, gift: { v: 1, day: today, ids: [i] } });
+    expect(after.line).toContain("a little potted plant");
+    // a second one today does nothing
+    await steps(game, 60);
+    await game.key("9");
+    expect(await game.eval((i) => [__T.save.cr, __T.save.rel[i].f], i)).toEqual([after.cr, 33]);
+    // the record is kept: after a reload it's still given today
+    await game.reload();
+    expect(await game.eval((i) => [__T.giftGiven(i), __T.save.gift.ids], i)).toEqual([true, [i]]);
+    // and the next UTC day, another can be given
+    expect(await game.eval((i) => { const real = Date.now; Date.now = () => real() + 86400000; try { return __T.giftGiven(i); } finally { Date.now = real; } }, i)).toBe(false);
+  });
+
+  test("a gift needs the credits for it, and a save's gift record is cleaned on loading", async ({ game }) => {
+    const today = Math.floor(Date.now() / 86400000);
+    await game.open({ save: { v: 3, cr: 100, gift: { v: 1, day: 1e15, ids: [3, 3, "x", 99, -1, 2.5, 7] } } });
+    const r = await game.eval(() => {
+      const T = __T, p = T.PEDS[0];
+      T.TALK.p = p; T.TALK.person = T.PEOPLE[0]; T.TALK.busy = 0; T.TALK.end = 0; T.TALK.n = 0;
+      return { gift: T.save.gift, broke: T.talkGift(), cr: T.save.cr, clean: [T.giftClean({ v: 2, day: 5, ids: [1] }), T.giftClean({ v: 1, day: -3, ids: [1] }), T.giftClean(null)] };
+    });
+    const none = { v: 1, day: -1, ids: [] };
+    expect(r).toEqual({ gift: { v: 1, day: today, ids: [3, 7] }, broke: false, cr: 100, clean: [none, none, none] });
+  });
+
   test("knocking someone down costs their friendship, they can't be talked to while down, and they show it the next time you meet", async ({ game }) => {
     await inTown(game, { gun: true });
     await meet(game, 0, 6);
@@ -366,7 +423,7 @@ for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone l
       await meet(game, 0);
       // the camera follows you round; give it a second to settle behind you
       await steps(game, 60);
-      // a friend, so all eight buttons show: the six lines, Come for a ride and Goodbye
+      // a friend, so all ten buttons show: the six lines, Come for a ride, Come over, a gift and Goodbye
       expect(await game.eval(() => { __T.save.rel[0] = { f: 45, n: 3 }; return __T.talkOpen(__T.PEDS[0]); })).toBe(true);
       const r = await game.eval(() => {
         const box = (e) => e.getBoundingClientRect(),
@@ -392,7 +449,7 @@ for (const [name, w, h, phone] of [["phone portrait", 390, 844, true], ["phone l
         };
       });
       // six lines, the ride and the invitation home (a friend), and goodbye
-      expect(r.n).toBe(9);
+      expect(r.n).toBe(10);
       expect(r.minH).toBeGreaterThanOrEqual(40);
       expect(r.inside).toBe(true);
       expect(r.padHit, "buttons under the touch controls").toBe(0);

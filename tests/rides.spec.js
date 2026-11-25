@@ -232,11 +232,11 @@ test.describe("rides", () => {
       Object.defineProperty(navigator, "getGamepads", { configurable: true, value: () => [pad] });
       const press = (i) => { T.pollPad(); buttons[i].pressed = true; T.pollPad(); buttons[i].pressed = false; T.pollPad(); };
       const seen = [];
-      try { for (let i = 0; i < 9; i++) { press(15); seen.push(document.activeElement.dataset.k); } } finally { delete navigator.getGamepads; }
+      try { for (let i = 0; i < 10; i++) { press(15); seen.push(document.activeElement.dataset.k); } } finally { delete navigator.getGamepads; }
       return { seen, sel: [...document.querySelectorAll("#tkActs .sel")].map((b) => b.dataset.k) };
     });
-    // (a friend can also be asked over: js/life.js)
-    expect(r.seen).toEqual(["chat", "joke", "compliment", "tip", "rude", "ride", "invite", "bye", "hello"]);
+    // (a friend can also be asked over, and anyone given a gift: js/life.js)
+    expect(r.seen).toEqual(["chat", "joke", "compliment", "tip", "rude", "ride", "invite", "gift", "bye", "hello"]);
     expect(r.sel).toEqual(["hello"]);
     await game.eval(() => __T.talkClose());
   });
