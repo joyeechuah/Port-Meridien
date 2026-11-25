@@ -21,7 +21,7 @@ const hooks=[
   ["friendly","life","if(r.f<15&&now.f>=15)",'\n',{r:{f:14},now:{f:15}},1000],
   ["race","play",'if(E.type==="race"){rew=',"\n",{E:{type:"race"},rew:100,skillFactor:()=>1,skillAward(){}},1200],
   ["shift","work",'wantEvent("shift");',"\n",{skillAward(){}},1000],
-  ["promote","work",'wantEvent("promote")',";return true",{},1500],
+  ["promote","work",'wantEvent("promote")',";if(now",{},1500],
   ["landmark","progress","save.found[L.id]=1;","\n",{L:{id:"pier"}},900],
   ["place","home","p.items.push(","\n",{p:{items:[]},id:"stool",x:0,z:2,r:0,item:{price:0},homeChanged(){}},650],
   ["home","life","needsAdd(need,homeGain(action));","\n",{need:"fun",action:"play",homeUntil:{},NS:{t:0},needsAdd(){},homeGain:()=>25,restSync(){}},500],

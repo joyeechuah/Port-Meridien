@@ -154,6 +154,11 @@ function wantDraw(exclude){
 // levelled Cooking used to pay for a "Gain a skill level" drawn that instant, and a promotion could follow it. The new
 // slot opens once the action's code has run (a microtask)
 const wantFresh=new Set();
+const wantFreshMark=slot=>{if(!wantFresh.size)Promise.resolve().then(()=>wantFresh.clear());wantFresh.add(slot)};
+// a want that can't be done any more (a promotion, once you're head chef) gives way to another, drawn now
+function wantsTidy(){const w=save.wants;let n=0;
+  for(let i=0;i<w.active.length;i++)if(!wantOpen(w.active[i])){w.active[i]=wantDraw(w.active);wantFreshMark(i);n++}
+  return n>0}
 function wantEvent(id,metres=0){
   const w=save.wants,slot=w.active.indexOf(id);
   if(slot<0||wantFresh.has(slot))return false;
@@ -163,7 +168,7 @@ function wantEvent(id,metres=0){
   }
   const item=WANT_CATALOG.find(it=>it.id===id);
   w.active[slot]=wantDraw(w.active);w.completed[id]=Math.min(1e9,(w.completed[id]||0)+1);
-  if(!wantFresh.size)Promise.resolve().then(()=>wantFresh.clear());wantFresh.add(slot);
+  wantFreshMark(slot);
   save.cr+=item.cr;updateMoney();toast("WANT COMPLETE",item.label+" · +"+fmtCr(item.cr)+" CR","gold");
   return true;
 }
@@ -191,11 +196,23 @@ function skillLevel(k){
   return level;
 }
 function skillFactor(k){return 1+SKILL_RATE[k]*skillLevel(k)}
+// Hundredths of XP stay in this session. Each skill carries its own change of mood.
+const skillCarry={driving:0,cooking:0,charisma:0,fitness:0,photography:0,handiness:0};
+function moodPercent(mood,k){
+  if(mood==="Content")return 115;
+  if(mood==="Lonely"&&k==="charisma")return 150;
+  return mood==="Okay"?100:85;
+}
 function skillAward(k,xp){
   const before=skillLevel(k);
-  save.skills[k]=Math.min(skillThreshold(10),save.skills[k]+xp);
+  const scaled=xp*moodPercent(needsMood(),k)+skillCarry[k];
+  save.skills[k]=Math.min(skillThreshold(10),save.skills[k]+Math.floor(scaled/100));
+  skillCarry[k]=save.skills[k]===skillThreshold(10)?0:scaled%100;
   const after=skillLevel(k);if(after>before)wantEvent("level");
   for(let level=before+1;level<=after;level++)toast("SKILL LEVEL UP",k[0].toUpperCase()+k.slice(1)+" · level "+level,"gold");
+  // Cooking from anywhere (a snack at home too) can take you to the kitchen's next rank (js/work.js); a shift settles
+  // its own promotion once its XP and its count are both in
+  if(k==="cooking"&&typeof workRankCheck==="function"&&!WORK.batch&&workRankCheck())workPromotedToast();
 }
 // Distance remainders belong to this session. Teleports never enter the physics/footstep samples.
 const skillMetres={driving:0,fitness:0};

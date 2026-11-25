@@ -74,3 +74,62 @@ test("the open room list says a friend is not responding as soon as they go quie
   await expect.poll(status, { timeout: 5000 }).toEqual(["not responding"]);
   await game.eval(() => { const T = __T; T.NET.peers.clear(); T.NET.room = null; });
 });
+
+test("restoring the same account's save keeps this device's photos counted today; another account's save keeps its own", () => {
+  const src = (n) => fs.readFileSync(require.resolve("../js/" + n + ".js"), "utf8"),
+    cut = (f, a, b) => { const s = src(f), i = s.indexOf(a); return s.slice(i, s.indexOf(b, i)); };
+  const today = 20000, run = (other, mine, theirs) => {
+    let stored = null;
+    const g = { Date: { now: () => today * 86400000 }, CL: { other, meta: {} }, save: { photoDay: mine, ghost: {} }, SAVE_KEY: "k", window: { __cloudNoReload: true },
+      localStorage: { setItem: (k, v) => { stored = JSON.parse(v); } }, homeClean: (h) => h, homeRefund: () => 0, clearTimeout() {}, setTimeout() {},
+      clOwn() {}, clAt: () => 0, clSaveMeta() {}, clSet() {}, tabIdle: false, clamp: (v, a, b) => Math.min(b, Math.max(a, v)) };
+    vm.runInNewContext(cut("core", "function photoDayClean(", "function skillPhoto(") + cut("screens", "function clApply(", "\n// this device") +
+      "\nclApply({rev:1},{cr:1,owned:[],photoDay:" + JSON.stringify(theirs) + "})", g);
+    return stored.photoDay;
+  };
+  expect(run(false, { day: today, count: 5 }, { day: today, count: 1 })).toEqual({ day: today, count: 5 });
+  expect(run(false, { day: today, count: 1 }, { day: today, count: 4 })).toEqual({ day: today, count: 4 });
+  expect(run(false, { day: today, count: 3 }, { day: today - 1, count: 5 })).toEqual({ day: today, count: 3 });
+  expect(run(true, { day: today, count: 5 }, { day: today, count: 1 })).toEqual({ day: today, count: 1 });
+});
+
+// the cloud's reconcile on equal progress (js/screens.js clReconcile), with the account's transport stubbed
+function reconcile(other) {
+  const src = (n) => fs.readFileSync(require.resolve("../js/" + n + ".js"), "utf8"),
+    cut = (f, a, b) => { const s = src(f), i = s.indexOf(a); return s.slice(i, s.indexOf(b, i)); },
+    line = (f, a) => cut(f, a, "\n");
+  const base = { v: 3, owned: ["starter"], cr: 120000, skills: { v: 1, photography: 2750 } };
+  let uploaded = null;
+  const save = JSON.parse(JSON.stringify(base)), ctx = vm.createContext({ save, Date, Math, clamp: (v, a, b) => Math.max(a, Math.min(b, v)),
+    CL: { meta: {}, user: { uid: "B" }, other }, clAt: () => 0, clWork() {}, clNeeds() {}, clSaveMeta() {}, clUpload() { uploaded = JSON.parse(JSON.stringify(save)); },
+    homeProgress: () => null, persist() {}, clPickShow() {}, clSet() {}, updateMoney() {}, toast() {} });
+  const run = (s) => vm.runInContext(s, ctx);
+  run([cut("core", "const fmtCr=", "\n"), cut("core", "function photoDayClean(", "function skillPhoto("), cut("core", "const WANT_CATALOG=", "const save="),
+    cut("screens", "const CL_PREFS=", "function clSummary("), line("screens", "const clOwn="), cut("screens", "function clReconcile(", "// With the same completed")].join("\n"));
+  return { ctx, run, save, base, uploaded: () => uploaded };
+}
+test("on equal progress, another account's save keeps its own photo count; the same account keeps the higher", () => {
+  const today = Math.floor(Date.now() / 86400000);
+  for (const [other, mine, theirs, want] of [[true, 5, 0, 0], [true, 0, 3, 3], [false, 5, 0, 5], [false, 1, 4, 4]]) {
+    const { ctx, run, save, base, uploaded } = reconcile(other);
+    save.photoDay = { day: today, count: mine };
+    ctx.remote = { ...base, photoDay: { day: today, count: theirs } };
+    run("clReconcile({rev:1,save:JSON.stringify(remote)})");
+    expect(uploaded().photoDay.count, (other ? "another" : "the same") + " account, " + mine + " here, " + theirs + " there").toBe(want);
+    expect(ctx.CL.meta.owner).toBe("B");
+  }
+});
+test("a head chef syncing the account's newer reroll with a promotion want in it gets another want instead", () => {
+  const today = Math.floor(Date.now() / 86400000);
+  const { ctx, run, save } = reconcile(false);
+  save.work = { completed: 25 }; save.skills.cooking = 1050;
+  const work = fs.readFileSync(require.resolve("../js/work.js"), "utf8");
+  run(work.slice(work.indexOf("const WORK_RANKS="), work.indexOf("const workPay=")));
+  save.wants = run("wantsClean(null)");
+  ctx.remote = { ...save, wants: { v: 1, active: ["meet", "promote", "walk"], day: today } };
+  run("wantsTidy();clReconcile({rev:1,save:JSON.stringify(remote)})");
+  expect(save.wants.day).toBe(today);
+  expect(save.wants.active).not.toContain("promote");
+  expect(save.wants.active.length).toBe(3);
+});
+
