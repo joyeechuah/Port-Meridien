@@ -157,7 +157,7 @@ function wantEvent(id,metres=0){
   }
   const item=WANT_CATALOG.find(it=>it.id===id);
   w.active[slot]=wantDraw(w.active);w.completed[id]=Math.min(1e9,(w.completed[id]||0)+1);
-  save.cr+=item.cr;updateMoney();toast("WANT COMPLETE",item.label+" · +"+item.cr+" CR","gold");
+  save.cr+=item.cr;updateMoney();toast("WANT COMPLETE",item.label+" · +"+fmtCr(item.cr)+" CR","gold");
   return true;
 }
 function wantsReroll(){

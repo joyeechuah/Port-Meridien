@@ -8,7 +8,8 @@ function source(file, first, next) {
 }
 function game(id) {
   const g={save:{cr:5000},clamp:(v,a,b)=>Math.min(b,Math.max(a,v)),state:"PAUSE",
-    Date:{now:()=>20000*86400000},document:{hidden:false},tabIdle:false,toast(){},persist(){},updateMoney(){}};
+    Date:{now:()=>20000*86400000},document:{hidden:false},tabIdle:false,toast(){},persist(){},updateMoney(){},
+    fmtCr:n=>Math.round(n).toLocaleString("en-US")};
   const ctx=vm.createContext(g),run=s=>vm.runInContext(s,ctx);
   run(source("core","const WANT_CATALOG=","const SKILL_RATE="));
   g.save.wants=run('wantsClean(null)');
