@@ -37,8 +37,8 @@ test("24 catalogue entries describe six groups, positive prices, geometry, comfo
 });
 test("half-metre grid reserves the railing and top landing, including rotated footprints",()=>{
   const {run}=game();
-  expect(run("[HOME_ORIGIN,HOME_CELL,HOME_COLS,HOME_ROWS]")).toEqual([{x:.5,y:5.25,z:19},.5,42,22]);
-  for(const [x,z,r,ok] of [[40,18,0,true],[40,18,1,false],[38,20,1,true],[0,1,0,false],
+  expect(run("[HOME_ORIGIN,HOME_CELL,HOME_COLS,HOME_ROWS]")).toEqual([{x:.5,y:5.25,z:19},.5,42,21]);
+  for(const [x,z,r,ok] of [[40,17,0,true],[40,18,0,false],[40,17,1,false],[38,19,1,true],[38,20,1,false],[0,1,0,false],
     [3,14,0,false],[4,15,0,true],[-1,4,0,false],[4,4,4,false],[1.5,4,0,false]])
     expect(run(`homeFits(save.home,"single",${x},${z},${r})`)).toBe(ok);
 });
@@ -67,7 +67,19 @@ test("save cleaning rejects malformed fields, overlaps, unknown ids and unsafe c
     {id:"stool",x:0,z:0,r:0},{id:"stool",x:41,z:21,r:0}]})`);
   expect(run('const sparse=[];sparse[4000000000]={id:"lamp",x:4,z:4,r:0};homeClean({v:1,items:sparse}).items.length')).toBe(1);
   expect(plan).toEqual({v:1,wall:"sage",floor:"oak",items:[
-    {id:"single",x:4,z:4,r:0},{id:"stool",x:41,z:21,r:0}]});
+    {id:"single",x:4,z:4,r:0},{id:"stool",x:41,z:20,r:0}]});
+});
+test("a 22nd row ran half into the back wall: an old layout's piece there moves forward past whatever is in its way, or is paid back",()=>{
+  const {run}=game();
+  const r=run(`const lost=[],plan=homeClean({v:1,items:[{id:"stool",x:41,z:21,r:0},{id:"stool",x:40,z:21,r:0},
+    {id:"stool",x:40,z:20,r:0},{id:"single",x:6,z:18,r:0},{id:"stool",x:10,z:21,r:0},
+    ...[17,18,19,20].map(z=>({id:"stool",x:10,z,r:0}))]},lost);({items:plan.items,lost})`);
+  // the stool already in row 20 keeps its place, and the one behind it moves past it to row 19; the stool behind four
+  // others has nowhere within four rows, and is paid back
+  expect(r.items).toEqual(expect.arrayContaining([{id:"stool",x:41,z:20,r:0},{id:"stool",x:40,z:20,r:0},{id:"stool",x:40,z:19,r:0},
+    {id:"single",x:6,z:17,r:0}]));
+  expect(r.lost).toEqual(["stool"]);expect(r.items.length).toBe(8);
+  expect(run('homeRefund(["stool","single"])')).toBe(960);
 });
 test("cleaning and purchasing enforce the same 60-piece cap and comfort caps at 100",()=>{
   const {run}=game();

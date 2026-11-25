@@ -7,7 +7,7 @@ if(window.__gameOff)throw window.__gameOff;
 
 // on: designing. sel: the catalogue piece being placed, pick: the index of the placed piece picked, r: the turn for a
 // new piece, at: the cell the preview stands on, tap: the cell a touch first previewed (a second touch there places)
-const HV={on:false,sel:null,pick:-1,r:0,at:null,tap:null,down:null,group:"beds",root:null,meshes:[],ghost:null,mark:null,grid:null,floor:null,wall:null,geo:new Map(),roofs:[]};
+const HV={on:false,sel:null,pick:-1,r:0,at:null,tap:null,down:null,ptrs:new Set(),multi:false,group:"beds",root:null,meshes:[],ghost:null,mark:null,grid:null,floor:null,wall:null,geo:new Map(),roofs:[]};
 const HV_GROUPS=[["beds","BEDS"],["seating","SEATING"],["tables","TABLES"],["kitchen","KITCHEN"],["fun","FUN"],["decor","DECOR"],["room","ROOM"]];
 const HV_WALL={plaster:0xe9e2d4,sage:0xb4c3a7,sand:0xe2cca0,slate:0x8b98a2},HV_FLOOR={oak:0xb48a5a,tile:0xd9d4c8,concrete:0x9b9d9b,walnut:0x6a4730};
 const HV_MAT=new THREE.MeshLambertMaterial({vertexColors:true});
@@ -126,7 +126,7 @@ const hvCam=()=>{
 };
 function hvOpen(){
   if(state!=="GARAGE"||HV.on||cuOpen()||tabIdle)return;
-  HV.on=true;HV.sel=null;HV.pick=-1;HV.r=0;HV.at=HV.tap=null;
+  HV.on=true;HV.sel=null;HV.pick=-1;HV.r=0;HV.at=HV.tap=HV.down=null;HV.ptrs.clear();HV.multi=false;GO.stick[0]=GO.stick[1]=0;
   // the ceiling and the roof lift off, as in a dolls' house
   // (everything wholly above 8.3 m: the ceiling, its beams, lamps and light bars, and the roof)
   HV.roofs=HOUSE_MESHES.filter(m=>{if(!m.geometry.boundingBox)m.geometry.computeBoundingBox();return m.visible&&m.position.y+m.geometry.boundingBox.min.y>gY+8.3});
@@ -172,7 +172,8 @@ function hvTap(cx,cy,touch){
   const a=hvAim(cx,cy);
   if(!HV.sel&&a.hit&&a.hit.object.userData.index!==HV.pick){HV.pick=a.hit.object.userData.index;HV.at=null;HV.tap=null;
     const p=save.home.items[HV.pick];hvMsg(homeById.get(p.id).name+" · TURN, SELL, or tap the floor to move it");hvMarks();return}
-  if(!a.cell){if(!a.hit){HV.pick=-1;HV.at=null;hvMsg("");hvMarks()}return}
+  // off the floor: a touch waiting for its second tap is cancelled too, or a later single tap on that cell would buy
+  if(!a.cell){HV.tap=null;if(!a.hit){HV.pick=-1;HV.at=null;hvMsg("");hvMarks()}return}
   if(!HV.sel&&HV.pick<0){hvMsg("Choose a piece below, or tap one in the room");return}
   HV.at=a.cell;
   if(touch&&!(HV.tap&&HV.tap.x===a.cell.x&&HV.tap.z===a.cell.z)){HV.tap=a.cell;hvMsg("Tap again to "+(HV.sel?"place it":"move it there"));hvMarks();return}
@@ -201,8 +202,15 @@ function hvSell(){
 }
 // the panel: the groups, then the pieces in the chosen one (or the room's walls and floor)
 function hvPanel(){
+  // drawn afresh each time: a button of the panel that had the focus gives it to its new self, so keyboard use carries on
+  // from where it was (choosing a card used to drop the focus, and Tab started again from the top)
+  const fo=/** @type {HTMLElement} */ (document.activeElement),key=fo&&$("hd").contains(fo)?fo.dataset.k:"";
+  hvPanelDraw();
+  if(key){const n=/** @type {HTMLElement} */ ($("hd").querySelector('[data-k="'+key+'"]'));if(n)n.focus({preventScroll:true})}
+}
+function hvPanelDraw(){
   const g=$("hdGroups");g.textContent="";
-  for(const[k,label]of HV_GROUPS){const t=document.createElement("button");t.className="hdt"+(k===HV.group?" on":"");t.id="hdg_"+k;t.textContent=label;
+  for(const[k,label]of HV_GROUPS){const t=document.createElement("button");t.className="hdt"+(k===HV.group?" on":"");t.id="hdg_"+k;t.dataset.k="g:"+k;t.textContent=label;
     t.setAttribute("aria-pressed",String(k===HV.group));t.onclick=()=>{HV.group=k;HV.sel=null;HV.at=null;hvPanel();hvMarks();hvMsg("")};g.appendChild(t)}
   const l=$("hdList");l.textContent="";
   if(HV.group==="room"){
@@ -210,13 +218,13 @@ function hvPanel(){
     for(const[kind,list,cols]of FIN){
       const lab=document.createElement("span");lab.className="hdk";lab.textContent=kind;l.appendChild(lab);
       for(const f of list){const b=document.createElement("button"),now=kind==="Walls"?save.home.wall===f:save.home.floor===f;
-        b.className="hdc hdf"+(now?" on":"");b.setAttribute("aria-pressed",String(now));b.innerHTML='<i style="background:#'+cols[f].toString(16).padStart(6,"0")+'"></i>'+f.toUpperCase();
+        b.className="hdc hdf"+(now?" on":"");b.dataset.k="f:"+kind+":"+f;b.setAttribute("aria-pressed",String(now));b.innerHTML='<i style="background:#'+cols[f].toString(16).padStart(6,"0")+'"></i>'+f.toUpperCase();
         b.onclick=()=>{if(kind==="Walls"?homeFinish(f,save.home.floor):homeFinish(save.home.wall,f)){homeBuild();hvPanel()}};l.appendChild(b)}}
     return;
   }
   for(const it of HOME_ITEMS){if(it.group!==HV.group)continue;
     const b=document.createElement("button"),fx=it.effect==="rest"?"Better rest":it.effect==="snack"?"SNACK at home":it.effect==="play"?"PLAY at home":"";
-    b.className="hdc"+(HV.sel===it.id?" on":"")+(save.cr<it.price?" dim":"");b.setAttribute("aria-pressed",String(HV.sel===it.id));
+    b.className="hdc"+(HV.sel===it.id?" on":"")+(save.cr<it.price?" dim":"");b.dataset.k="i:"+it.id;b.setAttribute("aria-pressed",String(HV.sel===it.id));
     b.innerHTML="<b></b><span></span><em></em>";b.children[0].textContent=it.name;b.children[1].textContent=fmtCr(it.price)+" CR";b.children[2].textContent=fx||"Comfort +"+it.comfort;
     b.onclick=()=>{HV.sel=HV.sel===it.id?null:it.id;HV.pick=-1;HV.r=0;HV.tap=null;hvPanel();hvMarks();
       hvMsg(HV.sel?(isTouch?"Tap the floor to place it":"Click the floor to place it")+" · TURN or R to turn":"")};l.appendChild(b)}
@@ -225,17 +233,31 @@ function hvInit(){
   $("gDesign").onclick=hvOpen;$("hdDone").onclick=hvClose;$("hdTurn").onclick=hvTurn;$("hdSell").onclick=hvSell;
   const cv=$("c");
   // in front of the garage's own handlers (which turn the view round the car): while designing, the room has the pointer
-  cv.addEventListener("pointerdown",e=>{if(!HV.on)return;e.stopImmediatePropagation();HV.down={x:e.clientX,y:e.clientY,touch:e.pointerType!=="mouse"}},true);
+  // A tap is one pointer going down and up in about the same place. A second finger on the glass cancels the tap in
+  // progress and any touch waiting for its second, until every finger is off (a two-finger drag used to count: one
+  // finger's release was measured from where the other went down, which could confirm a waiting touch and buy)
+  cv.addEventListener("pointerdown",e=>{if(!HV.on)return;e.stopImmediatePropagation();HV.ptrs.add(e.pointerId);
+    try{cv.setPointerCapture(e.pointerId)}catch(err){}
+    if(HV.ptrs.size>1){HV.down=null;HV.multi=true;if(HV.tap){HV.tap=null;hvMsg("");hvMarks()}return}
+    HV.down={id:e.pointerId,x:e.clientX,y:e.clientY,touch:e.pointerType!=="mouse"}},true);
+  // the mouse's preview follows it over the floor, and goes when it leaves the floor, where a click places nothing
   cv.addEventListener("pointermove",e=>{if(!HV.on)return;e.stopImmediatePropagation();
-    if(e.pointerType==="mouse"&&(HV.sel||HV.pick>=0)){const a=hvAim(e.clientX,e.clientY);if(a.cell){HV.at=a.cell;hvMarks()}}},true);
-  cv.addEventListener("pointerup",e=>{if(!HV.on)return;e.stopImmediatePropagation();const d=HV.down;HV.down=null;
-    if(d&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<12)hvTap(e.clientX,e.clientY,d.touch)},true);
+    if(e.pointerType==="mouse"&&(HV.sel||HV.pick>=0)){const c=hvAim(e.clientX,e.clientY).cell||null;
+      if(c?!HV.at||HV.at.x!==c.x||HV.at.z!==c.z:HV.at){HV.at=c;hvMarks()}}},true);
+  cv.addEventListener("pointerleave",e=>{if(HV.on&&e.pointerType==="mouse"&&HV.at&&(HV.sel||HV.pick>=0)){HV.at=null;hvMarks()}});
+  const up=e=>{HV.ptrs.delete(e.pointerId);if(!HV.on)return;e.stopImmediatePropagation();
+    const d=HV.down,multi=HV.multi;if(!HV.ptrs.size)HV.multi=false;
+    if(!d||d.id!==e.pointerId)return;HV.down=null;
+    if(e.type==="pointerup"&&!multi&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<12)hvTap(e.clientX,e.clientY,d.touch)};
+  cv.addEventListener("pointerup",up,true);cv.addEventListener("pointercancel",up,true);
   cv.addEventListener("wheel",e=>{if(HV.on){e.stopImmediatePropagation();e.preventDefault()}},{capture:true,passive:false});
-  // the keys: R turns, Delete sells the picked piece, Escape lets go of a piece or ends designing; nothing else (Enter
-  // would drive off)
-  addEventListener("keydown",e=>{if(!HV.on||tabIdle||e.target&&e.target.tagName==="INPUT")return;const k=e.key.toLowerCase();
-    if(k==="tab"||k===" "||k==="enter"&&document.activeElement&&document.activeElement.tagName==="BUTTON")return;
-    e.stopImmediatePropagation();if(e.repeat)return;
+  // the keys: R turns, Delete sells the picked piece, Escape lets go of a piece or ends designing. No other handler
+  // hears a key meanwhile (the garage's Enter drives off, even on a focused button of the panel), though Tab, Space and
+  // Enter still work the panel's buttons, that being their default. The cloud dialog, and typing, keep their own keys
+  addEventListener("keydown",e=>{const t=/** @type {HTMLElement} */ (e.target);
+    if(!HV.on||tabIdle||clOverlayOpen()||t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable))return;
+    const k=e.key.toLowerCase();e.stopImmediatePropagation();
+    if(k==="tab"||k===" "||k==="enter"||e.repeat)return;
     if(k==="r"){e.preventDefault();hvTurn()}else if(k==="delete"||k==="backspace"){e.preventDefault();hvSell()}
     else if(k==="escape"){e.preventDefault();if(HV.sel||HV.pick>=0){HV.sel=null;HV.pick=-1;HV.at=null;hvPanel();hvMarks();hvMsg("")}else hvClose()}},true);
 }

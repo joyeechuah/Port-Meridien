@@ -4,7 +4,9 @@
 if(window.__gameOff)throw window.__gameOff;
 
 // Garage-local metres. Cell (0,0) starts at the slab's front-left corner.
-const HOME_ORIGIN={x:.5,y:5.25,z:19}, HOME_CELL=.5, HOME_COLS=42, HOME_ROWS=22, HOME_CAP=60;
+// 21 rows: the back wall's inner face is 10.75 m from the railing (a 22nd row ran half into the wall; homeClean moves
+// what a save has there)
+const HOME_ORIGIN={x:.5,y:5.25,z:19}, HOME_CELL=.5, HOME_COLS=42, HOME_ROWS=21, HOME_CAP=60;
 // Half-open rectangles in cells: the front railing, and the landing beside the top stair.
 const HOME_CLEAR=[{x:0,z:0,w:42,d:2},{x:0,z:15,w:4,d:4}];
 const HOME_WALLS=["plaster","sage","sand","slate"], HOME_FLOORS=["oak","tile","concrete","walnut"];
@@ -49,9 +51,10 @@ function homeFits(plan,id,x,z,r,skip=-1){
     !HOME_CLEAR.some(area=>homeOverlap(rect,area))&&
     !plan.items.some((p,i)=>i!==skip&&homeOverlap(rect,homeRect(p.id,p.x,p.z,p.r)));
 }
-function homeClean(raw){
+function homeClean(raw,lost=null){
   const plan={v:1,wall:HOME_WALLS[0],floor:HOME_FLOORS[0],items:[]};
   if(!raw||Array.isArray(raw)||raw.v!==1)return plan;
+  const back=[];
   if(HOME_WALLS.includes(raw.wall))plan.wall=raw.wall;
   if(HOME_FLOORS.includes(raw.floor))plan.floor=raw.floor;
   if(Array.isArray(raw.items))for(const key of Object.keys(raw.items)){
@@ -59,11 +62,19 @@ function homeClean(raw){
     if(!/^(0|[1-9]\d*)$/.test(key)||Number(key)>=raw.items.length)continue;
     const p=raw.items[key];
     if(p&&homeFits(plan,p.id,p.x,p.z,p.r))plan.items.push({id:p.id,x:p.x,z:p.z,r:p.r});
+    else if(p&&homeById.has(p.id)&&[p.x,p.z,p.r].every(Number.isInteger)&&p.r>=0&&p.r<=3&&p.z+homeRect(p.id,p.x,p.z,p.r).d===HOME_ROWS+1)back.push(p);
     if(plan.items.length===HOME_CAP)break;
+  }
+  // a piece against the back wall in the old 22-row layout: once everything else is in, it moves forward one row, or
+  // up to four if those are taken; with no room it goes to lost, for its price to be paid back
+  for(const p of back){if(plan.items.length===HOME_CAP)break;
+    let z=-1;for(let dz=1;dz<=4&&z<0;dz++)if(homeFits(plan,p.id,p.x,p.z-dz,p.r))z=p.z-dz;
+    if(z>=0)plan.items.push({id:p.id,x:p.x,z,r:p.r});else if(lost)lost.push(p.id);
   }
   return plan;
 }
-save.home=homeClean(save.home);
+const homeRefund=lost=>lost.reduce((sum,id)=>sum+homeById.get(id).price,0);
+{const lost=[];save.home=homeClean(save.home,lost);save.cr+=homeRefund(lost)}
 function homeHas(plan,effect){return plan.items.some(p=>homeById.get(p.id).effect===effect)}
 function homeComfort(plan){return Math.min(100,plan.items.reduce((sum,p)=>sum+homeById.get(p.id).comfort,0))}
 function homeProgress(raw){
