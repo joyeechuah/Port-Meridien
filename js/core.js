@@ -132,11 +132,12 @@ function wantsClean(raw){
   const today=Math.floor(Date.now()/86400000);
   const day=Number.isSafeInteger(data.day)&&data.day>=0?Math.min(today,data.day):-1;
   const metres=active.includes("walk")&&Number.isFinite(data.metres)?clamp(data.metres,0,499.999):0;
-  return {v:1,active,completed,day,metres};
+  return {v:1,active,completed,day,metres,extra:day>=0&&data.extra===true};
 }
 function wantsSync(remoteRaw){
   const local=save.wants,remote=wantsClean(remoteRaw);
-  if(remote.day>local.day){
+  if(remote.day>local.day||remote.day===local.day&&remote.extra&&!local.extra){
+    local.extra=remote.extra;
     local.day=remote.day;local.active=remote.active;local.metres=remote.metres;return true;
   }
   if(local.day===remote.day&&local.active.includes("walk")&&remote.active.includes("walk")&&remote.metres>local.metres){
@@ -159,6 +160,8 @@ const wantFreshMark=slot=>{if(!wantFresh.size)Promise.resolve().then(()=>wantFre
 function wantsTidy(){const w=save.wants;let n=0;
   for(let i=0;i<w.active.length;i++)if(!wantOpen(w.active[i])){w.active[i]=wantDraw(w.active);wantFreshMark(i);n++}
   return n>0}
+function wantPay(item){return Math.round(item.cr*(save.traits?.ids.includes("freeSpirit")?1.2:1))}
+function rerollAvailable(w,today){return w.day<today||w.day===today&&!w.extra&&!!save.traits?.ids.includes("freeSpirit")}
 function wantEvent(id,metres=0){
   const w=save.wants,slot=w.active.indexOf(id);
   if(slot<0||wantFresh.has(slot))return false;
@@ -169,17 +172,40 @@ function wantEvent(id,metres=0){
   const item=WANT_CATALOG.find(it=>it.id===id);
   w.active[slot]=wantDraw(w.active);w.completed[id]=Math.min(1e9,(w.completed[id]||0)+1);
   wantFreshMark(slot);
-  save.cr+=item.cr;updateMoney();toast("WANT COMPLETE",item.label+" · +"+fmtCr(item.cr)+" CR","gold");
+  const pay=wantPay(item);save.cr+=pay;updateMoney();toast("WANT COMPLETE",item.label+" · +"+fmtCr(pay)+" CR","gold");
   return true;
 }
 function wantsReroll(){
   const w=save.wants,today=Math.floor(Date.now()/86400000);
-  if(state!=="PAUSE"||tabIdle||document.hidden||w.day>=today)return false;
+  if(state!=="PAUSE"||tabIdle||document.hidden||!rerollAvailable(w,today))return false;
   const previous=w.active.slice(),next=[];
   while(next.length<3)next.push(wantDraw(previous.concat(next)));
-  w.active=next;w.day=today;w.metres=0;persist();return true;
+  w.extra=w.day===today;w.active=next;w.day=today;w.metres=0;persist();return true;
 }
 const SKILL_RATE={driving:.02,cooking:.03,charisma:.04,fitness:-.03,photography:.02,handiness:-.03};
+const TRAITS={
+  foodie:["Foodie","Cooking XP +25%. Hunger falls 15% faster.","cooking"],
+  gearhead:["Gearhead","Driving XP +25%. Roadside repairs cost 10% less.","driving"],
+  athletic:["Athletic","Fitness XP +25%. Energy falls 10% slower on foot.","fitness"],
+  outgoing:["Outgoing","Charisma XP +25%. Social falls 15% faster.","charisma"],
+  homebody:["Homebody","Home activities restore 20% more. Fun falls 10% faster away from home.",""],
+  shutterbug:["Shutterbug","Photography XP +25%. Six rewarded photos per day.","photography"],
+  handy:["Handy","Handiness XP +25%. Home snacks give double Cooking XP.","handiness"],
+  freeSpirit:["Free spirit","Wants pay 20% more. Two rerolls per day.",""]
+};
+function traitsClean(raw){
+  const valid=raw?.v===1&&!Array.isArray(raw),ids=Object.keys(TRAITS).filter(id=>valid&&Array.isArray(raw.ids)&&raw.ids.includes(id)).slice(0,2);
+  const day=valid&&Number.isSafeInteger(raw.day)&&raw.day>=0?Math.min(raw.day,Math.floor(Date.now()/86400000)):-1;
+  return {v:1,ids,day};
+}
+function traitsApply(ids){
+  const today=Math.floor(Date.now()/86400000),old=save.traits;
+  if(state!=="PAUSE"||tabIdle||document.hidden||old.day>=today||!Array.isArray(ids)||ids.length>2)return false;
+  const next=traitsClean({v:1,ids,day:today});
+  if(next.ids.length!==ids.length||next.ids.join()===old.ids.join())return false;
+  save.traits=next;persist();return true;
+}
+function hasTrait(id){return !!save.traits?.ids.includes(id)}
 const skillThreshold=level=>25*level*(level+1);
 function skillsClean(raw){
   const valid=raw&&typeof raw==="object"&&!Array.isArray(raw)&&raw.v===1;
@@ -196,7 +222,7 @@ function skillLevel(k){
   return level;
 }
 function skillFactor(k){return 1+SKILL_RATE[k]*skillLevel(k)}
-// Hundredths of XP stay in this session. Each skill carries its own change of mood.
+// Units of 1/400 XP stay in this session. Each skill carries its own change of mood.
 const skillCarry={driving:0,cooking:0,charisma:0,fitness:0,photography:0,handiness:0};
 function moodPercent(mood,k){
   if(mood==="Content")return 115;
@@ -205,9 +231,10 @@ function moodPercent(mood,k){
 }
 function skillAward(k,xp){
   const before=skillLevel(k);
-  const scaled=xp*moodPercent(needsMood(),k)+skillCarry[k];
-  save.skills[k]=Math.min(skillThreshold(10),save.skills[k]+Math.floor(scaled/100));
-  skillCarry[k]=save.skills[k]===skillThreshold(10)?0:scaled%100;
+  const boosted=save.traits?.ids.some(id=>TRAITS[id][2]===k);
+  const scaled=xp*moodPercent(needsMood(),k)*(boosted?5:4)+skillCarry[k];
+  save.skills[k]=Math.min(skillThreshold(10),save.skills[k]+Math.floor(scaled/400));
+  skillCarry[k]=save.skills[k]===skillThreshold(10)?0:scaled%400;
   const after=skillLevel(k);if(after>before)wantEvent("level");
   for(let level=before+1;level<=after;level++)toast("SKILL LEVEL UP",k[0].toUpperCase()+k.slice(1)+" · level "+level,"gold");
   // Cooking from anywhere (a snack at home too) can take you to the kitchen's next rank (js/work.js); a shift settles
@@ -230,12 +257,12 @@ function skillDistance(k,metres){
 function photoDayClean(raw){
   const today=Math.floor(Date.now()/86400000);
   return Number.isSafeInteger(raw?.day)&&raw.day>=0&&Number.isInteger(raw.count)?
-    {day:Math.min(raw.day,today),count:clamp(raw.count,0,5)}:{day:0,count:0};
+    {day:Math.min(raw.day,today),count:clamp(raw.count,0,6)}:{day:0,count:0};
 }
 function skillPhoto(){
   const today=Math.floor(Date.now()/86400000),record=save.photoDay;
   if(today>record.day){record.day=today;record.count=0}else if(today<record.day)record.day=today;
-  if(record.count>=5)return;
+  if(record.count>=(hasTrait("shutterbug")?6:5))return;
   record.count++;skillAward("photography",10);persist();
 }
 function workClean(w){
@@ -243,7 +270,7 @@ function workClean(w){
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
+const save={traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
 // the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
 // version starts again from the starting values; a missing or broken number is put back to its own starting value,
@@ -311,7 +338,7 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
-  save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
+  save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
   save.needs=needsClean(save.needs);save.work=workClean(save.work);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};

@@ -499,6 +499,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 .skr small{grid-column:1/-1;font-size:11px;line-height:1.4;color:var(--mute)}#skills .skh{margin:16px 0 2px}
 #work,#needs,#skills{z-index:62;padding:max(16px,var(--st)) max(16px,var(--sr)) max(16px,var(--sb)) max(16px,var(--sl))}
 .ndc{width:min(440px,100%);max-height:100%;overflow:auto}
+#skTraits{display:grid;gap:4px}#skTraits button{white-space:normal;text-align:left}#skTraits [aria-pressed="true"]{outline:2px solid currentColor}
 .ndMood{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px;margin:-6px 0 8px}
 .ndMood span{font-size:10px;letter-spacing:.3em;color:var(--mute);font-weight:700}
 .ndMood b{font-family:var(--f-num);font-size:26px;font-weight:800}
@@ -860,7 +861,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 </div></div>
 <div id="skills" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="skTitle">
   <h3>YOU</h3><h2 id="skTitle">Skills</h2><div id="skRows"></div>
-  <h3 class="skh">ASPIRATIONS</h3><div id="skAsp"></div><button class="mbtn pri" id="skClose">CLOSE</button>
+  <h3 class="skh">ASPIRATIONS</h3><div id="skAsp"></div><h3 class="skh">TRAITS</h3><p>Choose up to two. Apply changes once per UTC day.</p><div id="skTraits"></div><button class="mbtn" id="skTraitsApply">APPLY TRAITS</button><button class="mbtn pri" id="skClose">CLOSE</button>
 </div></div>
 <div id="needs" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="ndTitle">
   <h3>YOU</h3><h2 id="ndTitle">Needs</h2>

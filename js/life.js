@@ -352,7 +352,7 @@ const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
 function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
-function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&state==="GARAGE"&&NEEDS[k]>was)skillAward("cooking",5);return NEEDS[k]-was}
+function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&state==="GARAGE"&&NEEDS[k]>was)skillAward("cooking",hasTrait("handy")?10:5);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
 // a tie) gives Tired, Hungry, Bored or Lonely, kept until that need is back to 35, unless another drops to 15 or under
 // and lower still. With no low need: Content when all four are at 70 or more, otherwise Okay
@@ -370,10 +370,16 @@ function needsTip(){
   return NEED_TIP[NEED_ORDER.reduce((a,b)=>needOf(b)<needOf(a)?b:a)];
 }
 // each frame of play (driveUpdate): the needs fall, fast driving or sailing is fun, the bench rests you
+function traitLoss(k){
+  if(k==="hunger"&&hasTrait("foodie")||k==="social"&&hasTrait("outgoing"))return 1.15;
+  if(k==="energy"&&FOOT.on&&!BOAT.on&&hasTrait("athletic"))return .9;
+  if(k==="fun"&&hasTrait("homebody"))return 1.1; // needsTick runs only in DRIVE
+  return 1;
+}
 function needsTick(dt){
   if(state!=="DRIVE"||document.hidden||!(dt>0))return;
   workTick(dt);NS.t+=dt;
-  for(const k of NEED_ORDER)NEEDS[k]=Math.max(0,NEEDS[k]-NEED_LOSS[k]*dt/NEED_HOUR*(k==="energy"&&FOOT.on&&!BOAT.on?skillFactor("fitness"):1));
+  for(const k of NEED_ORDER)NEEDS[k]=Math.max(0,NEEDS[k]-NEED_LOSS[k]*traitLoss(k)*dt/NEED_HOUR*(k==="energy"&&FOOT.on&&!BOAT.on?skillFactor("fitness"):1));
   // a point of fun for every 5 s on end at 80 km/h or more in a car, or 3 m/s on the boat; slowing down, or getting
   // out or aboard, starts the 5 s again
   const mode=BOAT.on?"boat":FOOT.on?"foot":"car",fast=mode==="car"?kphNow()>=80:mode==="boat"&&Math.abs(BOAT.v)>=3;
@@ -404,7 +410,7 @@ function needsRest(){
 }
 function homeGain(action){
   const base=action==="rest"?(homeHas(save.home,"rest")?60:40):action==="snack"?30:25;
-  return base*(1+homeComfort(save.home)/1000);
+  return base*(1+homeComfort(save.home)/1000)*(hasTrait("homebody")?1.2:1);
 }
 function homeUse(action){
   if(action!=="snack"&&action!=="play")return false;
@@ -472,9 +478,9 @@ const NEED_STATE=v=>v<=15?["Very low","vlow"]:v<=25?["Low","low"]:v>=70?["Good",
 function needsRender(){
   const list=$("ndWants");list.replaceChildren();
   for(const id of save.wants.active){const it=WANT_CATALOG.find(w=>w.id===id),li=document.createElement("li");
-    li.textContent=it.label+(id==="walk"?" ("+Math.floor(save.wants.metres)+"/500 m)":"")+" · "+fmtCr(it.cr)+" CR";list.appendChild(li)}
+    li.textContent=it.label+(id==="walk"?" ("+Math.floor(save.wants.metres)+"/500 m)":"")+" · "+fmtCr(wantPay(it))+" CR";list.appendChild(li)}
   // one reroll a day (UTC): once it's used, the button says when the next one comes
-  const used=save.wants.day>=Math.floor(Date.now()/86400000);$("ndReroll").disabled=used;$("ndReroll").textContent=used?"NEW REROLL TOMORROW":"REROLL WANTS";
+  const used=!rerollAvailable(save.wants,Math.floor(Date.now()/86400000));$("ndReroll").disabled=used;$("ndReroll").textContent=used?"NEW REROLL TOMORROW":"REROLL WANTS";
   const mood=needsMood();$("ndMood").textContent=mood;
   $("ndMoodEffect").textContent=mood==="Lonely"?"Charisma grows 50% faster · other skills grow 15% slower":
     mood==="Content"?"Skills grow 15% faster":mood==="Okay"?"Skills grow at their usual rate":"Skills grow 15% slower";
