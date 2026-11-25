@@ -499,7 +499,14 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 .skr small{grid-column:1/-1;font-size:11px;line-height:1.4;color:var(--mute)}#skills .skh{margin:16px 0 2px}
 #work,#needs,#skills{z-index:62;padding:max(16px,var(--st)) max(16px,var(--sr)) max(16px,var(--sb)) max(16px,var(--sl))}
 .ndc{width:min(440px,100%);max-height:100%;overflow:auto}
-#skTraits{display:grid;gap:4px}#skTraits button{white-space:normal;text-align:left}#skTraits [aria-pressed="true"]{outline:2px solid currentColor}
+/* traits (js/core.js): eight cards, two to a row, a chosen one in the accent colour */
+#skTraits{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 2px}
+.trt{display:grid;align-content:start;gap:3px;text-align:left;padding:9px 10px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);cursor:pointer;font:inherit}
+.trt b{font-size:12px;font-weight:800;letter-spacing:.04em}.trt small{font-size:10.5px;line-height:1.35;color:var(--mute)}
+.trt.on{border-color:var(--acc);background:rgba(242,179,61,.12)}.trt.on b{color:var(--acc)}
+.trt:disabled{opacity:.45;cursor:default}.trt.on:disabled{opacity:.85}.trt:hover:not(:disabled){border-color:#fff}
+#skills .skTip{font-size:12px;line-height:1.4;color:var(--mute);margin:2px 0 4px}
+@media (max-width:380px){#skTraits{grid-template-columns:1fr}}
 .ndMood{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px;margin:-6px 0 8px}
 .ndMood span{font-size:10px;letter-spacing:.3em;color:var(--mute);font-weight:700}
 .ndMood b{font-family:var(--f-num);font-size:26px;font-weight:800}
@@ -861,7 +868,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 </div></div>
 <div id="skills" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="skTitle">
   <h3>YOU</h3><h2 id="skTitle">Skills</h2><div id="skRows"></div>
-  <h3 class="skh">ASPIRATIONS</h3><div id="skAsp"></div><h3 class="skh">TRAITS</h3><p>Choose up to two. Apply changes once per UTC day.</p><div id="skTraits"></div><button class="mbtn" id="skTraitsApply">APPLY TRAITS</button><button class="mbtn pri" id="skClose">CLOSE</button>
+  <h3 class="skh">ASPIRATIONS</h3><div id="skAsp"></div><h3 class="skh">TRAITS</h3><p class="skTip">Pick up to two. You can change them once a day.</p><div id="skTraits"></div><button class="mbtn" id="skTraitsApply">APPLY TRAITS</button><button class="mbtn pri" id="skClose">CLOSE</button>
 </div></div>
 <div id="needs" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="ndTitle">
   <h3>YOU</h3><h2 id="ndTitle">Needs</h2>

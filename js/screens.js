@@ -654,10 +654,11 @@ function repairPanel(){
   $("repairFill").style.width=damage+"%";
   $("repairFill").style.background=damage>=90?"#e2483d":damage>=60?"#f2b33d":"#a4c8b0";
   $("repairDetails").textContent=damage?"Engine power reduced by "+Math.round((1-damagePower(P))*100)+"%. The vehicle remains drivable.":"Your vehicle is fully repaired.";
-  // the rule, what it comes to, and Handiness's discount on it, so the sum agrees with the price on the button
-  const base=1000+20*damage,off=Math.round((1-skillFactor("handiness"))*100);
+  // the rule, what it comes to, and the Handiness and Gearhead discounts on it, so the sum agrees with the price on the button
+  const base=1000+20*damage,off=Math.round((1-skillFactor("handiness"))*100),
+    cuts=[off>0?off+"% for your Handiness":"",hasTrait("gearhead")?"10% as a Gearhead":""].filter(Boolean);
   $("repairHint").textContent=testDrive?"End this test drive to return to your own vehicle.":"Garage repairs are FREE. Roadside repairs cost 1,000 + 20 credits per damage percentage point"+
-    (damage?": "+fmtCr(base)+" CR"+(hasTrait("gearhead")?", with Gearhead and Handiness: "+fmtCr(price)+" CR.":off>0?", less "+off+"% for your Handiness: "+fmtCr(price)+" CR.":"."):".");
+    (damage?": "+fmtCr(base)+" CR"+(cuts.length?", less "+cuts.join(" and ")+": "+fmtCr(price)+" CR.":"."):".");
   $("repairHome").disabled=!!testDrive||!!WANTED.lvl;
   $("repairHome").textContent=WANTED.lvl?"RETURN HOME · LOSE THE POLICE FIRST":job?"RETURN HOME · END CONTRACT · REPAIR FREE":ev?"RETURN HOME · END RACE · REPAIR FREE":"RETURN HOME · REPAIR FREE";
   if(blocked)repairConfirm=false;
@@ -715,8 +716,10 @@ function traitsRender(){
   const box=$("skTraits");box.replaceChildren();
   const locked=save.traits.day>=Math.floor(Date.now()/86400000);
   for(const [id,[name,effect]] of Object.entries(TRAITS)){
-    const b=document.createElement("button"),on=traitDraft.includes(id);b.className="mbtn";
-    b.textContent=name+" · "+effect;b.setAttribute("aria-pressed",String(on));b.disabled=locked||!on&&traitDraft.length>=2;
+    // a card each: the name, and what it does under it; a chosen one in the accent colour
+    const b=document.createElement("button"),on=traitDraft.includes(id),n=document.createElement("b"),e=document.createElement("small");
+    b.className="trt"+(on?" on":"");n.textContent=name;e.textContent=effect;b.append(n,e);
+    b.setAttribute("aria-label",name+". "+effect);b.setAttribute("aria-pressed",String(on));b.disabled=locked||!on&&traitDraft.length>=2;
     b.onclick=()=>{traitDraft=on?traitDraft.filter(t=>t!==id):traitDraft.concat(id);traitsRender();
       $("skTraits").querySelectorAll("button")[Object.keys(TRAITS).indexOf(id)].focus()};
     box.appendChild(b);
