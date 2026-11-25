@@ -806,8 +806,8 @@ function pollPad(){
   // A press that opened another screen belongs only to the screen it started on.
   if(state!==inputState){GO.stick[0]=GO.stick[1]=0;return}
   // the right stick turns the garage view; it's read here and applied by time in garageCam (per frame, it turned four
-  // times as fast at 120 fps as at 30)
-  {const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8;GO.stick[0]=state==="GARAGE"?dz(g.axes[2]||0):0;GO.stick[1]=state==="GARAGE"?dz(g.axes[3]||0):0}
+  // times as fast at 120 fps as at 30). Not while designing your home, whose view it would turn unseen, to jump to on DONE
+  {const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8;const turn=state==="GARAGE"&&!HV.on;GO.stick[0]=turn?dz(g.axes[2]||0):0;GO.stick[1]=turn?dz(g.axes[3]||0):0}
   if(state==="GARAGE"&&cuOpen()){if(hit(1))custClose(false);else if(hit(0))custClose(true)}
   else if(state==="GARAGE"&&HV.on){if(hit(1)||hit(9))hvClose();else if(hit(3))hvTurn()}
   else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(2))needsRest();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick()}

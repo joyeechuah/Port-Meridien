@@ -119,4 +119,48 @@ test.describe("design your home", () => {
       expect(p.y, "cell " + x + "," + z).toBeLessThan(box.y);
     }
   });
+  test("a touch off the floor cancels a waiting tap; Enter on a focused card is the card's, not DRIVE; the cloud dialog keeps its keys; the right stick leaves the garage view alone", async ({ game, page }) => {
+    await game.open();
+    await design(game, page);
+    await page.locator("#hdg_seating").click();
+    await card(page, "Harbour sofa").click();
+    // the card keeps the focus as the panel is drawn again, and Enter on it is its own click (letting go of the sofa)
+    await expect(card(page, "Harbour sofa")).toBeFocused();
+    await page.keyboard.press("Enter");
+    expect(await game.eval(() => ({ state: __T.state, on: __T.HV.on, sel: __T.HV.sel }))).toEqual({ state: "GARAGE", on: true, sel: null });
+    await card(page, "Harbour sofa").click();
+    // one touch on a cell waits for a second; a touch off the floor cancels it, so the next touch on the cell waits again
+    const at = await cellPoint(game, 10, 8),
+      cr0 = await game.eval(() => __T.save.cr);
+    const tap = (x, y) =>
+      game.eval(([x, y]) => {
+        __T.hvTap(x, y, true);
+        return { tap: !!__T.HV.tap, n: __T.save.home.items.length, cr: __T.save.cr };
+      }, [x, y]);
+    expect(await tap(at.x, at.y)).toEqual({ tap: true, n: 0, cr: cr0 });
+    expect(await tap(4, 4)).toEqual({ tap: false, n: 0, cr: cr0 });
+    expect(await tap(at.x, at.y)).toEqual({ tap: true, n: 0, cr: cr0 });
+    expect(await tap(at.x, at.y)).toEqual({ tap: false, n: 1, cr: cr0 - 1200 });
+    // the sofa picked and the cloud dialog open over the room: Delete is the dialog's (nothing is sold), Escape closes it
+    await game.eval(() => {
+      __T.HV.sel = null;
+      __T.HV.pick = 0;
+      __T.show("cloud", true);
+    });
+    await page.keyboard.press("Delete");
+    await page.keyboard.press("Escape");
+    const read = () => game.eval(() => ({ n: __T.save.home.items.length, cloud: !document.getElementById("cloud").classList.contains("hide"), on: __T.HV.on, pick: __T.HV.pick }));
+    expect(await read()).toEqual({ n: 1, cloud: false, on: true, pick: 0 });
+    await page.keyboard.press("Delete");
+    expect((await read()).n).toBe(0);
+    // a controller's right stick held over the design view doesn't turn the garage view behind it
+    const yaw = await game.eval(() => __T.GO.yaw);
+    await game.eval(() => {
+      const pad = { index: 0, connected: true, buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })), axes: [0, 0, 1, 0] };
+      Object.defineProperty(navigator, "getGamepads", { configurable: true, value: () => [pad] });
+      __T.pollPad();
+    });
+    await page.waitForTimeout(600);
+    expect(await game.eval(() => ({ yaw: __T.GO.yaw, stick: __T.GO.stick.slice() }))).toEqual({ yaw, stick: [0, 0] });
+  });
 });

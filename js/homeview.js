@@ -126,7 +126,7 @@ const hvCam=()=>{
 };
 function hvOpen(){
   if(state!=="GARAGE"||HV.on||cuOpen()||tabIdle)return;
-  HV.on=true;HV.sel=null;HV.pick=-1;HV.r=0;HV.at=HV.tap=null;
+  HV.on=true;HV.sel=null;HV.pick=-1;HV.r=0;HV.at=HV.tap=null;GO.stick[0]=GO.stick[1]=0;
   // the ceiling and the roof lift off, as in a dolls' house
   // (everything wholly above 8.3 m: the ceiling, its beams, lamps and light bars, and the roof)
   HV.roofs=HOUSE_MESHES.filter(m=>{if(!m.geometry.boundingBox)m.geometry.computeBoundingBox();return m.visible&&m.position.y+m.geometry.boundingBox.min.y>gY+8.3});
@@ -172,7 +172,8 @@ function hvTap(cx,cy,touch){
   const a=hvAim(cx,cy);
   if(!HV.sel&&a.hit&&a.hit.object.userData.index!==HV.pick){HV.pick=a.hit.object.userData.index;HV.at=null;HV.tap=null;
     const p=save.home.items[HV.pick];hvMsg(homeById.get(p.id).name+" · TURN, SELL, or tap the floor to move it");hvMarks();return}
-  if(!a.cell){if(!a.hit){HV.pick=-1;HV.at=null;hvMsg("");hvMarks()}return}
+  // off the floor: a touch waiting for its second tap is cancelled too, or a later single tap on that cell would buy
+  if(!a.cell){HV.tap=null;if(!a.hit){HV.pick=-1;HV.at=null;hvMsg("");hvMarks()}return}
   if(!HV.sel&&HV.pick<0){hvMsg("Choose a piece below, or tap one in the room");return}
   HV.at=a.cell;
   if(touch&&!(HV.tap&&HV.tap.x===a.cell.x&&HV.tap.z===a.cell.z)){HV.tap=a.cell;hvMsg("Tap again to "+(HV.sel?"place it":"move it there"));hvMarks();return}
@@ -201,8 +202,15 @@ function hvSell(){
 }
 // the panel: the groups, then the pieces in the chosen one (or the room's walls and floor)
 function hvPanel(){
+  // drawn afresh each time: a button of the panel that had the focus gives it to its new self, so keyboard use carries on
+  // from where it was (choosing a card used to drop the focus, and Tab started again from the top)
+  const fo=/** @type {HTMLElement} */ (document.activeElement),key=fo&&$("hd").contains(fo)?fo.dataset.k:"";
+  hvPanelDraw();
+  if(key){const n=/** @type {HTMLElement} */ ($("hd").querySelector('[data-k="'+key+'"]'));if(n)n.focus({preventScroll:true})}
+}
+function hvPanelDraw(){
   const g=$("hdGroups");g.textContent="";
-  for(const[k,label]of HV_GROUPS){const t=document.createElement("button");t.className="hdt"+(k===HV.group?" on":"");t.id="hdg_"+k;t.textContent=label;
+  for(const[k,label]of HV_GROUPS){const t=document.createElement("button");t.className="hdt"+(k===HV.group?" on":"");t.id="hdg_"+k;t.dataset.k="g:"+k;t.textContent=label;
     t.setAttribute("aria-pressed",String(k===HV.group));t.onclick=()=>{HV.group=k;HV.sel=null;HV.at=null;hvPanel();hvMarks();hvMsg("")};g.appendChild(t)}
   const l=$("hdList");l.textContent="";
   if(HV.group==="room"){
@@ -210,13 +218,13 @@ function hvPanel(){
     for(const[kind,list,cols]of FIN){
       const lab=document.createElement("span");lab.className="hdk";lab.textContent=kind;l.appendChild(lab);
       for(const f of list){const b=document.createElement("button"),now=kind==="Walls"?save.home.wall===f:save.home.floor===f;
-        b.className="hdc hdf"+(now?" on":"");b.setAttribute("aria-pressed",String(now));b.innerHTML='<i style="background:#'+cols[f].toString(16).padStart(6,"0")+'"></i>'+f.toUpperCase();
+        b.className="hdc hdf"+(now?" on":"");b.dataset.k="f:"+kind+":"+f;b.setAttribute("aria-pressed",String(now));b.innerHTML='<i style="background:#'+cols[f].toString(16).padStart(6,"0")+'"></i>'+f.toUpperCase();
         b.onclick=()=>{if(kind==="Walls"?homeFinish(f,save.home.floor):homeFinish(save.home.wall,f)){homeBuild();hvPanel()}};l.appendChild(b)}}
     return;
   }
   for(const it of HOME_ITEMS){if(it.group!==HV.group)continue;
     const b=document.createElement("button"),fx=it.effect==="rest"?"Better rest":it.effect==="snack"?"SNACK at home":it.effect==="play"?"PLAY at home":"";
-    b.className="hdc"+(HV.sel===it.id?" on":"")+(save.cr<it.price?" dim":"");b.setAttribute("aria-pressed",String(HV.sel===it.id));
+    b.className="hdc"+(HV.sel===it.id?" on":"")+(save.cr<it.price?" dim":"");b.dataset.k="i:"+it.id;b.setAttribute("aria-pressed",String(HV.sel===it.id));
     b.innerHTML="<b></b><span></span><em></em>";b.children[0].textContent=it.name;b.children[1].textContent=fmtCr(it.price)+" CR";b.children[2].textContent=fx||"Comfort +"+it.comfort;
     b.onclick=()=>{HV.sel=HV.sel===it.id?null:it.id;HV.pick=-1;HV.r=0;HV.tap=null;hvPanel();hvMarks();
       hvMsg(HV.sel?(isTouch?"Tap the floor to place it":"Click the floor to place it")+" · TURN or R to turn":"")};l.appendChild(b)}
@@ -231,11 +239,13 @@ function hvInit(){
   cv.addEventListener("pointerup",e=>{if(!HV.on)return;e.stopImmediatePropagation();const d=HV.down;HV.down=null;
     if(d&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<12)hvTap(e.clientX,e.clientY,d.touch)},true);
   cv.addEventListener("wheel",e=>{if(HV.on){e.stopImmediatePropagation();e.preventDefault()}},{capture:true,passive:false});
-  // the keys: R turns, Delete sells the picked piece, Escape lets go of a piece or ends designing; nothing else (Enter
-  // would drive off)
-  addEventListener("keydown",e=>{if(!HV.on||tabIdle||e.target&&e.target.tagName==="INPUT")return;const k=e.key.toLowerCase();
-    if(k==="tab"||k===" "||k==="enter"&&document.activeElement&&document.activeElement.tagName==="BUTTON")return;
-    e.stopImmediatePropagation();if(e.repeat)return;
+  // the keys: R turns, Delete sells the picked piece, Escape lets go of a piece or ends designing. No other handler
+  // hears a key meanwhile (the garage's Enter drives off, even on a focused button of the panel), though Tab, Space and
+  // Enter still work the panel's buttons, that being their default. The cloud dialog, and typing, keep their own keys
+  addEventListener("keydown",e=>{const t=/** @type {HTMLElement} */ (e.target);
+    if(!HV.on||tabIdle||clOverlayOpen()||t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable))return;
+    const k=e.key.toLowerCase();e.stopImmediatePropagation();
+    if(k==="tab"||k===" "||k==="enter"||e.repeat)return;
     if(k==="r"){e.preventDefault();hvTurn()}else if(k==="delete"||k==="backspace"){e.preventDefault();hvSell()}
     else if(k==="escape"){e.preventDefault();if(HV.sel||HV.pick>=0){HV.sel=null;HV.pick=-1;HV.at=null;hvPanel();hvMarks();hvMsg("")}else hvClose()}},true);
 }
