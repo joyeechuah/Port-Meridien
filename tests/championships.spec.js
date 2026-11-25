@@ -21,9 +21,11 @@ const WIN_ROUND = () => {
   for (let i = 0; i < 200; i++) T.driveUpdate(1 / 60);
   if (ev.E.type === "race") for (const a of ev.ai) a.fin = 0;
   else ev.t = ev.tg.gold - 1;
+  // a race prize grows with the Driving level the player has as the race ends (js/core.js skills)
+  const f = ev.E.type === "race" ? T.skillFactor("driving") : 1;
   T.finishEvent();
   T.showResult();
-  return { type: ev.E.type, rows: document.getElementById("rRows").textContent, next: !document.getElementById("rNext").classList.contains("hide") };
+  return { type: ev.E.type, f, rows: document.getElementById("rRows").textContent, next: !document.getElementById("rNext").classList.contains("hide") };
 };
 
 test.describe("class championships", () => {
@@ -71,11 +73,11 @@ test.describe("class championships", () => {
       const res = await game.eval(WIN_ROUND);
       expect(res.rows).toContain("Cup points+10 · " + (r + 1) * 10 + " of " + (r + 1) * 10);
       paid += await game.eval(
-        ([id, d]) => {
+        ([id, d, f]) => {
           const E = __T.EVENTS.find((x) => x.id === id);
-          return E.type === "race" ? __T.raceRewards(E, d)[0] : E.rewards[0];
+          return E.type === "race" ? Math.round(__T.raceRewards(E, d)[0] * f) : E.rewards[0];
         },
-        [ev.id, ev.diff]
+        [ev.id, ev.diff, res.f]
       );
       if (r < 2) {
         expect(res.next).toBe(true);
@@ -105,11 +107,11 @@ test.describe("class championships", () => {
       const ev = await game.eval(() => ({ id: __T.ev.E.id, diff: __T.ev.diff }));
       const res = await game.eval(WIN_ROUND);
       paid2 += await game.eval(
-        ([id, d]) => {
+        ([id, d, f]) => {
           const E = __T.EVENTS.find((x) => x.id === id);
-          return E.type === "race" ? __T.raceRewards(E, d)[0] : E.rewards[0];
+          return E.type === "race" ? Math.round(__T.raceRewards(E, d)[0] * f) : E.rewards[0];
         },
-        [ev.id, ev.diff]
+        [ev.id, ev.diff, res.f]
       );
       if (r < 2) {
         await page.locator("#rNext").click();

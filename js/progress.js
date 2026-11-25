@@ -51,8 +51,8 @@ function discoverLandmark(L){
   if(!L||save.found[L.id])return false;
   save.found[L.id]=1;
   const n=foundCount(),done=n>=LANDMARKS.length&&!save.passBonus;if(done)save.passBonus=true;
-  earn(LANDMARK_REWARD);
-  toast("LANDMARK DISCOVERED",L.name+" · +"+fmtCr(LANDMARK_REWARD)+" CR · "+n+"/"+LANDMARKS.length,"gold");
+  const reward=Math.round(LANDMARK_REWARD*skillFactor("photography"));earn(reward);
+  toast("LANDMARK DISCOVERED",L.name+" · +"+fmtCr(reward)+" CR · "+n+"/"+LANDMARKS.length,"gold");
   if(done){earn(PASSPORT_BONUS);toast("EXPLORER PASSPORT COMPLETE","Every landmark found · +"+fmtCr(PASSPORT_BONUS)+" CR","gold")}
   if(!$("passport").classList.contains("hide"))renderPassport();
   return true;
@@ -69,7 +69,7 @@ function updatePassport(){
 function renderPassport(){
   const n=foundCount(),N=LANDMARKS.length,pct=N?Math.round(n/N*100):0;
   $("pzCount").textContent=n+" of "+N+" found · "+pct+"%";$("pzBar").style.width=pct+"%";
-  $("pzNote").textContent=save.passBonus?"Complete. The "+fmtCr(PASSPORT_BONUS)+" CR bonus has been paid.":fmtCr(LANDMARK_REWARD)+" CR for each new landmark, and "+fmtCr(PASSPORT_BONUS)+" CR for finding them all.";
+  $("pzNote").textContent=save.passBonus?"Complete. The "+fmtCr(PASSPORT_BONUS)+" CR bonus has been paid.":fmtCr(Math.round(LANDMARK_REWARD*skillFactor("photography")))+" CR for each new landmark, and "+fmtCr(PASSPORT_BONUS)+" CR for finding them all.";
   const list=$("pzList");list.innerHTML="";
   for(const L of LANDMARKS){
     const f=!!save.found[L.id],row=document.createElement("div");row.className="pzr"+(f?" found":"");

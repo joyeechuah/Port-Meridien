@@ -493,7 +493,11 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 #jobs{z-index:62}
 /* needs (js/life.js): four bars, each with its number and a word for its colour, the mood and one suggestion */
 #work .mbtn{min-height:44px;width:100%;text-transform:uppercase}#work .card{overflow:auto;max-height:100%}
-#work,#needs{z-index:62;padding:max(16px,var(--st)) max(16px,var(--sr)) max(16px,var(--sb)) max(16px,var(--sl))}
+/* skills (js/core.js): a row each, with its level, a bar to the next one, and what builds it and what it gives */
+.skr{display:grid;grid-template-columns:minmax(0,7.2em) 1fr 3.6em;align-items:center;gap:6px 10px;padding:9px 0;border-top:1px solid var(--line);font-size:13px}
+.skr b{font-family:var(--f-num);font-size:15px;text-align:right}.skr b.top{color:var(--acc)}
+.skr small{grid-column:1/-1;font-size:11px;line-height:1.4;color:var(--mute)}
+#work,#needs,#skills{z-index:62;padding:max(16px,var(--st)) max(16px,var(--sr)) max(16px,var(--sb)) max(16px,var(--sl))}
 .ndc{width:min(440px,100%);max-height:100%;overflow:auto}
 .ndMood{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 12px;margin:-6px 0 8px}
 .ndMood span{font-size:10px;letter-spacing:.3em;color:var(--mute);font-weight:700}
@@ -708,6 +712,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn" id="pMap">MAP &amp; GPS</button>
   <button class="mbtn" id="pPhoto">PHOTO MODE</button>
   <button class="mbtn" id="pNeeds">NEEDS · OKAY</button>
+  <button class="mbtn" id="pSkills">SKILLS</button>
   <button class="mbtn" id="pPass">EXPLORER PASSPORT</button>
   <button class="mbtn" id="pJobs">CONTRACTS</button>
   <button class="mbtn" id="pCups">CHAMPIONSHIPS</button>
@@ -843,6 +848,9 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn" id="wkEat">Eat · free</button><button class="mbtn" id="wkStart">Work a shift · 300 CR</button>
   <div id="wkOrders" class="hide"><button class="mbtn" id="wk0">1 · Bread</button><button class="mbtn" id="wk1">2 · Bowl</button><button class="mbtn" id="wk2">3 · Stew</button></div>
   <button class="mbtn hide" id="wkLeave">Leave shift</button><button class="mbtn" id="wkClose">Close</button>
+</div></div>
+<div id="skills" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="skTitle">
+  <h3>YOU</h3><h2 id="skTitle">Skills</h2><div id="skRows"></div><button class="mbtn pri" id="skClose">CLOSE</button>
 </div></div>
 <div id="needs" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="ndTitle">
   <h3>YOU</h3><h2 id="ndTitle">Needs</h2>

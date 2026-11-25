@@ -17,7 +17,7 @@ function game(stored={}){
     STARTERS:["starter"],show(id,visible){$(id).visible=visible;},updateMoney(){},
     persist(){vm.runInContext("needsCommit()",ctx);writes.push(JSON.parse(JSON.stringify(ctx.save)));}});
   const core=read("core"),screens=read("screens");
-  vm.runInContext([section(core,"const clamp=","\n"),section(core,"const NEEDS_START=","const save="),
+  vm.runInContext([section(core,"const clamp=","\n"),section(core,"const NEEDS_START=","const save="),"save.skills=skillsClean(save.skills);",
     section(core,"function needsClean(","\ntry{"),read("life"),read("home"),
     section(screens,"const CL_PREFS=","function clSummary("),
     section(screens,"function clNeeds(","// the account")].join("\n"),ctx);
@@ -99,6 +99,7 @@ test("furniture gates each button and reward; TV and computer share PLAY",()=>{
   run('homePlace("computer",5,4);homePlace("fridge",10,4);NEEDS.hunger=0;NEEDS.fun=0');
   expect($("gPlay").visible&&$("gSnack").visible).toBe(true);
   expect(run('homeUse("play") && homeUse("snack") && [NEEDS.fun,NEEDS.hunger]')).toEqual([25,30]);
+  expect(run('homeUse("snack");save.skills.cooking')).toBe(5);
   expect(run('homeSell(0);homePlace("tv",5,4);homeUse("play")')).toBe(false);
   run("homeSell(0)");expect($("gSnack").visible).toBe(false);
 });

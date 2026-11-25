@@ -108,12 +108,55 @@ const OUTFITS=[
 ];
 // what each of the four needs (js/life.js) starts at, out of 100
 const NEEDS_START={energy:80,hunger:75,fun:65,social:65};
+const SKILL_RATE={driving:.02,cooking:.03,charisma:.04,fitness:-.03,photography:.02,handiness:-.03};
+const skillThreshold=level=>25*level*(level+1);
+function skillsClean(raw){
+  const valid=raw&&typeof raw==="object"&&!Array.isArray(raw)&&raw.v===1;
+  const clean={v:1,driving:0,cooking:0,charisma:0,fitness:0,photography:0,handiness:0};
+  for(const k of Object.keys(SKILL_RATE)){
+    const xp=valid&&Object.prototype.hasOwnProperty.call(raw,k)?raw[k]:0;
+    clean[k]=Number.isFinite(xp)?clamp(Math.floor(xp),0,skillThreshold(10)):0;
+  }
+  return clean;
+}
+function skillLevel(k){
+  const xp=save.skills[k];let level=0;
+  while(level<10&&xp>=skillThreshold(level+1))level++;
+  return level;
+}
+function skillFactor(k){return 1+SKILL_RATE[k]*skillLevel(k)}
+function skillAward(k,xp){
+  const before=skillLevel(k);
+  save.skills[k]=Math.min(skillThreshold(10),save.skills[k]+xp);
+  const after=skillLevel(k);
+  for(let level=before+1;level<=after;level++)toast("SKILL LEVEL UP",k[0].toUpperCase()+k.slice(1)+" · level "+level,"gold");
+}
+// Distance remainders belong to this session. Teleports never enter the physics/footstep samples.
+const skillMetres={driving:0,fitness:0};
+function skillDistance(k,metres){
+  if(!(metres>0)||!Number.isFinite(metres)||skillLevel(k)===10)return;
+  const interval=k==="driving"?250:50;
+  skillMetres[k]+=metres;
+  if(skillMetres[k]>=interval){
+    const xp=Math.floor(skillMetres[k]/interval);skillMetres[k]%=interval;skillAward(k,xp);persist();
+  }
+}
+function photoDayClean(raw){
+  return Number.isSafeInteger(raw?.day)&&raw.day>=0&&Number.isInteger(raw.count)?
+    {day:raw.day,count:clamp(raw.count,0,5)}:{day:0,count:0};
+}
+function skillPhoto(){
+  const today=Math.floor(Date.now()/86400000),record=save.photoDay;
+  if(today>record.day){record.day=today;record.count=0}
+  if(today!==record.day||record.count>=5)return;
+  record.count++;skillAward("photography",10);persist();
+}
 function workClean(w){
   const valid=w&&typeof w==="object"&&!Array.isArray(w)&&w.v===1;
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},needs:Object.assign({v:1},NEEDS_START)};
+const save={home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
 // the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
 // version starts again from the starting values; a missing or broken number is put back to its own starting value,
@@ -181,6 +224,7 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
+  save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
   save.needs=needsClean(save.needs);save.work=workClean(save.work);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};

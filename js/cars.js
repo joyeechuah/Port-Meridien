@@ -761,7 +761,7 @@ let locked=false,autoHold=false;
 const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,index:null,prev:[]};
 // screens opened from the pause menu, and how each closes
 /** @type {[string, () => void][]} */
-const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()],["needs",()=>needsClose()],["play",()=>netClose()]];
+const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()],["skills",()=>skillsClose()],["needs",()=>needsClose()],["play",()=>netClose()]];
 // a controller in the pause menu: the D-pad moves between the buttons of the menu (or of the screen opened from it),
 // with an outline on the one picked, and A presses it
 function padMenu(hit){
