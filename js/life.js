@@ -259,7 +259,8 @@ function talkPad(hit){
 // knocking someone down, or running into them: they like you a good deal less, and they let you see it once they're up
 function lifeHurt(p,by){
   const who=personOf(p);if(!who)return;const r=rel(who.id);
-  relSet(who.id,r.f-by,Math.max(1,r.n));if(TALK.p===p)talkClose();if(RIDE.p===p)rideEnd("hurt");p.mad=true;persist();
+  relSet(who.id,r.f-by,Math.max(1,r.n));if(TALK.p===p)talkClose();if(RIDE.p===p)rideEnd("hurt");if(GUEST.who===who)guestCancel();
+  p.mad=true;persist();
 }
 
 /* ================================================================ REACTIONS: a bubble over a person's head */
@@ -414,8 +415,10 @@ function needsRest(){
 }
 function homeGain(action){
   const base=action==="rest"?(homeHas(save.home,"rest")?60:40):action==="snack"?30:25;
-  return base*(1+homeComfort(save.home)/1000)*(hasTrait("homebody")?1.2:1);
+  return base*homeLift();
 }
+// what the home's comfort and the Homebody trait add to anything done there: a snack, play, rest, a friend over
+function homeLift(){return (1+homeComfort(save.home)/1000)*(hasTrait("homebody")?1.2:1)}
 function homeUse(action){
   if(action!=="snack"&&action!=="play")return false;
   const need=action==="snack"?"hunger":"fun";
@@ -670,7 +673,7 @@ const GUEST_LINES={cheerful:"Love what you've done with the place!",grumpy:"It's
   chatty:"We talked for hours. Same again soon?",shy:"Thanks for having me.",busy:"Got to dash, but that was fun."};
 function talkInvite(){
   const who=TALK.person;if(!who||TALK.busy>0||TALK.end>0||rel(who.id).f<RIDE_AT||GUEST.who===who&&!GUEST.done)return false;
-  if(GUEST.who&&!GUEST.done&&GUEST.who!==who)toast(GUEST.who.name.toUpperCase(),"won't be coming over after all");
+  if(GUEST.who!==who)guestCancel();
   guestDrop();GUEST.who=who;GUEST.done=false;TALK.busy=.7;
   talkShow("“See you at your place, then!”");toast("INVITED",who.name+" will be at your home: go home to hang out","gold");return true;
 }
@@ -686,6 +689,7 @@ function guestSpot(){
 // at home (the garage, designing included) the guest stands there, facing the room's railing; elsewhere they're out of
 // sight, and once you've hung out they've gone home
 function guestSync(s=state){
+  if(GUEST.who&&!GUEST.done&&rel(GUEST.who.id).f<RIDE_AT)guestCancel();
   if(GUEST.done||!GUEST.who){guestDrop();show("gGuest",false);return}
   const home=s==="GARAGE";show("gGuest",home);$("gGuest").textContent="HANG OUT · "+GUEST.who.name.toUpperCase();
   if(!home){if(GUEST.m)GUEST.m.G.visible=false;return}
@@ -706,13 +710,19 @@ function guestSync(s=state){
 // that kind; and how high each is to sit on
 const GUEST_SEAT={sofa:.46,armchair:.47,bench:.5,stool:.5};
 function guestSeat(){for(const id of Object.keys(GUEST_SEAT)){const p=save.home.items.find(q=>q.id===id);if(p)return p}return null}
+// an invitation called off: someone else asked instead, the friend hurt by you, or no longer a Friend by the time
+// you're home
+function guestCancel(){const who=GUEST.who;if(!who||GUEST.done)return;GUEST.who=null;guestDrop();show("gGuest",false);
+  toast(who.name.toUpperCase(),"won't be coming over after all")}
 // their own face material goes with them (the shapes and the face's picture are shared)
 function guestDrop(){if(!GUEST.m)return;scene.remove(GUEST.m.G);GUEST.m.face.m.dispose();GUEST.m=null}
-// hanging out: social +30 and fun +10, Charisma XP, and friendship +4, up to +8 in a comfortable home; then they go
+// hanging out: social +30 and fun +10 (more in a comfortable home, and for a Homebody), Charisma XP, and friendship +4,
+// up to +8 in a comfortable home; then they go
 function guestHangOut(){
   const who=GUEST.who;if(!who||GUEST.done||state!=="GARAGE"||tabIdle)return false;
   const r=rel(who.id),comfy=typeof homeComfort==="function"?homeComfort(save.home):0,gain=4+Math.floor(comfy/25);
-  relSet(who.id,r.f+gain,r.n+1);needsAdd("social",30);needsAdd("fun",10);skillAward("charisma",4);
+  const lift=typeof homeComfort==="function"?homeLift():1;
+  relSet(who.id,r.f+gain,r.n+1);needsAdd("social",30*lift);needsAdd("fun",10*lift);skillAward("charisma",4);
   GUEST.done=true;guestSync();persist();restSync();
   toast(who.name.toUpperCase(),GUEST_LINES[who.trait]+" · friendship +"+gain,"gold");return true;
 }
