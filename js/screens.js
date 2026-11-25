@@ -1122,10 +1122,13 @@ function clReconcile(doc){
     return clUpload(doc&&doc.rev||0)}
   const L=clProg(save),C=clProg(cloud),rev=doc.rev||0;
   // the same progress, or neither side moved on since this device last synced: in step (settings are sent if changed)
-  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();save.photoDay=photoDayClean(save.photoDay);
-    if(L===C&&cloud.wants&&wantsSync(cloud.wants))persist();
+  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){const other=CL.other;CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();save.photoDay=photoDayClean(save.photoDay);
+    // wants taken from the account give way at once if they can't be done (a head chef's promotion want), before saving
+    if(L===C&&cloud.wants&&wantsSync(cloud.wants)){wantsTidy();persist()}
+    // the day's photos: the higher count for the same account; when this device's save was another account's, this
+    // account's own count (the other's five used went over to an account that had used none)
     const day=photoDayClean(cloud.photoDay);
-    if(day.day>save.photoDay.day||day.day===save.photoDay.day&&day.count>save.photoDay.count){save.photoDay=day;persist()}
+    if(other?day.day!==save.photoDay.day||day.count!==save.photoDay.count:day.day>save.photoDay.day||day.day===save.photoDay.day&&day.count>save.photoDay.count){save.photoDay=day;persist()}
     clWork(cloud);clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}
   if(clFresh(save))return clApply(doc,cloud);                                      // a new device: bring the account's progress here
   if(CL.meta.rev===rev&&CL.meta.prog)return clUpload(rev);                          // only this device moved on since it last synced
