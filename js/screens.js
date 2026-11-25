@@ -1018,7 +1018,13 @@ function clLoadMeta(){let m=null;try{m=JSON.parse(localStorage.getItem(CLOUD_KEY
   // another account signing in here is asked before that progress goes to it. Only the id: no name or email of a
   // signed-out account is kept on the device (older saves stored the name; it's dropped here)
   const o=Object.assign({uid:null,name:"",email:"",rev:0,prog:"",full:"",needs:"",at:0,rehash:false,owner:null,ownerName:""},m&&typeof m==="object"?m:{});
-  if(o.uid&&!o.owner)o.owner=o.uid;o.ownerName="";return o}
+  if(o.uid&&!o.owner)o.owner=o.uid;
+  // Migrate even when the remembered session has expired or Firebase is offline.
+  if(o.name||o.email||o.ownerName){
+    o.name="";o.email="";o.ownerName="";
+    try{localStorage.setItem(CLOUD_KEY,JSON.stringify(o))}catch(e){}
+  }
+  return o}
 function clSaveMeta(){try{localStorage.setItem(CLOUD_KEY,JSON.stringify(CL.meta))}catch(e){}}
 CL={meta:clLoadMeta(),ad:null,user:null,st:"guest",msg:"",busy:false,timer:0,pick:null,lastPut:0,other:false,signingOut:null};
 const clOwn=()=>{CL.meta.owner=CL.user.uid;CL.other=false};
@@ -1057,7 +1063,7 @@ function clConnect(interactive){
     if(!u){if(CL.meta.uid){clSet("signedout","You're signed out. Sign in again to keep backing up; your progress is safe on this device.")}else clSet("guest");return}
     CL.user=u;CL.other=!!(CL.meta.owner&&CL.meta.owner!==u.uid);
     if(CL.meta.uid&&CL.meta.uid!==u.uid||CL.other){CL.meta.rev=0;CL.meta.prog="";CL.meta.full="";CL.meta.needs="";CL.meta.at=0}
-    CL.meta.uid=u.uid;CL.meta.name=u.name;CL.meta.email=u.email;clSaveMeta();
+    CL.meta.uid=u.uid;clSaveMeta();
     return clReadAccount()}).catch(clAccountError)}
 function clReconcile(doc){
   let cloud=null;try{cloud=doc&&typeof doc.save==="string"?JSON.parse(doc.save):null}catch(e){cloud=null}
@@ -1177,9 +1183,9 @@ function clLine(){const m=CL.meta;
 function clRender(){if(!CL)return;const on=!!CL.user,line=clLine(),bad=CL.st==="offline"||CL.st==="pending"||CL.st==="error"||CL.st==="signedout"||CL.st==="conflict";
   const g=$("gCloud");g.textContent=on||CL.meta.uid?(line||"SAVED").toUpperCase():"SAVE MY PROGRESS";g.classList.toggle("warn",bad&&!!CL.meta.uid);show("gCloud",!!CL.ad);
   $("pCloud").textContent=on?"CLOUD SAVE: "+(bad?"CHECK":"ON"):"SAVE MY PROGRESS";
-  $("lcl").textContent=CL.meta.uid?(CL.meta.name?"Signed in as "+CL.meta.name+" · ":"")+line:CL.ad?"Sign in with Google to back up your cars and credits and play on any device":"";
+  $("lcl").textContent=CL.meta.uid?(CL.user&&CL.user.name?"Signed in as "+CL.user.name+" · ":"")+line:CL.ad?"Sign in with Google to back up your cars and credits and play on any device":"";
   show("clIntro",!on);show("clWho",on);show("clIn",!on);show("clNow",on);show("clOut",on||CL.st==="signedout");
-  $("clWho").innerHTML=on?"Signed in as <b>"+(CL.meta.name||"you").replace(/[<>&]/g,"")+"</b>"+(CL.meta.email?" ("+CL.meta.email.replace(/[<>&]/g,"")+")":"")+". Your progress backs up by itself, and a copy stays on this device for playing offline.":"";
+  $("clWho").innerHTML=on?"Signed in as <b>"+(CL.user.name||"you").replace(/[<>&]/g,"")+"</b>"+(CL.user.email?" ("+CL.user.email.replace(/[<>&]/g,"")+")":"")+". Your progress backs up by itself, and a copy stays on this device for playing offline.":"";
   $("clIn").disabled=!CL.ad||CL.st==="connecting"||!!CL.signingOut;$("clIn").textContent=CL.st==="connecting"?"CONNECTING…":"SIGN IN WITH GOOGLE";$("clNow").disabled=CL.busy||!!CL.signingOut;$("clOut").disabled=CL.applying||!!CL.signingOut;
   const st=$("clStat"),txt=!CL.ad?(FIREBASE_CONFIG.apiKey&&!CLOUD_HOSTS.includes(location.hostname)?"Cloud saves work on the game's own site, joyeechuah.github.io/Port-Meridien.":"Cloud saves aren't set up on this copy of the game."):CL.msg||(on?"Last backed up: "+(CL.meta.at?new Date(CL.meta.at).toLocaleString()+" ("+clAgo(CL.meta.at)+")":"not yet"):"Playing as a guest. Progress is saved in this browser only.");
   st.textContent=txt;st.classList.toggle("bad",bad||!CL.ad)}
