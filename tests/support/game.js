@@ -200,11 +200,13 @@ class Game {
   async driveOut() {
     await this.page.evaluate(() => {
       window.__DTMAX = 0.25;
+      window.__WARP = 15;
       document.getElementById("drive").click();
     });
     await this.waitState("DRIVE", 120000);
     await this.page.evaluate(() => {
       window.__DTMAX = 0;
+      window.__WARP = 0;
     });
   }
 
