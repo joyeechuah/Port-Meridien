@@ -32,7 +32,7 @@ function workServe(i){
   if(i!==WORK.served){$("wkStatus").textContent="Still waiting for "+WORK_ITEMS[WORK.served].toLowerCase()+".";return false}
   if(++WORK.served===WORK_ITEMS.length){
     WORK.cool=120;save.work.cool=120;save.work.completed=Math.min(9999,save.work.completed+1);
-    const pay=Math.round(300*skillFactor("cooking"));skillAward("cooking",25);
+    const pay=Math.round(300*skillFactor("cooking"));wantEvent("shift");skillAward("cooking",25);
     workCancel();earn(pay);toast("SHIFT COMPLETE","+"+pay+" CR","gold");
   }else{WORK.wait=10;workRender()}
   return true;

@@ -317,7 +317,7 @@ function finishEvent(tx){
     const G=ev.tg;medal=t<G.gold?0:t<G.silver?1:t<G.bronze?2:3;title=["GOLD","SILVER","BRONZE","NO MEDAL"][medal];rew=E.rewards[medal]||0;
     rows.push(["Gold time",fmtT(G.gold)]);
   }
-  if(E.type==="race"){rew=Math.round(rew*skillFactor("driving"));skillAward("driving",30)}
+  if(E.type==="race"){rew=Math.round(rew*skillFactor("driving"));wantEvent("race");skillAward("driving",30)}
   const cupRows=ev.cup?cupScore(ev.cup,E.type==="race"?pos-1:medal):null;
   const best=save.rec[E.id];const isRec=!best||t<best;if(isRec)save.rec[E.id]=t;
   // a record time trial run becomes the ghost (the last sample is the line itself)

@@ -84,6 +84,8 @@ function talkPick(k){
   let line=talkReaction(who,t.id,d);
   if(t.id==="tip")line+=" “"+talkTip(who)+"”";
   const now=rel(who.id);
+  if(!r.n&&now.n)wantEvent("meet");
+  if(r.f<15&&now.f>=15)wantEvent("friendly");
   if(r.f<RIDE_AT&&now.f>=RIDE_AT)line+=" You're friends now: ask "+who.name+" to come for a ride.";
   // someone who has come to dislike you badly walks off; someone in a hurry gives you three lines at most
   if(now.f<=-50){line+=" "+who.name+" walks off.";TALK.end=1.4}
@@ -408,7 +410,7 @@ function homeUse(action){
   if(action!=="snack"&&action!=="play")return false;
   const need=action==="snack"?"hunger":"fun";
   if(!homeEditable()||document.hidden||WANTED.lvl||!homeHas(save.home,action)||NS.t<homeUntil[action]||needOf(need)>=100)return false;
-  needsAdd(need,homeGain(action));homeUntil[action]=NS.t+180;persist();restSync();return true;
+  needsAdd(need,homeGain(action));homeUntil[action]=NS.t+180;wantEvent("home");persist();restSync();return true;
 }
 function homeChanged(){persist();updateMoney();restSync()}
 function restSync(){
@@ -468,6 +470,10 @@ function sitPose(){
 // four bars out of 100, each with its number and a word for its colour, the mood, and one suggestion
 const NEED_STATE=v=>v<=15?["Very low","vlow"]:v<=25?["Low","low"]:v>=70?["Good","good"]:["Okay","ok"];
 function needsRender(){
+  const list=$("ndWants");list.replaceChildren();
+  for(const id of save.wants.active){const it=WANT_CATALOG.find(w=>w.id===id),li=document.createElement("li");
+    li.textContent=it.label+(id==="walk"?" ("+Math.floor(save.wants.metres)+"/500 m)":"")+" · "+it.cr+" CR";list.appendChild(li)}
+  $("ndReroll").disabled=save.wants.day>=Math.floor(Date.now()/86400000);
   const mood=needsMood();$("ndMood").textContent=mood;$("ndTip").textContent=needsTip();
   for(const k of NEED_ORDER){const v=needOf(k),[w,c]=NEED_STATE(v),row=$("nd_"+k);
     row.querySelector("i").style.width=v+"%";row.querySelector(".ndb").setAttribute("aria-valuenow",String(v));
@@ -482,6 +488,7 @@ function needsClose(){show("needs",false);$("pause").inert=false;try{$("pNeeds")
   for(const k of NEED_ORDER){const r=document.createElement("div");r.id="nd_"+k;r.className="ndr";
     r.innerHTML='<span class="ndl">'+NEED_LABEL[k]+'</span><div class="ndb" role="meter" aria-valuemin="0" aria-valuemax="100" aria-label="'+NEED_LABEL[k]+'"><i></i></div><b class="num"></b><em></em>';
     list.appendChild(r)}
+  $("ndReroll").onclick=()=>{if(wantsReroll())needsRender()};
   $("pNeeds").onclick=needsOpen;$("ndClose").onclick=needsClose;$("gSnack").onclick=()=>homeUse("snack");$("gPlay").onclick=()=>homeUse("play");$("gRest").onclick=()=>needsRest()}
 needsLoad(save.needs);
 

@@ -19,7 +19,7 @@ function game(state = "GARAGE") {
     if (!nodes.has(id)) nodes.set(id, { appendChild() {}, addEventListener() {}, setAttribute() {} });
     return nodes.get(id);
   };
-  const globals = { window: {}, document: { createElement: () => ({ dataset: {} }) }, $, save, CL, WANTED,
+  const globals = { wantEvent:()=>false, window: {}, document: { createElement: () => ({ dataset: {} }) }, $, save, CL, WANTED,
     state, show(){}, FOOT: { on: true }, BOAT: { on: false }, persist() {} };
   const code = [
     section(core, "const clamp=", "\n"),

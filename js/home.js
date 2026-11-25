@@ -77,7 +77,7 @@ const homeEditable=()=>state==="GARAGE"&&!tabIdle&&!(CL&&CL.applying);
 function homePlace(id,x,z,r=0){
   const p=save.home,item=homeById.get(id);
   if(!homeEditable()||!item||save.cr<item.price||p.items.length>=HOME_CAP||!homeFits(p,id,x,z,r))return false;
-  p.items.push({id,x,z,r});save.cr-=item.price;homeChanged();return true;
+  p.items.push({id,x,z,r});save.cr-=item.price;wantEvent("place");homeChanged();return true;
 }
 function homeMove(index,x,z,r=undefined){
   const plan=save.home,p=plan.items[index];

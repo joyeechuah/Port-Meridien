@@ -513,6 +513,11 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 .ndr.vlow .ndb i{background:#ff7a6b}.ndr.vlow em{color:#ff7a6b}
 #ndTip{font-size:13px;line-height:1.5;margin:12px 0 2px;padding:9px 12px;border-left:3px solid #7fd1c7;background:rgba(255,255,255,.05)}
 #needs .mbtn{min-height:44px}
+#ndWants{padding-left:1.2em;margin:4px 0;font-size:13px;line-height:1.4}
+@media (orientation:landscape) and (min-width:560px) and (max-height:520px){
+  #needs .ndc{width:min(680px,100%);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:18px}
+  #needs .ndc>h3,#ndTitle,#needs .ndMood,#ndTip,#ndClose{grid-column:1/-1}
+}
 /* narrow (a small phone, or large text): the name, the word and the number on one line, the bar under them */
 @media (max-width:380px){.ndc{padding:20px 18px}.ndr{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"l w n" "b b b";gap:6px 8px}
   .ndl{grid-area:l}.ndr em{grid-area:w;text-align:right}.ndr b{grid-area:n}.ndb{grid-area:b}}
@@ -855,6 +860,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 <div id="needs" class="ov hide"><div class="card ndc" role="dialog" aria-modal="true" aria-labelledby="ndTitle">
   <h3>YOU</h3><h2 id="ndTitle">Needs</h2>
   <div class="ndMood"><span>MOOD</span><b id="ndMood">Okay</b></div>
+  <section id="ndGoals" aria-label="Wants"><h3>WANTS</h3><ul id="ndWants"></ul><button class="mbtn" id="ndReroll">REROLL WANTS</button></section>
   <div id="ndList"></div>
   <p id="ndTip"></p>
   <button class="mbtn pri" id="ndClose">CLOSE</button>

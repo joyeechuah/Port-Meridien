@@ -49,7 +49,7 @@ function buildLandmarks(){
 const foundCount=(found=save.found)=>LANDMARKS.filter(L=>found&&(found[L.id]===1||found[L.id]===true)).length;
 function discoverLandmark(L){
   if(!L||save.found[L.id])return false;
-  save.found[L.id]=1;
+  save.found[L.id]=1;wantEvent("landmark");
   const n=foundCount(),done=n>=LANDMARKS.length&&!save.passBonus;if(done)save.passBonus=true;
   const reward=Math.round(LANDMARK_REWARD*skillFactor("photography"));earn(reward);
   toast("LANDMARK DISCOVERED",L.name+" · +"+fmtCr(reward)+" CR · "+n+"/"+LANDMARKS.length,"gold");

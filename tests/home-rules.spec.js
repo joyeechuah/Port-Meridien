@@ -17,7 +17,7 @@ function game(stored={}){
     STARTERS:["starter"],show(id,visible){$(id).visible=visible;},updateMoney(){},
     persist(){vm.runInContext("needsCommit()",ctx);writes.push(JSON.parse(JSON.stringify(ctx.save)));}});
   const core=read("core"),screens=read("screens");
-  vm.runInContext([section(core,"const clamp=","\n"),section(core,"const NEEDS_START=","const save="),"save.skills=skillsClean(save.skills);",
+  vm.runInContext([section(core,"const clamp=","\n"),section(core,"const NEEDS_START=","const save="),"save.skills=skillsClean(save.skills);save.wants=wantsClean(null);",
     section(core,"function needsClean(","\ntry{"),read("life"),read("home"),
     section(screens,"const CL_PREFS=","function clSummary("),
     section(screens,"function clNeeds(","// the account")].join("\n"),ctx);
