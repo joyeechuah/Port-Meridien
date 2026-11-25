@@ -703,15 +703,26 @@ function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audi
   $("pRepair").textContent="VEHICLE CONDITION · "+damagePct()+"%";$("pNeeds").textContent=needsLabel();
   show("pQuit",!!(ev||testDrive));$("pQuit").textContent=testDrive?"END TEST DRIVE":ev&&ev.fin?"SEE RESULT":"QUIT EVENT";show("pHome",!testDrive);
   syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);$("pause").inert=false;show("pause",true)}
+// what builds each skill, and what each level of it gives (its rate from SKILL_RATE, as a percentage)
+const SKILL_TEXT={driving:["Clean road driving and races","race prizes","+"],cooking:["Kitchen shifts and home snacks","shift pay","+"],
+  charisma:["Talking to people","friendship from kind words","+"],fitness:["Walking and running","slower tiring on foot",""],
+  photography:["Photos, up to five a day","landmark rewards","+"],handiness:["Repairing real damage","off roadside repairs",""]};
 function skillsOpen(){
   if(state!=="PAUSE")return;
   const rows=$("skRows");rows.replaceChildren();
   for(const k of Object.keys(SKILL_RATE)){
-    const level=skillLevel(k),lo=skillThreshold(level),next=skillThreshold(Math.min(10,level+1));
-    const label=document.createElement("label"),bar=document.createElement("progress");
-    label.textContent=k[0].toUpperCase()+k.slice(1)+" · Level "+level;
-    bar.max=level===10?1:next-lo;bar.value=level===10?1:save.skills[k]-lo;
-    label.appendChild(bar);rows.appendChild(label);
+    const level=skillLevel(k),lo=skillThreshold(level),next=skillThreshold(Math.min(10,level+1)),xp=save.skills[k],
+      [how,gives,sign]=SKILL_TEXT[k],name=k[0].toUpperCase()+k.slice(1),pct=level===10?100:Math.round((xp-lo)/(next-lo)*100);
+    const row=document.createElement("div"),label=document.createElement("span"),bar=document.createElement("div"),
+      fill=document.createElement("i"),num=document.createElement("b"),note=document.createElement("small");
+    row.className="skr";label.className="ndl";label.textContent=name;
+    bar.className="ndb";bar.setAttribute("role","progressbar");bar.setAttribute("aria-label",name+" level "+level);
+    bar.setAttribute("aria-valuemin","0");bar.setAttribute("aria-valuemax","100");bar.setAttribute("aria-valuenow",String(pct));
+    fill.style.width=pct+"%";bar.appendChild(fill);
+    num.className="num"+(level===10?" top":"");num.textContent="LV "+level;
+    note.textContent=how+(level?" · "+sign+Math.round(Math.abs(SKILL_RATE[k])*level*100)+"% "+gives:"")+
+      (level===10?" · top level":" · "+(next-xp)+" XP to level "+(level+1));
+    row.append(label,bar,num,note);rows.appendChild(row);
   }
   $("pause").inert=true;show("skills",true);$("skClose").focus();
 }

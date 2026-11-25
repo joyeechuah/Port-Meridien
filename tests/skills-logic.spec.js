@@ -7,7 +7,7 @@ function part(file,start,end){
 }
 function game(){
   const nodes=new Map(),alerts=[],document={hidden:false,createElement:()=>node()};
-  const node=()=>({children:[],appendChild(v){this.children.push(v)},replaceChildren(){this.children=[]},
+  const node=()=>({children:[],style:{},setAttribute(){},append(...v){this.children.push(...v)},appendChild(v){this.children.push(v)},replaceChildren(){this.children=[]},
     focus(){document.activeElement=this},classList:{contains:()=>false,add(){},remove(){}}});
   const $=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id)};
   const g={save:{cr:10000},document,$,state:"PAUSE",tabIdle:false,ev:null,testDrive:null,pc:null,
@@ -112,9 +112,13 @@ test("a roadside quote and charge agree; garage and roadside XP require damage",
   g.P.damage=2;run('{'+garage+'}');expect(g.save.skills.handiness).toBe(780);
 });
 test("pause skills panel shows six level bars and restores focus through Escape and controller B",()=>{
-  const {g,run,$}=game();run(part("screens","function skillsOpen(","function pauseOff("));
+  const {g,run,$}=game();run(part("screens","const SKILL_TEXT=","function pauseOff("));
   $("pSkills").onclick();expect($("pause").inert).toBe(true);expect(g.document.activeElement).toBe($("skClose"));
   expect($("skRows").children.length).toBe(6);
+  const note=i=>$("skRows").children[i].children[3].textContent;
+  expect(note(0)).toBe("Clean road driving and races · 50 XP to level 1");
+  run('skillsClose();save.skills.handiness=skillThreshold(3)+10');$("pSkills").onclick();
+  expect(note(5)).toBe("Repairing real damage · 9% off roadside repairs · 190 XP to level 4");
   g.k="escape";run(read("screens").split("\n").find(l=>l.includes('if(k==="escape")skillsClose()')).trim().replace(/^else /,""));
   expect($("skills").visible).toBe(false);expect(g.document.activeElement).toBe($("pSkills"));
   $("pSkills").onclick();g.hit=i=>i===1;
