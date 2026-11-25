@@ -20,7 +20,7 @@ function kitchen(stored) {
   const people=read("people");
   const api=vm.runInNewContext([
     part(core,"const clamp=","\n"),part(core,"function workClean(","const save="),
-    "save.work=workClean(stored);",read("work"),part(screens,"const CL_PREFS=","const clPayload="),
+    "save.work=workClean(stored);",read("home"),read("work"),part(screens,"const CL_PREFS=","const clPayload="),
     part(screens,"function clWork(","// Your needs"),
     part(screens,"function fastTravel(","/* ---------- cameras"),part(screens,"function goGarage(","function gunSync"),
     part(people,"function hurt(","function drawDamageEdge"),part(people,"function copCaught(","function wantedHud"),

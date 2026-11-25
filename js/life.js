@@ -333,10 +333,21 @@ const NS={t:0,restAt:0,mealAt:0,low:null,armed:{},due:{},fast:0,mode:"",social:{
 const needOf=k=>Math.round(NEEDS[k]);
 // the needs from a save (missing: the starting values), and the save's needs as a short key, for comparing two saves
 const needsOfSave=sv=>needsClean(sv&&sv.needs);
-const needsKey=sv=>{const n=needsOfSave(sv);return NEED_ORDER.map(k=>n[k]).join(",")};
+function homeWaitClean(raw){
+  const seconds=k=>Number.isFinite(raw?.[k])?clamp(Math.ceil(raw[k]),0,180):0;
+  return {snack:seconds("snack"),play:seconds("play")};
+}
+const homeUntil={snack:0,play:0};
+function homeWaitLoad(raw){
+  const wait=homeWaitClean(raw);save.homeWait=wait;
+  homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;
+}
+homeWaitLoad(save.homeWait);
+const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=NEED_ORDER.map(k=>n[k]).join(",");
+  return wait.snack||wait.play?key+"/"+wait.snack+"/"+wait.play:key};
 // the save's needs become the ones in play: on loading, and when another device's are newer (js/screens.js)
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
-function needsCommit(){save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
+function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
 function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
@@ -384,13 +395,29 @@ function needsHints(){
 // Rest at home: the garage's REST, +40 energy, then not again for 30 s of play. Going home because you were knocked
 // out or chose GO HOME is no rest in itself
 function needsRest(){
-  if(state!=="GARAGE"||WANTED.lvl||NS.t<NS.restAt||needOf("energy")>=100)return false;
-  needsAdd("energy",40);
+  if(!homeEditable()||document.hidden||WANTED.lvl||NS.t<NS.restAt||needOf("energy")>=100)return false;
+  needsAdd("energy",homeGain("rest"));
   NS.restAt=NS.t+30;persist();restSync();return true;
 }
-function restSync(){const b=$("gRest"),e=needOf("energy"),wait=NS.t<NS.restAt;
+function homeGain(action){
+  const base=action==="rest"?(homeHas(save.home,"rest")?60:40):action==="snack"?30:25;
+  return base*(1+homeComfort(save.home)/1000);
+}
+function homeUse(action){
+  if(action!=="snack"&&action!=="play")return false;
+  const need=action==="snack"?"hunger":"fun";
+  if(!homeEditable()||document.hidden||WANTED.lvl||!homeHas(save.home,action)||NS.t<homeUntil[action]||needOf(need)>=100)return false;
+  needsAdd(need,homeGain(action));homeUntil[action]=NS.t+180;persist();restSync();return true;
+}
+function homeChanged(){persist();updateMoney();restSync()}
+function restSync(){
+  for(const [action,id,k] of [["snack","gSnack","hunger"],["play","gPlay","fun"]]){
+    const button=$(id);show(id,homeHas(save.home,action));button.disabled=needOf(k)>=100||NS.t<homeUntil[action];
+    button.textContent=action.toUpperCase()+" · "+k.toUpperCase()+" "+needOf(k);
+  }
+  const b=$("gRest"),e=needOf("energy"),wait=NS.t<NS.restAt;
   b.textContent=e>=100?"ENERGY FULL":(wait?"RESTED":"REST")+" · ENERGY "+e;b.disabled=e>=100||wait;
-  b.setAttribute("aria-label",e>=100?"Your energy is full":wait?"Rested. Energy "+e+" of 100. Go out for a while before resting again":"Rest: energy +40. Energy "+e+" of 100")}
+  b.setAttribute("aria-label",e>=100?"Your energy is full":wait?"Rested. Energy "+e+" of 100. Go out for a while before resting again":"Rest: energy +"+Math.round(homeGain("rest"))+". Energy "+e+" of 100")}
 // The Market Kitchen (js/world.js): a free meal, +35 hunger, at any balance, even none; then not again for 30 s of play
 function needsEat(){return job?kitchenMeal():workOpen()}
 function kitchenMeal(){
@@ -454,7 +481,7 @@ function needsClose(){show("needs",false);$("pause").inert=false;try{$("pNeeds")
   for(const k of NEED_ORDER){const r=document.createElement("div");r.id="nd_"+k;r.className="ndr";
     r.innerHTML='<span class="ndl">'+NEED_LABEL[k]+'</span><div class="ndb" role="meter" aria-valuemin="0" aria-valuemax="100" aria-label="'+NEED_LABEL[k]+'"><i></i></div><b class="num"></b><em></em>';
     list.appendChild(r)}
-  $("pNeeds").onclick=needsOpen;$("ndClose").onclick=needsClose;$("gRest").onclick=()=>needsRest()}
+  $("pNeeds").onclick=needsOpen;$("ndClose").onclick=needsClose;$("gSnack").onclick=()=>homeUse("snack");$("gPlay").onclick=()=>homeUse("play");$("gRest").onclick=()=>needsRest()}
 needsLoad(save.needs);
 
 /* ================================================================ RIDES: a friend comes along in your car */

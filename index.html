@@ -89,6 +89,8 @@ body.touch #lhint{display:none}
 #gCloud:hover{border-color:#fff}
 #gGun{position:absolute;top:calc(144px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gGun:hover{border-color:#fff}
+#gSnack,#gPlay{position:absolute;right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;color:var(--ink)}
+#gSnack{top:calc(224px + var(--st))}#gPlay{top:calc(264px + var(--st))}
 #gRest{position:absolute;top:calc(184px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gRest:hover:not(:disabled){border-color:#fff}#gRest:disabled{opacity:.55;cursor:default}#gGun[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}#gCloud.warn{border-color:var(--acc);color:var(--acc)}
 .clp{font-size:13px;line-height:1.5;color:var(--mute);margin:10px 0 0}.clp b{color:var(--ink)}
@@ -582,6 +584,8 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
     <button id="gMus" class="pill">MUSIC: ON</button>
     <button id="gCloud" class="pill">SAVE MY PROGRESS</button>
     <button id="gGun" class="pill" aria-pressed="false">PISTOL: LEFT HERE</button>
+    <button id="gSnack" class="pill hide">SNACK</button>
+    <button id="gPlay" class="pill hide">PLAY</button>
     <button id="gRest" class="pill">REST · ENERGY 80</button>
   </div>
   <div id="gpick"><button class="gnav" id="gprev" aria-label="Previous car">&#10094;</button><div id="gdots" role="group" aria-label="Choose a car"></div><button class="gnav" id="gnext" aria-label="Next car">&#10095;</button></div>
@@ -877,6 +881,8 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 <script src="js/people.js?v=dev"></script>
 <!-- The life side: the people of Old Quay, talking to them, and the friendships they remember -->
 <script src="js/life.js?v=dev"></script>
+<!-- Home furnishings, grid and layout rules -->
+<script src="js/home.js?v=dev"></script>
 <!-- Paid shifts at the Market Kitchen -->
 <script src="js/work.js?v=dev"></script>
 <!-- Playing together: rooms with a code, friends drawn where they are, the Play together panel -->
