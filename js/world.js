@@ -777,8 +777,8 @@ function windowTex(lit){
     if(lit){x.fillStyle="#ffcf8a";x.fillRect(X+4,Y+22,100,30);x.fillStyle="#fff2d6";x.fillRect(X+10,Y+26,30,10);continue}
     x.fillStyle="#1f262b";x.fillRect(X+4,Y+20,100,34);x.fillStyle="rgba(170,200,215,.22)";x.fillRect(X+8,Y+24,40,14);
     x.fillStyle="#6b4a2e";x.fillRect(X+82,Y+22,18,32);
-    // (the awnings over the shopfronts are built too, on the street side; here just the shade they cast)
-    x.fillStyle="rgba(0,0,0,.16)";x.fillRect(X,Y+8,112,10);
+    // (the awnings over the shopfronts, and the shade under them, are built on the street side: see buildOldQuay.
+    // Painted here, the shade showed on walls with no awning)
   }
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();return t;
 }
@@ -829,7 +829,7 @@ function buildOldQuay(){
   // band runs between the shop and the floors above. The side onto a street also gets balconies on some upper
   // windows and a striped awning over each shopfront, leaning out over the pavement. All of it goes in the tile's
   // batch: no extra draws
-  const facade=(cx,cz,w,d,fl,y,f,street)=>{const along=FN[f][1]?w:d;
+  const facade=(cx,cz,w,d,fl,y,f,street,col)=>{const along=FN[f][1]?w:d;
     onFace(cx,cz,w,d,f,along/2,y+2.75,.06,along+.1,.16,.12,TRIM);
     for(let fi=1;fi<fl&&fi<4;fi++){const wb=y+3.5+3.2*(fi-1);
       for(let u=2;u+1<=along;u+=4){
@@ -842,12 +842,15 @@ function buildOldQuay(){
         for(let q=-2;q<=2;q++)onFace(cx,cz,w,d,f,u+q*.6,wb+.46,.82,.04,.86,.04,IRON);
       }
     }
-    // (a house too narrow for the whole of its first shopfront gets an awning as wide as the house allows)
+    // each awning spans the painted shopfront under it, 3.48 m either side of u; a house too narrow for the whole of
+    // its first shopfront gets the part of it that stops 0.4 m short of the house's edge. Under each, on the wall, the
+    // shade it casts: the wall picture's colour there, tinted like the house and 16% darker
+    const shade=new THREE.Color(col).multiply(new THREE.Color(0xc8c5be)).convertLinearToSRGB().getHex();
     if(street)for(let u=4.11;u-3.5<along;u+=8){const fit=u+3.5<=along,aw=AWN[Math.floor(RD(2)*AWN.length)];
       if(!fit&&(u>4.2||along<4))break;
-      const c=fit?u:along/2,a=fit?6.96:along-.8,n=Math.max(3,Math.round(a/1.16)),sw=a/n;
+      const lo=u-3.48,hi=fit?u+3.48:along-.4,c=(lo+hi)/2,a=hi-lo,n=Math.max(3,Math.round(a/1.16)),sw=a/n;
       for(let q=0;q<n;q++)onFace(cx,cz,w,d,f,c-a/2+sw*(q+.5),y+2.12,.62,sw,.06,1.25,aw[q%2],.32);
-      onFace(cx,cz,w,d,f,c,y+1.84,1.22,a,.26,.04,aw[0]);
+      onFace(cx,cz,w,d,f,c,y+1.84,1.22,a,.26,.04,aw[0]);onFace(cx,cz,w,d,f,c,y+1.65,.03,a,.5,.02,shade);
     }
   };
   // a house: walls with windows and a shopfront (the town's facade picture, tinted) and a roof. Its collider comes
@@ -862,7 +865,7 @@ function buildOldQuay(){
       // a chimney on most tiled roofs, part way down one slope
       if(RD(3)<.6){const s=(RD(4)-.5)*len*.5,o=span*.18,hh=span*.26*.55+1.2,x=cx+(ax?s:o),z=cz+(ax?o:s);
         box(x,top+.2+hh/2,z,.75,hh,.75,0x9a6a52);box(x,top+.27+hh,z,.95,.14,.95,0x6f5a4c)}}
-    if(street){facade(cx,cz,w,d,fl,y,street,true);facade(cx,cz,w,d,fl,y,inner,false);for(const f of ends)if(f)facade(cx,cz,w,d,fl,y,f,true)}
+    if(street){facade(cx,cz,w,d,fl,y,street,true,col);facade(cx,cz,w,d,fl,y,inner,false,col);for(const f of ends)if(f)facade(cx,cz,w,d,fl,y,f,true,col)}
     QUAY.houses++;
   };
   // houses wall to wall round the edge of a block, leaving the middle open. o.gaps are ways in: [side, from, to]
