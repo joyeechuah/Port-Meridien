@@ -20,12 +20,12 @@ function game(state = "GARAGE") {
     return nodes.get(id);
   };
   const globals = { window: {}, document: { createElement: () => ({ dataset: {} }) }, $, save, CL, WANTED,
-    state, FOOT: { on: true }, BOAT: { on: false }, persist() {} };
+    state, show(){}, FOOT: { on: true }, BOAT: { on: false }, persist() {} };
   const code = [
     section(core, "const clamp=", "\n"),
     section(core, "const NEEDS_START=", "\n"),
     section(core, "function needsClean(", "\ntry{"),
-    read("life"), section(screens, "function clNeeds(", "\n// the account"),
+    read("life"), read("home"), section(screens, "function clNeeds(", "\n// the account"),
     "({needsClean,needsLoad,needsCommit,needsMood,needsTip,needsKey,clNeeds,NEEDS,NS,TALK,PEOPLE,talkPick,needsTick})"
   ];
   const ctx = vm.createContext(globals);

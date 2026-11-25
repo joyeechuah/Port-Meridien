@@ -113,7 +113,7 @@ function workClean(w){
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},needs:Object.assign({v:1},NEEDS_START)};
+const save={home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
 // the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
 // version starts again from the starting values; a missing or broken number is put back to its own starting value,

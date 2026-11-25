@@ -15,7 +15,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(s==="GARAGE")gunSync();if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
+function setState(s){if(s==="GARAGE")gunSync();if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
@@ -283,6 +283,7 @@ function gPick(i){
   selSpot.position.copy(gW(s[0],s[1]+1,8.8));selSpot.target.position.copy(p);
 }
 function garageWant(){
+  if(HV.on)return hvCam();   // designing your home (js/homeview.js): over the mezzanine
   const car=getCar(save.owned[gSel]).G,h=car.rotation.y,fw=new V3(Math.sin(h),0,Math.cos(h)),sd=new V3(-fw.z,0,fw.x),big=getCar(save.owned[gSel]).shape==="suv"?1.15:1;
   const o=fw.clone().multiplyScalar(7.4).addScaledVector(sd,1.2+(GO.user?0:Math.sin(gT*.35)*1.3)).applyAxisAngle(new V3(0,1,0),GO.yawS).multiplyScalar(big*GO.zoom);
   const centre=car.position.clone().setY(gY+.9*big),look=centre.clone(),w={pos:car.position.clone().add(o).setY(gY+Math.max(.35,(3.1+GO.pitch)*big*GO.zoom)),look};
@@ -302,7 +303,7 @@ function garageCam(dt){
   if(GO.spin)GO.yaw+=dt*.4;GO.yawS+=(GO.yaw-GO.yawS)*(1-Math.exp(-dt*6));const g=garageWant();
   camP.lerp(g.pos,1-Math.exp(-dt*4));camL.lerp(g.look,1-Math.exp(-dt*6));
   camera.position.copy(camP);camera.lookAt(camL);camera.fov+=(50-camera.fov)*.06;camera.updateProjectionMatrix();
-  selRing.material.opacity=.6+Math.sin(gT*3)*.25;
+  selRing.material.opacity=.6+Math.sin(gT*3)*.25;selRing.visible=!HV.on;
 }
 /* ---------- customise: options for the car picked in the garage, seen on the car as you choose, paid on APPLY ---------- */
 let cuId=null,cuBase=null,cuDraft=null;
@@ -958,10 +959,11 @@ function fbLoad(f){
 // used to ask which to keep), the car picked, a note about a contract under way, your needs (js/life.js). They're
 // backed up too, but don't count as a difference worth asking about. Ghost laps stay on each device (they can pass
 // Firestore's 1 MB limit)
-const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn","needs","flash","violence","armed"];
+const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn","needs","homeWait","flash","violence","armed"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
-const clProg=sv=>{const o={};for(const k in sv)if(k!=="work"&&!CL_PREFS.includes(k))o[k]=sv[k];
+const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PREFS.includes(k))o[k]=sv[k];
+  const layout=homeProgress(sv.home);if(layout)o.home=layout;
   const shifts=workClean(sv.work).completed;if(shifts)o.work={completed:shifts};
   // no friendships yet (js/life.js) is the same progress as a save from before they existed, so the new empty field
   // doesn't make two devices disagree
@@ -969,7 +971,7 @@ const clProg=sv=>{const o={};for(const k in sv)if(k!=="work"&&!CL_PREFS.includes
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
-  return !workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
+  return !homeProgress(sv.home)&&!workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
     (!sv.jobs||!Object.values(sv.jobs).some(v=>typeof v==="number"?v>0:!e(v)))}
 function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:foundCount(sv.found||{}),
   cups:Object.values(champ).filter(c=>c&&c.won).length,mods:Object.keys(sv.mods||{}).length}}
@@ -1098,12 +1100,12 @@ function clWork(cloud){
 function clNeeds(cloud){
   needsCommit();   // bench and speed rewards can be newer than the last local checkpoint
   const here=needsKey(save),there=needsKey(cloud);
-  if(here!==there&&(!CL.meta.needs||CL.meta.needs===here)){needsLoad(needsOfSave(cloud));persist();if(state==="GARAGE")restSync()}
+  if(here!==there&&(!CL.meta.needs||CL.meta.needs===here)){needsLoad(needsOfSave(cloud));homeWaitLoad(cloud.homeWait);persist();if(state==="GARAGE")restSync()}
   if(needsKey(save)===there)CL.meta.needs=there}
 // the account's save becomes this device's (its ghost laps stay), and the game starts again from it
 // From here until the page reloads, this tab neither saves nor backs up: the progress still in memory would otherwise
 // go back over the restored save (on leaving the page) and up to the account
-function clApply(doc,cloud){const sv=Object.assign({},cloud,{ghost:save.ghost||{}});CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
+function clApply(doc,cloud){const sv=Object.assign({},cloud,{home:homeClean(cloud.home),ghost:save.ghost||{}});CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   // if the browser won't store it, nothing changed: saving and backing up carry on, and the choice stays to try again
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(sv))}catch(e){CL.applying=false;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}
   CL.meta.rev=doc.rev||0;CL.meta.rehash=true;clOwn();CL.meta.at=clAt(doc);clSaveMeta();
