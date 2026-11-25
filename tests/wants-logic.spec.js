@@ -78,3 +78,14 @@ test("equal-progress sync keeps the newer reroll and preserves partial walking a
   expect(run("wantsSync(other)")).toBe(true);expect(g.save.wants.active).toEqual(g.other.active);
   expect(g.save.wants.metres).toBe(0);expect(run("wantsSync(other)")).toBe(false);
 });
+test("a want drawn to replace one just done isn't done by the same action, only by a later one",async()=>{
+  const {g,run}=game("shift");
+  // the shift's slot is refilled with "level" (the draw picks it), and the same shift then levels Cooking
+  const pick=run('wantIds.filter(id=>!save.wants.active.includes(id))').indexOf("level"),n=run('wantIds.length')-3;
+  run("Math.random=()=>"+(pick+.5)/n);
+  expect(run('[wantEvent("shift"),wantEvent("level")]')).toEqual([true,false]);
+  expect(g.save.cr).toBe(6000);expect(g.save.wants.active[0]).toBe("level");
+  await new Promise(r=>setTimeout(r,0));
+  expect(run('wantEvent("level")')).toBe(true);expect(g.save.cr).toBe(7500);
+});
+

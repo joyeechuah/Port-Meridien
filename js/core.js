@@ -150,15 +150,20 @@ function wantDraw(exclude){
   const choices=wantIds.filter(id=>!exclude.includes(id)&&wantOpen(id));
   return choices[Math.floor(Math.random()*choices.length)];
 }
+// A want drawn to replace one just done can't be done by the same action, only by a later one: a shift that also
+// levelled Cooking used to pay for a "Gain a skill level" drawn that instant, and a promotion could follow it. The new
+// slot opens once the action's code has run (a microtask)
+const wantFresh=new Set();
 function wantEvent(id,metres=0){
   const w=save.wants,slot=w.active.indexOf(id);
-  if(slot<0)return false;
+  if(slot<0||wantFresh.has(slot))return false;
   if(id==="walk"){
     if(!Number.isFinite(metres)||metres<=0)return false;
     w.metres+=metres;if(w.metres<500)return false;w.metres=0;
   }
   const item=WANT_CATALOG.find(it=>it.id===id);
   w.active[slot]=wantDraw(w.active);w.completed[id]=Math.min(1e9,(w.completed[id]||0)+1);
+  if(!wantFresh.size)Promise.resolve().then(()=>wantFresh.clear());wantFresh.add(slot);
   save.cr+=item.cr;updateMoney();toast("WANT COMPLETE",item.label+" · +"+fmtCr(item.cr)+" CR","gold");
   return true;
 }
