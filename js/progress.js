@@ -316,3 +316,54 @@ function renderCups(){
 function cupsOpen(){if(state!=="PAUSE")return;renderCups();$("pause").inert=true;show("cups",true);try{$("cpClose").focus({preventScroll:true})}catch(e){}}
 function cupsClose(){show("cups",false);$("pause").inert=false;try{$("pCups").focus({preventScroll:true})}catch(e){}}
 $("pCups").onclick=cupsOpen;$("cpClose").onclick=cupsClose;
+
+/* ---------- aspirations: six long goals of three steps each, worked out from what you've done, each step paid once ---------- */
+const ASPIRE_PAY=[1500,4000,10000];
+const friendsAt=f=>Object.values(save.rel).filter(r=>r&&r.n>0&&r.f>=f).length;
+const cupsWon=()=>CUPS.filter(C=>save.champ[C.cls]&&save.champ[C.cls].won).length;
+const skillsAt=l=>Object.keys(SKILL_RATE).filter(k=>skillLevel(k)>=l).length;
+const wantsDone=()=>Object.values(save.wants.completed).reduce((a,b)=>a+b,0);
+// (the kitchen and the home are js/work.js's and js/home.js's, which load later: until then their steps can't be met)
+const rankAt=r=>typeof workRank==="function"&&workRank()>=r;
+/** @type {{id:string,name:string,steps:[string,()=>boolean][]}[]} */
+const ASPIRATIONS=[
+  {id:"chef",name:"Master chef",steps:[["Prep cook at the kitchen",()=>rankAt(1)],["Sous chef",()=>rankAt(3)],["Head chef",()=>rankAt(4)]]},
+  {id:"home",name:"Home maker",steps:[["5 pieces in your home",()=>save.home.items.length>=5],["15 pieces",()=>save.home.items.length>=15],
+    ["Home comfort 100",()=>typeof homeComfort==="function"&&homeComfort(save.home)>=100]]},
+  {id:"social",name:"Social butterfly",steps:[["Someone Friendly",()=>friendsAt(15)>=1],["Three Friends",()=>friendsAt(40)>=3],["A Best friend",()=>friendsAt(90)>=1]]},
+  {id:"racer",name:"Speed demon",steps:[["Win a cup",()=>cupsWon()>=1],["Win three cups",()=>cupsWon()>=3],["Win every cup",()=>cupsWon()>=CUPS.length]]},
+  {id:"skills",name:"Renaissance",steps:[["A skill at level 3",()=>skillsAt(3)>=1],["Three skills at level 5",()=>skillsAt(5)>=3],["A skill at level 10",()=>skillsAt(10)>=1]]},
+  {id:"wants",name:"Go-getter",steps:[["10 wants done",()=>wantsDone()>=10],["30 wants done",()=>wantsDone()>=30],["100 wants done",()=>wantsDone()>=100]]}
+];
+// the save's record: version 1, how many steps of each have been paid (0 to 3); anything else counts as none
+function aspireClean(raw){
+  const ok=raw&&typeof raw==="object"&&!Array.isArray(raw)&&raw.v===1&&raw.claimed&&typeof raw.claimed==="object",o={v:1,claimed:/** @type {Object<string,number>} */ ({})};
+  for(const A of ASPIRATIONS){const n=ok&&Object.prototype.hasOwnProperty.call(raw.claimed,A.id)?raw.claimed[A.id]:0;if(Number.isInteger(n)&&n>0)o.claimed[A.id]=Math.min(3,n)}
+  return o;
+}
+save.aspire=aspireClean(save.aspire);
+// a step reached is paid, in order, and only once; persist (js/core.js), which follows almost every change of progress,
+// asks after each one
+function aspireCheck(){
+  let paid=false;
+  for(const A of ASPIRATIONS){let n=save.aspire.claimed[A.id]||0;
+    while(n<3&&A.steps[n][1]()){n++;save.aspire.claimed[A.id]=n;const pay=ASPIRE_PAY[n-1];save.cr+=pay;paid=true;
+      toast("ASPIRATION · "+A.name.toUpperCase(),A.steps[n-1][0]+" · +"+fmtCr(pay)+" CR","gold")}}
+  if(paid)updateMoney();
+}
+// in the Skills panel, under the skills: each aspiration, its steps done and the next one with its reward
+function aspireRender(){
+  const box=$("skAsp");box.replaceChildren();
+  for(const A of ASPIRATIONS){const n=save.aspire.claimed[A.id]||0;
+    const row=document.createElement("div"),label=document.createElement("span"),bar=document.createElement("div"),
+      fill=document.createElement("i"),num=document.createElement("b"),note=document.createElement("small");
+    row.className="skr";label.className="ndl";label.textContent=A.name;
+    bar.className="ndb";bar.setAttribute("role","progressbar");bar.setAttribute("aria-label",A.name+": "+n+" of 3 steps");
+    bar.setAttribute("aria-valuemin","0");bar.setAttribute("aria-valuemax","3");bar.setAttribute("aria-valuenow",String(n));
+    fill.style.width=Math.round(n/3*100)+"%";bar.appendChild(fill);
+    num.className="num"+(n===3?" top":"");num.textContent=n+"/3";
+    note.textContent=n<3?"Next: "+A.steps[n][0]+" · "+fmtCr(ASPIRE_PAY[n])+" CR":"Complete";
+    row.append(label,bar,num,note);box.appendChild(row);
+  }
+}
+

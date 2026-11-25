@@ -11,7 +11,7 @@ Port Meridien is still a static page with no build step: `index.html` holds the 
 | `js/cars.js` | Car models and their looks, input, the player's car physics and traffic |
 | `js/play.js` | Free-ride streaks, races and time trials, speed radars, the GPS, money and messages, the HUD canvases and the full map |
 | `js/media.js` | Sound effects, music and Photo Mode |
-| `js/progress.js` | The Explorer Passport, contracts and class championships |
+| `js/progress.js` | The Explorer Passport, contracts, class championships and aspirations |
 | `js/screens.js` | Game states, the garage, the dealership, menus and prompts, one game tab at a time, and the cloud save |
 | `js/people.js` | The HUD, on foot, the police, the pistol and health, pedestrians, and the harbour boat |
 | `js/life.js` | The life side: the people of Old Quay with their names and personalities, talking to them, the friendships they remember, your needs and mood (the clock, resting, eating, sitting, the Needs screen), and friends who ride with you |

@@ -91,7 +91,9 @@ test.describe("class championships", () => {
     }
     const after = await game.eval(() => ({ cr: __T.save.cr, champ: __T.save.champ.A1 }));
     expect(after.champ).toEqual({ r: 3, pts: [10, 10, 10], won: true });
-    expect(after.cr - cr0).toBe(paid + cup.prize);
+    // a first cup is also the first step of the Speed demon aspiration (js/progress.js): 1,500 CR more, once
+    expect(after.cr - cr0).toBe(paid + cup.prize + 1500);
+    expect(await game.eval(() => __T.save.aspire.claimed)).toEqual({ racer: 1 });
     expect((await game.readSave()).champ.A1.won).toBe(true);
     await page.locator("#rOk").click();
     await game.waitState("DRIVE");
