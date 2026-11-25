@@ -128,9 +128,9 @@ While you're wanted, your house, the Auto Gallery, races, contracts, going home 
 
 Take the pistol from the garage with **PISTOL**, top right under MUSIC (it stays chosen until you change it). You can use it on foot and while driving outside races and test drives. You leave the house with 48 rounds.
 
-It locks onto the nearest target in front of you, shown by a red ring: a car, a police car, someone walking, or an officer. Walls and cars are cover. Fire with `G`, the **FIRE** pad, or the controller's right shoulder. A car stops after about nine hits; someone shot is knocked down and stays down while you're near or looking their way; once you've looked away they're gone, and walk the town again later.
+It locks onto the nearest target in front of you, shown by a red ring: a car, a police car, someone walking, or an officer. Walls and cars are cover. Fire with `G`, the **FIRE** pad, or the controller's right shoulder. A car stops after about nine hits; someone shot, an officer included, is knocked down and stays down while you're near or looking their way; once you've looked away they're gone (an officer's car with them), and people walk the town again later.
 
-The police see shooting as they see any crime: firing is one star, hitting a car or a person one, shooting at the police two. At three stars, an officer on foot fires back.
+The police see shooting as they see any crime: firing is one star, hitting a car or a person one, shooting at the police or running into an officer two. At three stars, an officer on foot fires back.
 
 Your **health** is 100, shown as a bar under the place and clock. After 6 s with nothing hurting you it comes back to 50; it's full again at the house. At 0 you're **knocked out** and wake at home, 10% of your credits poorer (at most 5,000). Caught by the police while carrying the pistol, you're **arrested**: the fine, the pistol back in the garage, and you start again outside the Harbour Hall.
 

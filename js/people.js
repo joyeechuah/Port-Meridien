@@ -576,7 +576,8 @@ const copSees=(x,z)=>TRAFFIC.some(t=>t.cop&&t.e&&Math.hypot(t.wx-x,t.wz-z)<COP_V
 const wantedBlock=()=>toast("LOSE THE POLICE FIRST","They're still after you: get out of their reach for a while","bad");
 const CRIME={crash:["Crashed into a car in front of the police",1],ped:["Ran into someone in front of the police",1],take:["Took a car in front of the police",1],
   speed:["Speeding past the police",1],cop:["Hit a police car",2],fire:["Fired a gun in front of the police",1],
-  shoot:["Shot at a car in front of the police",1],shootPed:["Shot at someone in front of the police",1],shootCop:["Shot at the police",2]};
+  shoot:["Shot at a car in front of the police",1],shootPed:["Shot at someone in front of the police",1],shootCop:["Shot at the police",2],
+  runCop:["Ran into a police officer",2]};
 // a crime at (x,z): it counts only where a police car can see it, never during a race or a test drive, and at most
 // one star every 4 s (a crash is several contacts in a row). In tests the police look away unless a test asks
 function crime(kind,x,z){
@@ -723,13 +724,27 @@ function copOfficer(dt,ch,still){
     if(!t)return false;
     // out of the door on the side nearer you
     const rx=Math.cos(t.yaw),rz=-Math.sin(t.yaw),sd=((me.x-t.wx)*rx+(me.z-t.wz)*rz)>=0?1:-1,c=footClear(t.wx+rx*sd*1.6,t.wz+rz*sd*1.6);
-    Object.assign(O,{on:true,x:c[0],z:c[1],y:footGround(c[0],c[1]),h:t.yaw,v:0,car:t,back:false,caughtT:0,detA:0,detT:0,detSide:0,outT:0,best:1e9,down:0,fall:0});O.m.G.rotation.set(0,t.yaw,0,"YXZ");O.m.G.visible=true;
+    Object.assign(O,{on:true,x:c[0],z:c[1],y:footGround(c[0],c[1]),h:t.yaw,v:0,car:t,back:false,caughtT:0,detA:0,detT:0,detSide:0,outT:0,best:1e9,down:0,fall:0,out:false,downT:0});O.m.G.rotation.set(0,t.yaw,0,"YXZ");O.m.G.visible=true;
     return false;
   }
+  // shot, or run down: on LOW, where nobody falls, they stand still for 6 s, then go back to the car. Otherwise, as
+  // anyone knocked down, they stay down while you're near or could see them (they used to get up after 6 s). Once
+  // you can't, they're gone, and their car with them once that's out of view too; the chase calls another
+  if(O.down>0){O.down-=dt;O.downT=(O.downT||0)+dt;O.caughtT=0;if(!save.violence)O.out=false;
+    O.fall=Math.min(1,(O.fall||0)+dt*4*(save.violence?1:0));O.m.G.rotation.set(-Math.PI/2*O.fall,O.h,0,"YXZ");
+    if(O.pool){const on=save.violence>1&&O.fall>.9&&O.m.G.visible;O.pool.visible=on;
+      if(on){const r=Math.min(.85,.2+O.downT*.22);O.pool.scale.set(r,r,1);O.pool.position.set(O.x-Math.sin(O.h)*.75,O.y+.02,O.z-Math.cos(O.h)*.75)}}
+    if(O.out){O.down=Math.max(O.down,.01);
+      const carSeen=car&&car.e&&pedSeen({x:car.wx,z:car.wz,y:footGround(car.wx,car.wz)},me);
+      if(O.downT>2&&!pedSeen(O,me)&&!carSeen){copOfficerIn();if(car&&car.e)copStandDown(car)}}
+    else if(O.down<=0){O.back=true;if(car)car.offAt=copClock;O.fall=0;O.m.G.rotation.set(0,O.h,0,"YXZ")}
+    return false}
   if(!car||!car.e){copOfficerIn();return false}
-  // shot: down for 6 s (standing still on LOW, where nobody falls), then back to the car
-  if(O.down>0){O.down-=dt;O.caughtT=0;O.fall=Math.min(1,(O.fall||0)+dt*4*(save.violence?1:0));O.m.G.rotation.set(-Math.PI/2*O.fall,O.h,0,"YXZ");
-    if(O.down<=0){O.back=true;car.offAt=copClock;O.fall=0;O.m.G.rotation.set(0,O.h,0,"YXZ")}return false}
+  // your car into them faster than about 20 km/h knocks them down, falling away from it (slower, they're only pushed
+  // aside, as before); a crime the police in their car see
+  if(save.violence&&!FOOT.on&&!BOAT.on){const dx=O.x-P.x,dz=O.z-P.z,cs=Math.cos(P.h),sn=Math.sin(P.h);
+    if(Math.hypot(P.vx,P.vz)>PED_V.knock&&Math.abs(dx*cs-dz*sn)<1.25&&Math.abs(dx*sn+dz*cs)<2.6){
+      Object.assign(O,{down:6,out:true,downT:0,caughtT:0,v:0,h:Math.atan2(P.x-O.x,P.z-O.z)});crime("runCop",O.x,O.z);return false}}
   const dMe=Math.hypot(me.x-O.x,me.z-O.z);O.outT+=dt;
   // once they turn back they go all the way to the car; it waits 12 s before sending anyone again
   if(!O.back&&(!WANTED.lvl||BOAT.on||(!FOOT.on&&!still)||dMe>OFF_V.giveUp||O.detT>15||O.outT>OFF_V.outT)){O.back=true;car.offAt=copClock}
@@ -771,7 +786,7 @@ function copOfficer(dt,ch,still){
   return false;
 }
 // the officer back in their car (or gone, if the car has been taken off the road), and the car free to drive again
-function copOfficerIn(){const O=OFFICER;if(O.car)O.car.stopT=0;O.on=false;O.car=null;O.back=false;O.m.G.visible=false}
+function copOfficerIn(){const O=OFFICER;if(O.car)O.car.stopT=0;O.on=false;O.car=null;O.back=false;O.m.G.visible=false;O.down=0;O.out=false;if(O.pool)O.pool.visible=false}
 // At four stars or more the two nearest chasing police cars within 30 m, with a clear line to you, fire every 1.5 s:
 // in your car a hit damages the car (6), on foot it hurts you (8). Never at sea, never from a wrecked car
 function copCarFire(dt,ch){
@@ -846,7 +861,7 @@ function initGun(){
   const pool=new THREE.CircleGeometry(1,18),at=pool.attributes.position;
   for(let i=1;i<at.count;i++){const a=Math.atan2(at.getY(i),at.getX(i)),r=.8+.13*Math.sin(a*3+1.3)+.07*Math.cos(a*5);at.setXY(i,Math.cos(a)*r,Math.sin(a)*r)}
   const blood=new THREE.MeshBasicMaterial({color:0x5a0909,transparent:true,opacity:.9,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
-  [...PEDS,...VERGE].forEach((p,i)=>{const k=new THREE.Mesh(pool,blood);k.rotation.set(-Math.PI/2,0,i*2.4);k.visible=false;scene.add(k);p.pool=k});
+  [...PEDS,...VERGE,OFFICER].forEach((p,i)=>{const k=new THREE.Mesh(pool,blood);k.rotation.set(-Math.PI/2,0,i*2.4);k.visible=false;scene.add(k);p.pool=k});
 }
 // knocked down, by a shot or a car. On STANDARD and STRONG they stay down until you've looked away (pedStep): nobody
 // gets up again in front of you. On LOW, where nobody falls, they stand still for 6 s and walk on
@@ -895,7 +910,7 @@ function gunFire(){
     if((t.damage||0)>=100){t.stopT=1e6;t.v=0;if(t.cop){t.chase=false;t.offDuty=true}}
     seen(q.k==="cop"?"shootCop":"shoot",q.x,q.z)}
   else if(q.k==="ped"){const p=q.o;pedKnock(p);gunMark(p.x,p.z);seen("shootPed",p.x,p.z);lifeHurt(p,25)}
-  else{const O=q.o;O.down=6;O.caughtT=0;gunMark(O.x,O.z);seen("shootCop",O.x,O.z)}
+  else{const O=q.o;O.down=6;O.out=save.violence>0;O.downT=0;O.caughtT=0;gunMark(O.x,O.z);seen("shootCop",O.x,O.z)}
   return true;
 }
 // in the car, every frame: the lock ahead and firing (the pistol itself isn't seen). Not in a race or a test drive
