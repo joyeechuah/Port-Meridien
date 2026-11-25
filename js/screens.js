@@ -15,7 +15,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(s==="GARAGE")gunSync();if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
+function setState(s){if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
@@ -700,12 +700,27 @@ $("repairNow").onclick=()=>{
   show("damageHud",false);
   toast("VEHICLE REPAIRED","Roadside repair: -"+fmtCr(price)+" CR","gold");
 };
+/* ---------- first-time hints: once on each device, as each newer part of life comes into reach (kept apart from the
+   save, so they're neither progress nor a setting the account carries) ---------- */
+const HINT_KEY=SAVE_KEY+"-hints",HINT_TEXT={
+  home:["NEW AT HOME","DESIGN HOME furnishes your mezzanine. Friends you invite over wait there."],
+  you:["YOU","SKILLS has your skills and aspirations; NEEDS, your wants and mood."],
+  friends:["FRIENDS",isTouch?"Ask a friend along for a ride, or over to your place.":"Ask a friend along for a ride (7), or over to your place (8)."],
+  kitchen:["KITCHEN CAREER","Shifts and Cooking take you from Dishwasher to Head chef, with better pay at each rank."]};
+const HINTS=(()=>{try{const h=JSON.parse(localStorage.getItem(HINT_KEY)||"{}");return h&&typeof h==="object"&&!Array.isArray(h)?h:{}}catch(e){return {}}})();
+function hint(id){
+  if(window.__noHints||tabIdle||HINTS[id]||!HINT_TEXT[id])return false;
+  HINTS[id]=1;try{localStorage.setItem(HINT_KEY,JSON.stringify(HINTS))}catch(e){}
+  toast(HINT_TEXT[id][0],HINT_TEXT[id][1]);return true;
+}
+// home's: a moment after the garage opens, unless something else is on screen (then the next time)
+function hintHome(){setTimeout(()=>{if(state==="GARAGE"&&!document.querySelector(".ov:not(.hide)"))hint("home")},1500)}
 function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audioOn(false);
   $("pTitle").textContent=ev?ev.E.name:testDrive?"Test drive · "+carById(testDrive.id).md:job?"Contract · "+job.def.title:"Free ride";
   $("pHome").textContent=job?"GO HOME · ENDS CONTRACT":"GO HOME · REPAIR FREE";
   $("pRepair").textContent="VEHICLE CONDITION · "+damagePct()+"%";$("pNeeds").textContent=needsLabel();
   show("pQuit",!!(ev||testDrive));$("pQuit").textContent=testDrive?"END TEST DRIVE":ev&&ev.fin?"SEE RESULT":"QUIT EVENT";show("pHome",!testDrive);
-  syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);$("pause").inert=false;show("pause",true)}
+  syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);$("pause").inert=false;show("pause",true);hint("you")}
 // what builds each skill, and what each level of it gives (its rate from SKILL_RATE, as a percentage)
 const SKILL_TEXT={driving:["Clean road driving and races","race prizes","+"],cooking:["Kitchen shifts and home snacks","shift pay","+"],
   charisma:["Talking to people","friendship from kind words","+"],fitness:["Walking and running","slower tiring on foot",""],

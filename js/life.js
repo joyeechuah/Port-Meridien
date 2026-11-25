@@ -230,7 +230,7 @@ function talkShow(line){
   if(line!==undefined)$("tkLine").textContent=line;
   // friends can be asked along for a ride (40 or more: Friend and up)
   const ride=$("tkRide"),was=!ride.classList.contains("hide");show("tkRide",f>=RIDE_AT);if(was!==(f>=RIDE_AT))talkSel(Math.min(TALK.sel,tkButtons().length-1));
-  show("talk",true);document.body.classList.add("talking");
+  show("talk",true);document.body.classList.add("talking");if(f>=RIDE_AT)hint("friends");
 }
 // keys while talking: 1 to 6 say the lines, Escape, E or Backspace says goodbye. True when the key was used
 function talkKey(k){
