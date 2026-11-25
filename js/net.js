@@ -268,8 +268,8 @@ function netRender(){
     $("plCount").textContent=(NET.peers.size+1)+" of "+NET.MAX+" players";}
   $("plNote").textContent=NET.note;
 }
-function netOpen(){if(state!=="PAUSE")return;netRender();show("play",true);try{(NET.room?$("plLeave"):$("plStart")).focus({preventScroll:true})}catch(e){}}
-function netClose(){show("play",false);try{$("pPlay").focus({preventScroll:true})}catch(e){}}
+function netOpen(){if(state!=="PAUSE")return;netRender();$("pause").inert=true;show("play",true);try{(NET.room?$("plLeave"):$("plStart")).focus({preventScroll:true})}catch(e){}}
+function netClose(){show("play",false);$("pause").inert=false;try{$("pPlay").focus({preventScroll:true})}catch(e){}}
 $("pPlay").onclick=netOpen;$("plClose").onclick=netClose;$("plStart").onclick=netStart;$("plJoin").onclick=netJoin;
 $("plLeave").onclick=()=>{netLeave();netRender()};
 $("plCode").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();netJoin()}});

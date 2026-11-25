@@ -80,8 +80,10 @@ function renderPassport(){
     list.appendChild(row);
   }
 }
-function passportOpen(){if(state!=="PAUSE"&&state!=="MAP")return;PZ.from=state;$("pzMsg").textContent="";renderPassport();show("passport",true);try{$("pzClose").focus({preventScroll:true})}catch(e){}}
-function passportClose(){show("passport",false)}
+// a panel over the pause menu or the map leaves what is under it inert, so Tab can't reach RESUME behind it (Enter on it
+// used to resume the drive with the panel still open). Closing gives the keys back to the button that opened it
+function passportOpen(){if(state!=="PAUSE"&&state!=="MAP")return;PZ.from=state;$("pzMsg").textContent="";renderPassport();$(state==="MAP"?"map":"pause").inert=true;show("passport",true);try{$("pzClose").focus({preventScroll:true})}catch(e){}}
+function passportClose(){show("passport",false);$("pause").inert=$("map").inert=false;try{$(PZ.from==="MAP"?"mapPass":"pPass").focus({preventScroll:true})}catch(e){}}
 function passportGPS(L){
   if(typeof job!=="undefined"&&job){$("pzMsg").textContent="The GPS is following your contract. Finish or abandon it to set another destination.";return}
   setGPS(L.x,L.z,L.name);passportClose();
@@ -242,8 +244,8 @@ function renderJobs(){
     g.onclick=()=>{if(jobStart(J)){jobsClose();if(state==="PAUSE")pauseOff()}};row.appendChild(g);list.appendChild(row);
   }
 }
-function jobsOpen(){if(state!=="PAUSE")return;renderJobs();show("jobs",true);try{$("jbClose").focus({preventScroll:true})}catch(e){}}
-function jobsClose(){show("jobs",false)}
+function jobsOpen(){if(state!=="PAUSE")return;renderJobs();$("pause").inert=true;show("jobs",true);try{$("jbClose").focus({preventScroll:true})}catch(e){}}
+function jobsClose(){show("jobs",false);$("pause").inert=false;try{$("pJobs").focus({preventScroll:true})}catch(e){}}
 $("pJobs").onclick=jobsOpen;$("jbClose").onclick=jobsClose;
 /* ================================================================ CLASS CHAMPIONSHIPS
    Seven cups, A1 to A7, in the style of Test Drive Unlimited 2. Each is three of the island's events, entered in a car
@@ -311,6 +313,6 @@ function renderCups(){
     g.onclick=()=>{if(cupBlocked(C.cls))return;cupsClose();show("pause",false);cupStart(C.cls)};row.appendChild(g);list.appendChild(row);
   }
 }
-function cupsOpen(){if(state!=="PAUSE")return;renderCups();show("cups",true);try{$("cpClose").focus({preventScroll:true})}catch(e){}}
-function cupsClose(){show("cups",false)}
+function cupsOpen(){if(state!=="PAUSE")return;renderCups();$("pause").inert=true;show("cups",true);try{$("cpClose").focus({preventScroll:true})}catch(e){}}
+function cupsClose(){show("cups",false);$("pause").inert=false;try{$("pCups").focus({preventScroll:true})}catch(e){}}
 $("pCups").onclick=cupsOpen;$("cpClose").onclick=cupsClose;
