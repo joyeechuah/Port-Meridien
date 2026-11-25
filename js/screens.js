@@ -654,7 +654,7 @@ function hint(id){
 function hintHome(){setTimeout(()=>{if(state==="GARAGE"&&!document.querySelector(".ov:not(.hide)"))hint("home")},1500)}
 let repairConfirm=false,repairReturnPause=false;
 const damagePct=()=>Math.ceil(Math.max(0,P.damage||0));
-const repairPrice=()=>Math.round((1000+20*damagePct())*skillFactor("handiness"));
+const repairPrice=()=>Math.round((1000+20*damagePct())*skillFactor("handiness")*(hasTrait("gearhead")?.9:1));
 function repairBlocked(){
   if(!damagePct())return "Your vehicle has no damage.";
   if(testDrive)return "Repair your own car after the test drive ends.";
@@ -669,10 +669,11 @@ function repairPanel(){
   $("repairFill").style.width=damage+"%";
   $("repairFill").style.background=damage>=90?"#e2483d":damage>=60?"#f2b33d":"#a4c8b0";
   $("repairDetails").textContent=damage?"Engine power reduced by "+Math.round((1-damagePower(P))*100)+"%. The vehicle remains drivable.":"Your vehicle is fully repaired.";
-  // the rule, what it comes to, and Handiness's discount on it, so the sum agrees with the price on the button
-  const base=1000+20*damage,off=Math.round((1-skillFactor("handiness"))*100);
+  // the rule, what it comes to, and the Handiness and Gearhead discounts on it, so the sum agrees with the price on the button
+  const base=1000+20*damage,off=Math.round((1-skillFactor("handiness"))*100),
+    cuts=[off>0?off+"% for your Handiness":"",hasTrait("gearhead")?"10% as a Gearhead":""].filter(Boolean);
   $("repairHint").textContent=testDrive?"End this test drive to return to your own vehicle.":"Garage repairs are FREE. Roadside repairs cost 1,000 + 20 credits per damage percentage point"+
-    (damage?": "+fmtCr(base)+" CR"+(off>0?", less "+off+"% for your Handiness: "+fmtCr(price)+" CR.":"."):".");
+    (damage?": "+fmtCr(base)+" CR"+(cuts.length?", less "+cuts.join(" and ")+": "+fmtCr(price)+" CR.":"."):".");
   $("repairHome").disabled=!!testDrive||!!WANTED.lvl;
   $("repairHome").textContent=WANTED.lvl?"RETURN HOME · LOSE THE POLICE FIRST":job?"RETURN HOME · END CONTRACT · REPAIR FREE":ev?"RETURN HOME · END RACE · REPAIR FREE":"RETURN HOME · REPAIR FREE";
   if(blocked)repairConfirm=false;
@@ -725,8 +726,26 @@ function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audi
 const SKILL_TEXT={driving:["Clean road driving and races","race prizes","+"],cooking:["Kitchen shifts and home snacks","shift pay","+"],
   charisma:["Talking to people","friendship from kind words","+"],fitness:["Walking and running","slower tiring on foot",""],
   photography:["Photos, up to five a day","landmark rewards","+"],handiness:["Repairing real damage","off roadside repairs",""]};
+let traitDraft=[];
+function traitsRender(){
+  const box=$("skTraits");box.replaceChildren();
+  const locked=save.traits.day>=Math.floor(Date.now()/86400000);
+  for(const [id,[name,effect]] of Object.entries(TRAITS)){
+    // a card each: the name, and what it does under it; a chosen one in the accent colour
+    const b=document.createElement("button"),on=traitDraft.includes(id),n=document.createElement("b"),e=document.createElement("small");
+    b.className="trt"+(on?" on":"");n.textContent=name;e.textContent=effect;b.append(n,e);
+    b.setAttribute("aria-label",name+". "+effect);b.setAttribute("aria-pressed",String(on));b.disabled=locked||!on&&traitDraft.length>=2;
+    b.onclick=()=>{traitDraft=on?traitDraft.filter(t=>t!==id):traitDraft.concat(id);traitsRender();
+      $("skTraits").querySelectorAll("button")[Object.keys(TRAITS).indexOf(id)].focus()};
+    box.appendChild(b);
+  }
+  const apply=$("skTraitsApply");apply.disabled=locked||traitDraft.slice().sort().join()===save.traits.ids.slice().sort().join();
+  apply.textContent=locked?"CHANGE TOMORROW":"APPLY TRAITS";
+}
+$("skTraitsApply").onclick=()=>{if(traitsApply(traitDraft))skillsOpen()};
 function skillsOpen(){
   if(state!=="PAUSE")return;
+  traitDraft=save.traits.ids.slice();traitsRender();
   const rows=$("skRows");rows.replaceChildren();
   for(const k of Object.keys(SKILL_RATE)){
     const level=skillLevel(k),lo=skillThreshold(level),next=skillThreshold(Math.min(10,level+1)),xp=save.skills[k],
@@ -738,7 +757,7 @@ function skillsOpen(){
     bar.setAttribute("aria-valuemin","0");bar.setAttribute("aria-valuemax","100");bar.setAttribute("aria-valuenow",String(pct));
     fill.style.width=pct+"%";bar.appendChild(fill);
     num.className="num"+(level===10?" top":"");num.textContent="LV "+level;
-    note.textContent=how+(level?" · "+sign+Math.round(Math.abs(SKILL_RATE[k])*level*100)+"% "+gives:"")+
+    note.textContent=(k==="photography"&&hasTrait("shutterbug")?"Photos, up to six a day":how)+(level?" · "+sign+Math.round(Math.abs(SKILL_RATE[k])*level*100)+"% "+gives:"")+
       (level===10?" · top level":" · "+(next-xp)+" XP to level "+(level+1));
     row.append(label,bar,num,note);rows.appendChild(row);
   }
@@ -1011,6 +1030,7 @@ const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","tod
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PREFS.includes(k))o[k]=sv[k];
+  delete o.traits;if(sv.traits){const t=traitsClean(sv.traits);if(t.ids.length||t.day>=0)o.traits=t}
   delete o.wants;const counts=sv.wants&&wantsClean(sv.wants).completed;if(counts&&Object.keys(counts).length)o.wants=counts;
   // aspiration steps paid count as progress, and none matches a save from before aspirations (js/progress.js)
   delete o.aspire;if(sv.aspire&&typeof aspireClean==="function"){const paid=aspireClean(sv.aspire).claimed;if(Object.keys(paid).length)o.aspire=paid}
@@ -1025,6 +1045,7 @@ const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
   // (an aspiration step paid is progress, even with the credits spent back to the start: js/progress.js)
+  if(sv.traits){const t=traitsClean(sv.traits);if(t.ids.length||t.day>=0)return false}
   if(sv.aspire&&typeof aspireClean==="function"&&Object.keys(aspireClean(sv.aspire).claimed).length)return false;
   const skills=skillsClean(sv.skills);if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))return false;
   return !(sv.wants&&Object.keys(wantsClean(sv.wants).completed).length)&&!homeProgress(sv.home)&&!workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&

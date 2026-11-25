@@ -89,3 +89,11 @@ test("a want drawn to replace one just done isn't done by the same action, only 
   expect(run('wantEvent("level")')).toBe(true);expect(g.save.cr).toBe(7500);
 });
 
+
+test("Free spirit increases the paid reward and preserves the second reroll across load and sync",()=>{
+  const {g,run}=game("walk");g.save.traits={v:1,ids:["freeSpirit"],day:-1};
+  const before=g.save.cr;run('wantEvent("walk",500)');expect(g.save.cr-before).toBe(900);
+  expect(run("wantsReroll()")).toBe(true);const first=JSON.parse(JSON.stringify(g.save.wants));
+  expect(run("wantsReroll()")).toBe(true);g.remote=g.save.wants;g.save.wants=first;
+  expect(run("wantsSync(remote)")).toBe(true);expect(run("save.wants=wantsClean(save.wants);wantsReroll()")).toBe(false);
+});

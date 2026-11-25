@@ -37,6 +37,9 @@ test("the repair sum shows the rule, what it comes to and the Handiness discount
   });
   expect(r.hint).toBe("Garage repairs are FREE. Roadside repairs cost 1,000 + 20 credits per damage percentage point: 2,000 CR, less 30% for your Handiness: 1,400 CR.");
   expect(r.button).toBe("ROADSIDE REPAIR · 1,400 CR");
+  // and a Gearhead's 10% after it (js/core.js traits)
+  const g = await game.eval(() => { const T = __T; T.save.traits = { v: 1, ids: ["gearhead"], day: -1 }; T.repairPanel(); return [document.getElementById("repairHint").textContent, document.getElementById("repairNow").textContent]; });
+  expect(g).toEqual(["Garage repairs are FREE. Roadside repairs cost 1,000 + 20 credits per damage percentage point: 2,000 CR, less 30% for your Handiness and 10% as a Gearhead: 1,260 CR.", "ROADSIDE REPAIR · 1,260 CR"]);
 });
 
 test("a friend getting out of a car twenty times is one set of shapes for their outfit, and each walker's face material is freed", async ({ game }) => {

@@ -7,14 +7,14 @@ function part(file,start,end){
 }
 function game(){
   const nodes=new Map(),alerts=[],document={hidden:false,createElement:()=>node()};
-  const node=()=>({children:[],style:{},setAttribute(){},append(...v){this.children.push(...v)},appendChild(v){this.children.push(v)},replaceChildren(){this.children=[]},
+  const node=()=>({children:[],style:{},querySelectorAll(){return this.children},setAttribute(){},append(...v){this.children.push(...v)},appendChild(v){this.children.push(v)},replaceChildren(){this.children=[]},
     focus(){document.activeElement=this},classList:{contains:()=>false,add(){},remove(){}}});
   const $=id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id)};
   const g={needsMood:()=>"Okay", wantEvent:()=>false,save:{cr:10000},document,$,state:"PAUSE",tabIdle:false,ev:null,testDrive:null,pc:null,
     toast:(...args)=>alerts.push(args),persist(){},show:(id,on)=>{$(id).visible=on},clamp:(x,a,b)=>Math.min(b,Math.max(a,x)),
     fmtCr:String,earn(x){g.save.cr+=x},Date:{now:()=>86400000*20000}};
   const ctx=vm.createContext(g),run=s=>vm.runInContext(s,ctx);
-  run(part("core","const SKILL_RATE=","function workClean("));run("save.skills=skillsClean(null);save.photoDay=photoDayClean(null)");
+  run(part("core","const SKILL_RATE=","function workClean("));run(part("life","function traitLoss(","function needsTick("));run(part("core","function wantPay(","function wantEvent("));run("save.traits=traitsClean(null);save.skills=skillsClean(null);save.photoDay=photoDayClean(null)");
   return {g,run,alerts,$};
 }
 test("saved XP is finite, bounded and own-field only; every next level costs more",()=>{
@@ -171,4 +171,43 @@ test("Needs shows the effect beside the mood, including the Lonely exception",()
     g.needsMood=()=>mood;run("needsRender()");
     expect($("ndMood").textContent).toBe(mood);expect($("ndMoodEffect").textContent).toBe(label);
   }
+});
+
+test("each skill trait multiplies a Content award exactly over 400 one-point awards",()=>{
+  const {g,run}=game();g.needsMood=()=>"Content";
+  for(const [id,skill] of Object.entries({foodie:"cooking",gearhead:"driving",athletic:"fitness",outgoing:"charisma",shutterbug:"photography",handy:"handiness"})){
+    g.save.traits.ids=[id];run('for(let i=0;i<400;i++)skillAward("'+skill+'",1)');
+    expect(g.save.skills[skill]).toBe(575);
+  }
+});
+test("traits picker commits two choices together, locks today and restores focus",()=>{
+  const {g,run,$}=game();run(part("screens","const SKILL_TEXT=","function pauseOff("));
+  $("pSkills").onclick();expect($("skTraits").children).toHaveLength(8);
+  $("skTraits").children[0].onclick();$("skTraits").children[1].onclick();
+  expect($("skTraits").children[2].disabled).toBe(true);expect(g.save.traits.ids).toEqual([]);
+  $("skTraitsApply").onclick();expect(g.save.traits.ids).toEqual(["foodie","gearhead"]);
+  expect($("skTraitsApply").disabled).toBe(true);expect(run('traitsApply([])')).toBe(false);
+  g.Date.now=()=>86400000*20001;expect(run('traitsApply([])')).toBe(true);
+  $("skClose").onclick();expect(g.document.activeElement).toBe($("pSkills"));
+});
+test("traits clean and cloud progress retain a deliberate removal and match an untouched legacy save",()=>{
+  const {g,run}=game();Object.assign(g,{homeProgress:()=>null,workClean:()=>({completed:0}),STARTERS:[]});
+  run(part("screens","const CL_PREFS=","function clSummary("));
+  expect(run('traitsClean({v:1,ids:["bad","handy","handy","foodie","outgoing"],day:99999})')).toEqual({v:1,ids:["foodie","outgoing"],day:20000});
+  expect(run('clProg({})===clProg({traits:traitsClean(null)})')).toBe(true);
+  expect(run('traitsApply(["foodie"]);clFresh(save)')).toBe(false);
+  expect(run('clProg({})===clProg({traits:{v:1,ids:[],day:20000}})')).toBe(false);
+});
+test("secondary effects adjust the actual repair price, snack XP, home gains and photo limit",()=>{
+  const {g,run}=game();Object.assign(g,{damagePct:()=>50,homeComfort:()=>0,homeHas:()=>false,NEEDS:{hunger:0},FOOT:{on:true},BOAT:{on:false}});
+  run(read("screens").split("\n").find(l=>l.startsWith("const repairPrice=")));
+  run(part("life","function homeGain(","function homeUse(")+part("life","function needsAdd(","// your mood"));
+  g.save.traits.ids=["gearhead","shutterbug"];expect(run("repairPrice()")).toBe(1800);
+  run("for(let i=0;i<7;i++)skillPhoto()");expect(g.save.photoDay.count).toBe(6);expect(g.save.skills.photography).toBe(75);
+  expect(run("photoDayClean(save.photoDay).count")).toBe(6);
+  g.save.traits.ids=["handy","homebody"];g.state="GARAGE";run('needsAdd("hunger",30)');expect(g.save.skills.cooking).toBe(10);
+  expect(run('["rest","snack","play"].map(homeGain)')).toEqual([48,36,30]);
+  expect(run('traitLoss("fun")')).toBe(1.1);
+  g.save.traits.ids=["athletic","outgoing"];expect(run('traitLoss("energy")')).toBe(.9);expect(run('traitLoss("social")')).toBe(1.15);
+  g.BOAT.on=true;expect(run('traitLoss("energy")')).toBe(1);g.save.traits.ids=["foodie"];expect(run('traitLoss("hunger")')).toBe(1.15);
 });
