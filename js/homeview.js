@@ -109,6 +109,8 @@ function homeBuild(){
   HV.floor.material.color.setHex(HV_FLOOR[save.home.floor]||HV_FLOOR.oak);HV.wall.material.color.setHex(HV_WALL[save.home.wall]||HV_WALL.plaster);
   if(HV.pick>=save.home.items.length)HV.pick=-1;
   hvMarks();
+  // a guest waiting at home sits on (or stands by) what's there now
+  if(typeof guestSync==="function"&&GUEST.who)guestSync();
 }
 // only inside the house (and on the way out of it): from the road the room would be a dozen draws for nothing
 function hvShow(s){if(HV.root)HV.root.visible=s==="GARAGE"||s==="EXIT"||s==="LOAD"}

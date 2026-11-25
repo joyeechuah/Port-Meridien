@@ -656,7 +656,7 @@ const ridePrompt=()=>RIDE.st==="ride"&&RIDE.t>5&&kphNow()<5?{t:"Drop off "+RIDE.
 
 /* ================================================================ A FRIEND OVER: asked while talking (Friend and up), they
    wait on the mezzanine at home until you hang out with them there; for this session */
-const GUEST={who:/** @type {any} */ (null),m:/** @type {any} */ (null),done:false};
+const GUEST={who:/** @type {any} */ (null),m:/** @type {any} */ (null),done:false,h:1,seat:/** @type {any} */ (null)};
 const GUEST_LINES={cheerful:"Love what you've done with the place!",grumpy:"It's... fine. Nice sofa, I suppose.",joker:"Is this a garage or a palace?",
   chatty:"We talked for hours. Same again soon?",shy:"Thanks for having me.",busy:"Got to dash, but that was fun."};
 function talkInvite(){
@@ -680,10 +680,23 @@ function guestSync(s=state){
   if(GUEST.done||!GUEST.who){guestDrop();show("gGuest",false);return}
   const home=s==="GARAGE";show("gGuest",home);$("gGuest").textContent="HANG OUT · "+GUEST.who.name.toUpperCase();
   if(!home){if(GUEST.m)GUEST.m.G.visible=false;return}
-  if(!GUEST.m){const id=GUEST.who.id;GUEST.m=pedModel(id,.94+rnd(id,38)*.12,pedLook(id))}
-  const c=guestSpot(),G=GUEST.m.G,d=gW(0,-1,0).sub(gW(0,0,0));
-  G.position.copy(gW(HOME_ORIGIN.x+(c.x+.5)*HOME_CELL,HOME_ORIGIN.z+(c.z+.5)*HOME_CELL,HOME_ORIGIN.y));G.rotation.set(0,Math.atan2(d.x,d.z),0);G.visible=true;
+  if(!GUEST.m){const id=GUEST.who.id;GUEST.h=.94+rnd(id,38)*.12;GUEST.m=pedModel(id,GUEST.h,pedLook(id))}
+  const M=GUEST.m,G=M.G,seat=guestSeat();GUEST.seat=seat;
+  if(seat){
+    // sitting on it, a little forward of its middle, facing the way it faces; the legs (one piece each, hip to shoe)
+    // reach forward and down to the floor and the hands rest in the lap
+    const r=homeRect(seat.id,seat.x,seat.z,seat.r),th=gYaw-seat.r*Math.PI/2,p=gW(HOME_ORIGIN.x+(r.x+r.w/2)*HOME_CELL,HOME_ORIGIN.z+(r.z+r.d/2)*HOME_CELL,HOME_ORIGIN.y);
+    p.x-=Math.sin(th)*.14;p.z-=Math.cos(th)*.14;p.y+=GUEST_SEAT[seat.id]-.92*GUEST.h;
+    G.position.copy(p);G.rotation.set(0,th+Math.PI,0);for(const l of M.legs)l.rotation.x=-1.05;for(const a of M.arms)a.rotation.x=-.5;
+  }else{const c=guestSpot(),d=gW(0,-1,0).sub(gW(0,0,0));
+    G.position.copy(gW(HOME_ORIGIN.x+(c.x+.5)*HOME_CELL,HOME_ORIGIN.z+(c.z+.5)*HOME_CELL,HOME_ORIGIN.y));G.rotation.set(0,Math.atan2(d.x,d.z),0);
+    for(const l of M.legs)l.rotation.x=0;for(const a of M.arms)a.rotation.x=0}
+  G.visible=true;
 }
+// a guest's seat: the comfiest kind you have (a sofa, then a reading chair, a window bench, a stool), and the first of
+// that kind; and how high each is to sit on
+const GUEST_SEAT={sofa:.46,armchair:.47,bench:.5,stool:.5};
+function guestSeat(){for(const id of Object.keys(GUEST_SEAT)){const p=save.home.items.find(q=>q.id===id);if(p)return p}return null}
 // their own face material goes with them (the shapes and the face's picture are shared)
 function guestDrop(){if(!GUEST.m)return;scene.remove(GUEST.m.G);GUEST.m.face.m.dispose();GUEST.m=null}
 // hanging out: social +30 and fun +10, Charisma XP, and friendship +4, up to +8 in a comfortable home; then they go
