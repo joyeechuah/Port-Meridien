@@ -19,7 +19,7 @@ function kitchen(stored) {
     talkClose(){},sitEnd(){},footHud(){},copClear(){g.WANTED.lvl=0;}});
   const people=read("people");
   const api=vm.runInNewContext([
-    part(core,"const clamp=","\n"),part(core,"function workClean(","const save="),
+    part(core,"const clamp=","\n"),part(core,"const SKILL_RATE=","const save="),"save.skills=skillsClean(null);",
     "save.work=workClean(stored);",read("home"),read("work"),part(screens,"const CL_PREFS=","const clPayload="),
     part(screens,"function clWork(","// Your needs"),
     part(screens,"function fastTravel(","/* ---------- cameras"),part(screens,"function goGarage(","function gunSync"),

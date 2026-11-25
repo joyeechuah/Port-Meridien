@@ -72,7 +72,8 @@ function talkPick(k){
   const t=TALKS.find(x=>x.id===k);if(!t)return false;
   const who=TALK.person,p=TALK.p,r=rel(who.id),used=TALK.used[t.id]||0;
   let d=t.base*TAKES[who.trait][t.id]/(1+used*(t.id==="hello"?4:1));
-  if(d>0)d*=1-Math.max(0,r.f)/125;
+  if(d>0)d*=(1-Math.max(0,r.f)/125)*skillFactor("charisma");
+  if(!used)skillAward("charisma",{hello:2,chat:4,joke:5,compliment:4,tip:2,rude:1}[k]);
   d=Math.round(d);
   TALK.used[t.id]=used+1;TALK.n++;TALK.busy=.7;
   relSet(who.id,r.f+d,r.n+(TALK.n===1?1:0));
@@ -349,7 +350,7 @@ const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
 function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
-function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);return NEEDS[k]-was}
+function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&state==="GARAGE"&&NEEDS[k]>was)skillAward("cooking",5);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
 // a tie) gives Tired, Hungry, Bored or Lonely, kept until that need is back to 35, unless another drops to 15 or under
 // and lower still. With no low need: Content when all four are at 70 or more, otherwise Okay
@@ -370,7 +371,7 @@ function needsTip(){
 function needsTick(dt){
   if(state!=="DRIVE"||document.hidden||!(dt>0))return;
   workTick(dt);NS.t+=dt;
-  for(const k of NEED_ORDER)NEEDS[k]=Math.max(0,NEEDS[k]-NEED_LOSS[k]*dt/NEED_HOUR);
+  for(const k of NEED_ORDER)NEEDS[k]=Math.max(0,NEEDS[k]-NEED_LOSS[k]*dt/NEED_HOUR*(k==="energy"&&FOOT.on&&!BOAT.on?skillFactor("fitness"):1));
   // a point of fun for every 5 s on end at 80 km/h or more in a car, or 3 m/s on the boat; slowing down, or getting
   // out or aboard, starts the 5 s again
   const mode=BOAT.on?"boat":FOOT.on?"foot":"car",fast=mode==="car"?kphNow()>=80:mode==="boat"&&Math.abs(BOAT.v)>=3;

@@ -20,7 +20,7 @@ test("automatic GET OUT ends the passenger ride and keeps the walking prompt on 
     kphNow:()=>0, SIDE:()=>1, footClear:(x,z)=>[x,z], footGround:()=>1, footModel:()=>m,
     footPlace:noop, placeCarMesh:noop, footCam:noop, footHud:noop,
     rideEnd:why=>{log.push(why);RIDE.st="";}, footPrompt:()=>log.push("walk prompt"),
-    updatePrompt:()=>log.push("drive prompt"), rideTick:noop, needsTick:noop,
+    skillMetres:{driving:0},skillDistance:noop,updatePrompt:()=>log.push("drive prompt"), rideTick:noop, needsTick:noop,
     tickDamage:noop, stepPlayer:noop, collidePlayer:noop, updateTraffic:noop, updateStreak:noop,
     updateRadars:noop, updatePassport:noop, jobTick:noop, updateGPS:noop, gunCar:noop,
     showDamageSmoke:noop, updateCam:noop, updateHUD:noop, drawMini:noop, waterT:0
@@ -35,7 +35,7 @@ test("a follower can stay at the kitchen through an automatic pause and a comple
   const p = {x:0,z:0,v:0,ph:0,h:0,m:{G:{position:{set:noop},rotation:{set:noop}},
     arms:[{rotation:{}},{rotation:{}}],legs:[{rotation:{}},{rotation:{}}]}};
   const RIDE={p,who:{},st:"follow",t:0,stuck:0}, payouts=[];
-  const globals={window:{},document:{hidden:false,getElementById:()=>null},state:"DRIVE",save:{work:{completed:0,cool:0}},
+  const globals={skillFactor:()=>1,skillAward:noop,window:{},document:{hidden:false,getElementById:()=>null},state:"DRIVE",save:{work:{completed:0,cool:0}},
     RIDE, RIDE_V:{wait:90,follow:2,hurry:3}, rideGoal:()=>({x:1,z:0,stop:.35}), footGround:()=>1,
     footClear:(x,z)=>[x,z], clamp:(x,a,b)=>Math.max(a,Math.min(x,b)), wrapA:x=>x,
     faceBlink:noop,emoteTick:noop,P:{vx:0,vz:0}, FOOT:{on:true,x:0,z:0}, BOAT:{on:false}, QUAY:{kitchen:{x:0,z:0}},

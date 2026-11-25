@@ -32,7 +32,8 @@ function workServe(i){
   if(i!==WORK.served){$("wkStatus").textContent="Still waiting for "+WORK_ITEMS[WORK.served].toLowerCase()+".";return false}
   if(++WORK.served===WORK_ITEMS.length){
     WORK.cool=120;save.work.cool=120;save.work.completed=Math.min(9999,save.work.completed+1);
-    workCancel();earn(300);toast("SHIFT COMPLETE","+300 CR","gold");
+    const pay=Math.round(300*skillFactor("cooking"));skillAward("cooking",25);
+    workCancel();earn(pay);toast("SHIFT COMPLETE","+"+pay+" CR","gold");
   }else{WORK.wait=10;workRender()}
   return true;
 }
@@ -58,7 +59,7 @@ function workRender(){
   if(key===WORK.label)return;
   WORK.label=key;$("wkStatus").textContent=text;
   show("wkEat",!a);show("wkStart",!a);show("wkOrders",a);show("wkLeave",a);
-  const b=$("wkStart");b.disabled=c>0||!available;b.textContent=c?"Next shift in "+c+" s":"Work a shift · 300 CR";
+  const b=$("wkStart");b.disabled=c>0||!available;b.textContent=c?"Next shift in "+c+" s":"Work a shift · "+Math.round(300*skillFactor("cooking"))+" CR";
 }
 function workButtons(){return Array.from($("work").querySelectorAll("button")).filter(b=>b.offsetParent&&!b.disabled)}
 function workKey(e,k){

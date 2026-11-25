@@ -11,8 +11,12 @@ function driveUpdate(dt){
   if(BOAT.on){boatUpdate(dt);return}
   if(FOOT.on){footUpdate(dt);return}
   tickDamage(P,dt);
+  const startX=P.x,startZ=P.z;
   const steps=Math.ceil(dt/.017),h=dt/steps;
   for(let i=0;i<steps;i++){stepPlayer(h);collidePlayer()}
+  const travelled=Math.hypot(P.x-startX,P.z-startZ);
+  if(P.hitT>0||P.damageT>0||!P.onRoad||P.water)skillMetres.driving=0;
+  else if(travelled<=150*dt)skillDistance("driving",travelled);
   P.hitT-=dt;
   if(FOOT.stop){footStopTick(dt);if(FOOT.on)return}
   updateTraffic(dt);

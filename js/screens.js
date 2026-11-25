@@ -371,7 +371,8 @@ function goGarage(fromFade){
   if(WANTED.lvl){wantedBlock();return false}
   workCancel();
   const doIt=()=>{
-    endEvent();if(testDrive)finishTestDrive(false);streetReset();
+    const repaired=(testDrive?testDrive.damage:P.damage)>0;
+    endEvent();if(testDrive)finishTestDrive(false);streetReset();if(repaired)skillAward("handiness",15);
     P.damage=P.damageT=0;repairWarnLevel=0;if(pc)showDamageSmoke(pc,0);
     // going home ends a contract; the garage hides the HUD, so the message waits for the next drive
     if(job&&jobEnd("abandoned"))jobNotices.push(["CONTRACT ABANDONED","You went home, so it ended without a reward"]);
@@ -638,7 +639,7 @@ $("prompt").onclick=()=>{if(state==="DRIVE"&&promptAct)promptAct()};
 // Damage is session-only. Credits are saved only after the player confirms a roadside repair.
 let repairConfirm=false,repairReturnPause=false;
 const damagePct=()=>Math.ceil(Math.max(0,P.damage||0));
-const repairPrice=()=>1000+20*damagePct();
+const repairPrice=()=>Math.round((1000+20*damagePct())*skillFactor("handiness"));
 function repairBlocked(){
   if(!damagePct())return "Your vehicle has no damage.";
   if(testDrive)return "Repair your own car after the test drive ends.";
@@ -688,7 +689,7 @@ $("repairNow").onclick=()=>{
   if(!repairConfirm){repairConfirm=true;repairPanel();return}
   const price=repairPrice();
   if(price>save.cr||repairBlocked()){repairPanel();return}
-  save.cr-=price;P.damage=P.damageT=0;repairWarnLevel=0;
+  skillAward("handiness",15);save.cr-=price;P.damage=P.damageT=0;repairWarnLevel=0;
   if(pc)showDamageSmoke(pc,0);
   persist();updateMoney();repairConfirm=false;
   show("repair",false);
@@ -702,6 +703,20 @@ function pauseOn(){if(state!=="DRIVE")return;setState("PAUSE");clearInput();audi
   $("pRepair").textContent="VEHICLE CONDITION · "+damagePct()+"%";$("pNeeds").textContent=needsLabel();
   show("pQuit",!!(ev||testDrive));$("pQuit").textContent=testDrive?"END TEST DRIVE":ev&&ev.fin?"SEE RESULT":"QUIT EVENT";show("pHome",!testDrive);
   syncPause();$("pFb").classList.toggle("wide",[...document.querySelectorAll("#pause .mbtn")].filter(b=>b.id!=="pRes"&&!b.classList.contains("hide")).length%2===1);$("pause").inert=false;show("pause",true)}
+function skillsOpen(){
+  if(state!=="PAUSE")return;
+  const rows=$("skRows");rows.replaceChildren();
+  for(const k of Object.keys(SKILL_RATE)){
+    const level=skillLevel(k),lo=skillThreshold(level),next=skillThreshold(Math.min(10,level+1));
+    const label=document.createElement("label"),bar=document.createElement("progress");
+    label.textContent=k[0].toUpperCase()+k.slice(1)+" · Level "+level;
+    bar.max=level===10?1:next-lo;bar.value=level===10?1:save.skills[k]-lo;
+    label.appendChild(bar);rows.appendChild(label);
+  }
+  $("pause").inert=true;show("skills",true);$("skClose").focus();
+}
+function skillsClose(){show("skills",false);$("pause").inert=false;$("pSkills").focus()}
+$("pSkills").onclick=skillsOpen;$("skClose").onclick=skillsClose;
 function pauseOff(){show("pause",false);if(state==="PAUSE"){setState("DRIVE");audioOn(true);TILT.zero=TILT.phi}}
 /** @type {[string, number|null][]} */
 const TODS=[["AUTO",null],["MORNING",8.5],["NOON",13],["SUNSET",17.75],["NIGHT",22.5]];
@@ -842,6 +857,7 @@ addEventListener("keydown",e=>{
   else if(!$("jobs").classList.contains("hide")){if(k==="escape")jobsClose()}
   else if(!$("play").classList.contains("hide")){if(k==="escape")netClose()}
   else if(!$("cups").classList.contains("hide")){if(k==="escape")cupsClose()}
+  else if(!$("skills").classList.contains("hide")){if(k==="escape")skillsClose()}
   else if(!$("needs").classList.contains("hide")){if(k==="escape")needsClose()}
   else if(state==="PAUSE"){if(k==="escape"||k==="p")pauseOff();else if(k==="v")photoEnter()}
   else if(state==="PHOTO"){
@@ -964,6 +980,8 @@ function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PREFS.includes(k))o[k]=sv[k];
   const layout=homeProgress(sv.home);if(layout)o.home=layout;
+  const skills=skillsClean(sv.skills);delete o.skills;delete o.photoDay;
+  if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))o.skills=skills;
   const shifts=workClean(sv.work).completed;if(shifts)o.work={completed:shifts};
   // no friendships yet (js/life.js) is the same progress as a save from before they existed, so the new empty field
   // doesn't make two devices disagree
@@ -971,6 +989,7 @@ const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PR
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
+  const skills=skillsClean(sv.skills);if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))return false;
   return !homeProgress(sv.home)&&!workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&
     (!sv.jobs||!Object.values(sv.jobs).some(v=>typeof v==="number"?v>0:!e(v)))}
 function clSummary(sv){const champ=sv.champ||{};return{cr:sv.cr||0,cars:(sv.owned||[]).length,lvl:lvlOf(sv.xp||0),found:foundCount(sv.found||{}),
@@ -1081,7 +1100,10 @@ function clReconcile(doc){
     return clUpload(doc&&doc.rev||0)}
   const L=clProg(save),C=clProg(cloud),rev=doc.rev||0;
   // the same progress, or neither side moved on since this device last synced: in step (settings are sent if changed)
-  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();clWork(cloud);clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}
+  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();
+    const day=photoDayClean(cloud.photoDay);
+    if(day.day>save.photoDay.day||day.day===save.photoDay.day&&day.count>save.photoDay.count){save.photoDay=day;persist()}
+    clWork(cloud);clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}
   if(clFresh(save))return clApply(doc,cloud);                                      // a new device: bring the account's progress here
   if(CL.meta.rev===rev&&CL.meta.prog)return clUpload(rev);                          // only this device moved on since it last synced
   if(CL.meta.rev&&CL.meta.prog===L)return clApply(doc,cloud);                        // only the account moved on (another device)

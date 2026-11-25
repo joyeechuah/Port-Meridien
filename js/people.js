@@ -521,6 +521,7 @@ function footUpdate(dt){
     const g=footGround(nx,nz);
     if(g>-.4&&g-FOOT.y<.6){
       strideSpeed=dt>0?Math.min(Math.abs(FOOT.v),Math.hypot(nx-FOOT.x,nz-FOOT.z)/dt):0;
+      skillDistance("fitness",strideSpeed*dt*(run&&go>0?2:1));
       FOOT.x=nx;FOOT.z=nz;
     }
     if(strideSpeed<.01)FOOT.v=0;
