@@ -200,14 +200,18 @@ function skillDistance(k,metres){
     const xp=Math.floor(skillMetres[k]/interval);skillMetres[k]%=interval;skillAward(k,xp);persist();
   }
 }
+// the UTC day of the photos counted, and how many. A day still to come (the clock was set ahead, here or on another
+// device) is taken as today with its count, on loading, from the account and at a capture: putting the clock right
+// then neither blocks the photos until that day nor gives five more
 function photoDayClean(raw){
+  const today=Math.floor(Date.now()/86400000);
   return Number.isSafeInteger(raw?.day)&&raw.day>=0&&Number.isInteger(raw.count)?
-    {day:raw.day,count:clamp(raw.count,0,5)}:{day:0,count:0};
+    {day:Math.min(raw.day,today),count:clamp(raw.count,0,5)}:{day:0,count:0};
 }
 function skillPhoto(){
   const today=Math.floor(Date.now()/86400000),record=save.photoDay;
-  if(today>record.day){record.day=today;record.count=0}
-  if(today!==record.day||record.count>=5)return;
+  if(today>record.day){record.day=today;record.count=0}else if(today<record.day)record.day=today;
+  if(record.count>=5)return;
   record.count++;skillAward("photography",10);persist();
 }
 function workClean(w){

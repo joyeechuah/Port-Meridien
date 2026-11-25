@@ -654,7 +654,10 @@ function repairPanel(){
   $("repairFill").style.width=damage+"%";
   $("repairFill").style.background=damage>=90?"#e2483d":damage>=60?"#f2b33d":"#a4c8b0";
   $("repairDetails").textContent=damage?"Engine power reduced by "+Math.round((1-damagePower(P))*100)+"%. The vehicle remains drivable.":"Your vehicle is fully repaired.";
-  $("repairHint").textContent=testDrive?"End this test drive to return to your own vehicle.":"Garage repairs are FREE. Roadside repairs cost 1,000 + 20 credits per damage percentage point.";
+  // the rule, what it comes to, and Handiness's discount on it, so the sum agrees with the price on the button
+  const base=1000+20*damage,off=Math.round((1-skillFactor("handiness"))*100);
+  $("repairHint").textContent=testDrive?"End this test drive to return to your own vehicle.":"Garage repairs are FREE. Roadside repairs cost 1,000 + 20 credits per damage percentage point"+
+    (damage?": "+fmtCr(base)+" CR"+(off>0?", less "+off+"% for your Handiness: "+fmtCr(price)+" CR.":"."):".");
   $("repairHome").disabled=!!testDrive||!!WANTED.lvl;
   $("repairHome").textContent=WANTED.lvl?"RETURN HOME · LOSE THE POLICE FIRST":job?"RETURN HOME · END CONTRACT · REPAIR FREE":ev?"RETURN HOME · END RACE · REPAIR FREE":"RETURN HOME · REPAIR FREE";
   if(blocked)repairConfirm=false;
@@ -830,13 +833,15 @@ function kbFocusedButton(){const el=document.activeElement;return !!el&&el===kbF
 addEventListener("keydown",e=>{
   const k=e.key.toLowerCase();
   if(tabIdle)return;
+  // the cloud save's screens stand over everything, repairs included: their keys come first (Escape over repairs used to
+  // close repairs and drive on, with the cloud's choice still on screen)
+  if(clOverlayOpen()){if(k==="escape"&&!e.repeat)clEscape();return}
   if(!$("repair").classList.contains("hide")){if((k==="escape"||k==="p")&&!e.repeat){e.preventDefault();closeRepair()}return}
   // typing in a text field (the number plate) isn't driving or a shortcut; Enter or Escape leaves the field. Sliders (photo
   // mode's zoom and distance) keep the shortcuts: they used to swallow Escape, V, R and Enter while they had focus
   const tg=e.target;if(tg&&tg.tagName==="INPUT"&&tg.type!=="range"){if(k==="enter"||k==="escape")tg.blur();return}
   // a focused slider keeps its own arrow, Home, End and Page keys (they moved the photo camera and the slider stood still)
   if(tg&&tg.tagName==="INPUT"&&tg.type==="range"&&/^(arrow(up|down|left|right)|home|end|pageup|pagedown)$/.test(k))return;
-  if(clOverlayOpen()){if(k==="escape"&&!e.repeat)clEscape();return}
   if(workKey(e,k))return;
   if(state==="ARRIVAL"){if(["escape","enter"," "].includes(k)){e.preventDefault();if(!e.repeat)finishArrival()}return}
   if(state==="WARDROBE"){
@@ -1112,7 +1117,7 @@ function clReconcile(doc){
     return clUpload(doc&&doc.rev||0)}
   const L=clProg(save),C=clProg(cloud),rev=doc.rev||0;
   // the same progress, or neither side moved on since this device last synced: in step (settings are sent if changed)
-  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();
+  if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();save.photoDay=photoDayClean(save.photoDay);
     if(L===C&&cloud.wants&&wantsSync(cloud.wants))persist();
     const day=photoDayClean(cloud.photoDay);
     if(day.day>save.photoDay.day||day.day===save.photoDay.day&&day.count>save.photoDay.count){save.photoDay=day;persist()}
