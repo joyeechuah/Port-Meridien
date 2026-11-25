@@ -8,7 +8,7 @@ Open Pause → Skills → Traits, select up to two buttons and choose Apply trai
 | Gearhead | Driving XP +25%. Roadside repairs cost 10% less after the Handiness discount. |
 | Athletic | Fitness XP +25%. Energy falls 10% slower on foot. |
 | Outgoing | Charisma XP +25%. Social falls 15% faster. |
-| Homebody | REST, SNACK and PLAY restore 20% more at home. Fun falls 10% faster in active play away from home. |
+| Homebody | REST, SNACK, PLAY and a friend over restore 20% more at home. Fun falls 10% faster in active play away from home. |
 | Shutterbug | Photography XP +25%. The first six photos per UTC day earn XP. |
 | Handy | Handiness XP +25%. Home snacks award double base Cooking XP. |
 | Free spirit | Wants pay 20% more. Two rerolls per UTC day. |
