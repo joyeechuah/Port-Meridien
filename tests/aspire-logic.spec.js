@@ -76,3 +76,15 @@ test("no step paid matches a save from before aspirations; a step paid is progre
   expect(run("clProg({cr:5})===clProg({cr:5,aspire:{v:1,claimed:{}}})")).toBe(true);
   expect(run("clProg({cr:5})===clProg({cr:5,aspire:{v:1,claimed:{chef:1}}})")).toBe(false);
 });
+
+test("a save whose only sign of play is a paid aspiration step isn't fresh, so the account can't silently replace it", () => {
+  const { g, run } = game();
+  Object.assign(g, { homeProgress: () => null, workClean: () => ({ completed: 0 }), wantsClean: () => ({ completed: {} }), STARTERS: ["golf"] });
+  run(part("screens", "const CL_PREFS=", "function clSummary("));
+  // five daybeds bought, the first Home maker step paid, all five sold: the wallet is back where it started
+  const start = '{cr:120000,owned:["golf"],paint:{},rec:{},found:{},radar:{},champ:{},mods:{},rel:{},xp:0';
+  expect(run("clFresh(" + start + "})")).toBe(true);
+  expect(run("clFresh(" + start + ',aspire:{v:1,claimed:{home:1}}})')).toBe(false);
+  expect(run("clFresh(" + start + ',aspire:{v:1,claimed:{}}})')).toBe(true);
+});
+

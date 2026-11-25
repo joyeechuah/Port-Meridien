@@ -4,7 +4,7 @@
 if(window.__gameOff)throw window.__gameOff;
 
 const WORK_ITEMS=["Bread","Bowl","Stew"];
-const WORK={active:false,panel:false,served:0,wait:0,cool:save.work.cool,hp:0,label:""};
+const WORK={active:false,panel:false,served:0,wait:0,cool:save.work.cool,hp:0,label:"",rank:/** @type {number|undefined} */ (undefined),batch:false};
 function workNear(){
   const k=QUAY.kitchen;
   return FOOT.on&&!BOAT.on&&k&&Math.hypot(FOOT.x-k.x,FOOT.z-k.z)<=FOOT_V.reach;
@@ -39,20 +39,25 @@ function workRankText(){
   const n=Math.max(0,N.shifts-save.work.completed),cook=skillLevel("cooking")<N.cook;
   return R.name+". "+N.name+" after "+(n?n+" more shift"+(n===1?"":"s"):"")+(n&&cook?" and ":"")+(cook?"Cooking level "+N.cook:"")+".";
 }
-// after a shift: promoted, if the shift (or the Cooking it taught) took you to the next rank
-function workPromoted(was){const now=workRank();if(now<=was)return false;
-  toast("PROMOTED",WORK_RANKS[now].name+" · "+workPay()+" CR a shift","gold");wantEvent("promote");return true}
+// A promotion is the rank passing the one this session last knew, whatever raised it: a shift, or Cooking XP from a
+// snack at home. It's counted once, with its want, and a promotion want a head chef can no longer earn gives way
+function workRankCheck(){const now=workRank();if(WORK.rank===undefined){WORK.rank=now;return false}
+  if(now<=WORK.rank)return false;WORK.rank=now;wantEvent("promote");if(now===WORK_RANKS.length-1)wantsTidy();return true}
+const workPromotedToast=()=>toast("PROMOTED",WORK_RANKS[workRank()].name+" · "+workPay()+" CR a shift","gold");
 function workServe(i){
   if(!WORK.panel||!WORK.active)return false;
   if(!workAvailable()||HEALTH.hp<WORK.hp){workCancel();return false}
   if(WORK.wait>0)return false;
   if(i!==WORK.served){$("wkStatus").textContent="Still waiting for "+WORK_ITEMS[WORK.served].toLowerCase()+".";return false}
   if(++WORK.served===WORK_ITEMS.length){
-    // paid at the rank the shift was worked at; finishing it may then promote you
-    const rank=workRank(),pay=workPay();
+    // Paid at the rank the shift was worked at. Its count and the Cooking it teaches may promote you: both go in first,
+    // so the promotion (and its want) is settled once, before the wage is saved, and the shift's want is drawn again
+    // knowing the rank it leaves you at (a promotion want could be drawn for someone this shift made head chef)
+    const pay=workPay();
     WORK.cool=120;save.work.cool=120;save.work.completed=Math.min(9999,save.work.completed+1);
-    wantEvent("shift");skillAward("cooking",25);
-    workCancel();earn(pay);toast("SHIFT COMPLETE","+"+pay+" CR","gold");workPromoted(rank);
+    WORK.batch=true;skillAward("cooking",25);WORK.batch=false;
+    const up=workRankCheck();wantEvent("shift");
+    workCancel();earn(pay);toast("SHIFT COMPLETE","+"+pay+" CR","gold");if(up)workPromotedToast();
   }else{WORK.wait=10;workRender()}
   return true;
 }
@@ -108,3 +113,5 @@ function workPad(hit){
 $("wkEat").onclick=()=>{if(WORK.panel&&!WORK.active&&workNear()){workClose();kitchenMeal()}};
 $("wkStart").onclick=workStart;$("wkLeave").onclick=workCancel;$("wkClose").onclick=workClose;
 WORK_ITEMS.forEach((_,i)=>{$("wk"+i).onclick=()=>workServe(i)});
+// the rank this session starts from (a promotion is passing it), and a saved promotion want a head chef can't earn
+WORK.rank=workRank();wantsTidy();

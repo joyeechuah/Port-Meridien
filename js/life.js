@@ -475,7 +475,10 @@ function needsRender(){
     li.textContent=it.label+(id==="walk"?" ("+Math.floor(save.wants.metres)+"/500 m)":"")+" · "+fmtCr(it.cr)+" CR";list.appendChild(li)}
   // one reroll a day (UTC): once it's used, the button says when the next one comes
   const used=save.wants.day>=Math.floor(Date.now()/86400000);$("ndReroll").disabled=used;$("ndReroll").textContent=used?"NEW REROLL TOMORROW":"REROLL WANTS";
-  const mood=needsMood();$("ndMood").textContent=mood;$("ndTip").textContent=needsTip();
+  const mood=needsMood();$("ndMood").textContent=mood;
+  $("ndMoodEffect").textContent=mood==="Lonely"?"Charisma grows 50% faster · other skills grow 15% slower":
+    mood==="Content"?"Skills grow 15% faster":mood==="Okay"?"Skills grow at their usual rate":"Skills grow 15% slower";
+  $("ndTip").textContent=needsTip();
   for(const k of NEED_ORDER){const v=needOf(k),[w,c]=NEED_STATE(v),row=$("nd_"+k);
     row.querySelector("i").style.width=v+"%";row.querySelector(".ndb").setAttribute("aria-valuenow",String(v));
     row.querySelector(".ndb").setAttribute("aria-valuetext",v+" of 100, "+w.toLowerCase());
