@@ -152,7 +152,9 @@ These rules are working decisions, recorded in [docs/STEP4_DECISIONS.md](docs/ST
 - **The police:** patrols, a wanted level of one to five stars, chases by car and on foot, fines, and losing them.
 - **The pistol:** lock-on aiming, health, being knocked out, arrest, and settings for violence and flashes.
 - **Things to do:** races, time trials, championships, delivery contracts, speed radars and an explorer passport of 18 landmarks.
-- **Life:** the sixteen people of Old Quay, each with a name and a personality, to talk to and make friends with; friends who come for a ride and ask for lifts; and four needs of your own with a mood (see [Needs](#needs)).
+- **Life:** the sixteen people of Old Quay, each with a name and a personality, to talk to and make friends with; friends who come for a ride and ask for lifts; and four needs of your own with a mood (see [Needs](#needs)). The mood speeds up or slows down your skills ([docs/MOODS.md](docs/MOODS.md)).
+- **Home:** **DESIGN HOME** in the garage furnishes the mezzanine: 24 pieces to buy, place on a half-metre grid, move, turn and sell, and wall and floor finishes. A fridge brings SNACK and a TV or computer PLAY. A friend can be asked over to hang out ([docs/FRIENDS_OVER.md](docs/FRIENDS_OVER.md)).
+- **Getting better at things:** six skills that grow as you drive, cook, talk, walk, take photos and repair, each with a bonus ([docs/SKILLS.md](docs/SKILLS.md)); a career at the Market Kitchen from Dishwasher to Head chef ([docs/CAREERS.md](docs/CAREERS.md)); three wants at a time that pay credits ([docs/WANTS.md](docs/WANTS.md)); and six aspirations of three steps each ([docs/ASPIRATIONS.md](docs/ASPIRATIONS.md)). Skills and aspirations are under **SKILLS** in the pause menu, wants under **NEEDS**.
 - **Playing together:** **PLAY TOGETHER** in the pause menu starts a room with a four-letter code. Up to three friends join with it from their own phones or computers, and everyone sees each other drive, walk and take the boat, with a name above each player. Traffic, the police, races and the time of day stay each player's own.
 - **Saves** in the browser, with an optional cloud backup through Google sign-in on the game's own site (see [CLOUD_SETUP.md](CLOUD_SETUP.md)).
 
@@ -193,6 +195,7 @@ Run one Playwright instance at a time: the test server uses port 4173 and reads 
 - Every fix or feature comes with a test that fails without it.
 - Tests reach the game's internals through `window.__T`; add a name to the list in `tests/support/instrument.js` when a test needs one.
 - In tests the police ignore crimes unless a test opens the game with `game.open({ police: true })`, so a crash in an unrelated test never starts a chase.
+- The first-time hints are off in tests unless a test opens the game with `game.open({ hints: true })`, so their notices don't mix with the ones other tests check.
 - `tests/world-baseline.spec.js` guards the roads, races, landmarks and contracts. A change to the world that moves any of them must update `tests/fixtures/world-baseline.json` on purpose (see `tests/fixtures/WORLD_BASELINE_README.md`).
 
 ### Documents
