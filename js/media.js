@@ -337,7 +337,11 @@ function photoLookSet(i){
   // lit at once, so a picture taken straight after choosing a look already has it
   if(PH.on){applyDayNight();updateLampLights();photoFrame(0)}
 }
-function photoReset(){if(!pc)return;PH.yaw=P.h+Math.PI*.82;PH.pitch=.22;PH.dist=7.2*(pc.shape==="suv"?1.15:1);PH.fov=50;phSync()}
+// three-quarters from behind whatever you're in or on, at a distance to suit it: the boat, you on foot, or the car. It
+// went by the parked car's heading and size on foot and aboard, so RESET could frame you from any side
+function photoReset(){if(!pc)return;
+  const boat=typeof BOAT!=="undefined"&&BOAT.on,foot=!boat&&typeof FOOT!=="undefined"&&FOOT.on;
+  PH.yaw=(boat?BOAT.h:foot?FOOT.h:P.h)+Math.PI*.82;PH.pitch=.22;PH.dist=boat?9.5:foot?4.2:7.2*(pc.shape==="suv"?1.15:1);PH.fov=50;phSync()}
 function photoEnter(){
   if(PH.on||!pc||(state!=="DRIVE"&&state!=="PAUSE"))return false;
   PH.prev=state;

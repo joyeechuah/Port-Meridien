@@ -1372,17 +1372,23 @@ function boatPlace(dt){
   BOAT.wake.rotation.set(pitch,0,roll,"ZXY");
   BOAT.wake.material.opacity=Math.min(.22,sp*.016);BOAT.wake.visible=sp>.6&&BOAT.v>0;
 }
-// whether the boat can float with its middle at (x,z) facing h: deep enough from bow to stern, clear of the pier and
-// of other boats, and not out past the edge of the map
-function boatFree(x,z,h){
-  if(Math.hypot(x,z)>BOAT_V.edge)return false;
-  const fx=Math.sin(h),fz=Math.cos(h),r=BOAT_V.r;
-  for(const k of[-BOAT_V.half+r,0,BOAT_V.half-r]){const px=x+fx*k,pz=z+fz*k;
-    if(meshH(px,pz)>BOAT_V.depth)return false;
-    if(px>PIER.x0-r&&px<PIER.x1+r&&pz>PIER.z0-r&&pz<PIER.z1+r)return false}
-  for(const b of BOATS)if(Math.hypot(b.x-x,b.z-z)<9)return false;
-  return true;
+// what keeps the boat from floating with its middle at (x,z) facing h, or "" if nothing: "edge" (out past the edge of
+// the map), "pier", "shallow" (not deep enough somewhere from bow to stern) or "boat" (within 9 m of another, and nearer
+// it than you are now). The boats cruising round the island sail their loop through anything in the way: one passing
+// through yours used to leave it unable to move or even turn until it had gone, as every spot within 9 m was refused,
+// the one you were in included. Now you can always move away from a boat, never closer
+function boatBlock(x,z,h){
+  if(Math.hypot(x,z)>BOAT_V.edge)return "edge";
+  const fx=Math.sin(h),fz=Math.cos(h),r=BOAT_V.r,ks=[-BOAT_V.half+r,0,BOAT_V.half-r];
+  for(const k of ks){const px=x+fx*k,pz=z+fz*k;if(px>PIER.x0-r&&px<PIER.x1+r&&pz>PIER.z0-r&&pz<PIER.z1+r)return "pier"}
+  for(const k of ks)if(meshH(x+fx*k,z+fz*k)>BOAT_V.depth)return "shallow";
+  for(const b of BOATS){const d=Math.hypot(b.x-x,b.z-z);if(d<9&&d<Math.hypot(b.x-BOAT.x,b.z-BOAT.z)-1e-6)return "boat"}
+  return "";
 }
+const boatFree=(x,z,h)=>!boatBlock(x,z,h);
+// what you're told on running into each (the pier and other boats used to be "too shallow" too)
+const BOAT_SAY=/** @type {Object<string,[string,string]>} */ ({edge:["OPEN SEA","Nothing out there: turn back towards the island"],shallow:["TOO SHALLOW","The boat needs deeper water"],
+  pier:["THE PIER","Steer round it, or come alongside slowly to step off"],boat:["ANOTHER BOAT","Steer round it"]});
 // the spot on the pier's deck you'd step onto from where the boat is, or null if it's too far or still moving
 function boatLandSpot(){
   if(Math.abs(BOAT.v)>1.5)return null;
@@ -1429,8 +1435,9 @@ function boatUpdate(dt){
   // it only turns while moving, and the wrong way round in reverse, like a boat
   const nh=wrapA(BOAT.h-BOAT.steer*BOAT_V.turn*clamp(BOAT.v/5,-1,1)*dt);
   const nx=BOAT.x+Math.sin(nh)*BOAT.v*dt,nz=BOAT.z+Math.cos(nh)*BOAT.v*dt;
-  if(boatFree(nx,nz,nh)){BOAT.x=nx;BOAT.z=nz;BOAT.h=nh}
-  else if(boatFree(BOAT.x,BOAT.z,nh)){BOAT.h=nh;if(Math.abs(BOAT.v)>3)toastOnce("boat",Math.hypot(nx,nz)>BOAT_V.edge?["OPEN SEA","Nothing out there: turn back towards the island"]:["TOO SHALLOW","The boat needs deeper water"]);BOAT.v*=-.2}
+  const why=boatBlock(nx,nz,nh);
+  if(!why){BOAT.x=nx;BOAT.z=nz;BOAT.h=nh}
+  else if(boatFree(BOAT.x,BOAT.z,nh)){BOAT.h=nh;if(Math.abs(BOAT.v)>3)toastOnce("boat",BOAT_SAY[why]);BOAT.v*=-.2}
   else BOAT.v*=-.2;
   boatPlace(dt);
   const sp=boatLandSpot();promptAct=sp?boatLand:null;show("prompt",!!sp);if(sp)$("promptTxt").textContent="Step onto the pier";

@@ -116,7 +116,9 @@ function resetToRoad(fade){
     // collision shot you off at up to 8,000 km/h (a test caught it about one time in three)
     // (a police car chasing you only drops back 25 m along its road: sending it far off would be a way to lose it)
     for(const t of TRAFFIC)if(t.e&&Math.abs(t.wx-P.x)<14&&Math.abs(t.wz-P.z)<14){
-      if(t.chase){t.s=clamp(t.s-25*t.dir,0,t.e.len);t.v=0;copPose(t,0);continue}
+      // (one off the road first rejoins the nearest: its road and place were still where it had left the road, so it was
+      // put back there, which could be 160 m away or more)
+      if(t.chase){if(t.free&&typeof copRejoin==="function")copRejoin(t);t.s=clamp(t.s-25*t.dir,0,t.e.len);t.v=0;copPose(t,0);continue}
       t.e=null;t.c.G.visible=false;t.wx=t.wz=1e6;t.lost=!spawnTraffic(t,220,560,true)}
     snapCam()};
   if(!fade){go();return}
