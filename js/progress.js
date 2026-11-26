@@ -197,21 +197,20 @@ function jobEnd(how,why){
   if(!job||job.ended)return false;
   const J=job.def;job.ended=true;job=null;
   save.jobActive=null;
-  let pay=0;
+  let pay=0,promoted=0;
   if(how==="completed"){
     const before=contractRank();
     pay=contractPay(J,before);
     save.jobs[J.type]++;save.jobs.runs[J.id]=(save.jobs.runs[J.id]||0)+1;save.jobs.earned+=pay;
     const rank=contractRank();
-    if(rank>before){
-      wantEvent("contractPromotion");
-      if(rank===CONTRACT_RANKS.length-1)wantsTidy();
-      toast("CONTRACT PROMOTION",CONTRACT_RANKS[rank].name+" · +"+CONTRACT_RANKS[rank].bonus+"% contract pay","gold");
-    }
+    // (the want is paid with the contract, in the same save)
+    if(rank>before){promoted=rank;wantEvent("contractPromotion");if(rank===CONTRACT_RANKS.length-1)wantsTidy()}
     earn(pay);
   }else{save.jobs[how==="failed"?"failed":"abandoned"]++;persist()}
   clearGPS();jobMarker(false);show("jobhud",false);
-  if(how==="completed")toast("CONTRACT COMPLETE",J.title+" · +"+fmtCr(pay)+" CR","gold");
+  // the contract's pay first, then the promotion it earned: the next one pays the new rate
+  if(how==="completed"){toast("CONTRACT COMPLETE",J.title+" · +"+fmtCr(pay)+" CR","gold");
+    if(promoted)toast("CONTRACT PROMOTION",CONTRACT_RANKS[promoted].name+" · +"+CONTRACT_RANKS[promoted].bonus+"% on contracts from now","gold")}
   else if(how==="failed")toast("CONTRACT FAILED",why||"No reward","bad");
   else if(why)toast("CONTRACT ABANDONED",why,"bad");
   if(!$("jobs").classList.contains("hide"))renderJobs();
@@ -251,7 +250,10 @@ function jobHUD(){
 // ---- the contracts screen, from the pause menu
 function renderJobs(){
   const s=save.jobs,why=jobBlocked(),rank=contractRank(),current=CONTRACT_RANKS[rank],next=CONTRACT_RANKS[rank+1];
-  $("jbStats").textContent=current.name+" · +"+current.bonus+"% pay"+(next?" · "+(next.completed-contractCount())+" more for "+next.name:"")+" · Completed: "+s.parcel+" parcel · "+s.courier+" courier · "+s.tour+" tour"+(s.tour===1?"":"s")+" · earned "+fmtCr(s.earned)+" CR";
+  // your rank and its pay, then how far the next is: "Local driver · +5% pay · 5 more contracts for Trusted driver (+10%)"
+  const left=next?next.completed-contractCount():0;
+  $("jbStats").textContent=current.name+(current.bonus?" · +"+current.bonus+"% pay":"")+(next?" · "+left+" more contract"+(left===1?"":"s")+" for "+next.name+" (+"+next.bonus+"%)":"")+
+    " · Completed: "+s.parcel+" parcel · "+s.courier+" courier · "+s.tour+" tour"+(s.tour===1?"":"s")+" · earned "+fmtCr(s.earned)+" CR";
   const cur=$("jbCur");cur.innerHTML="";
   if(job){const J=job.def,b=document.createElement("b"),sp=document.createElement("span");b.textContent="Under way: "+JOB_TYPES[J.type]+" · "+J.title;sp.textContent=jobObjective()+(job.timing?" · "+fmtSecs(job.left)+" left":"");
     const r=document.createElement("button"),a=document.createElement("button");r.className="mbtn";r.id="jbRestart";r.textContent="RESTART";r.onclick=()=>{const why=jobRestartWhy();if(why){$("jbNote").textContent=why+" to restart: this contract carries on.";return}jobRestart();jobsClose();if(state==="PAUSE")pauseOff()};

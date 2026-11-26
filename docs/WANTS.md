@@ -17,5 +17,6 @@ Pause → Needs shows three wants under Mood. New players start with meeting som
 | Repair | Complete a roadside repair or return home with actual damage | 800 |
 | Promotion | Reach the next kitchen rank (see CAREERS.md). Not drawn once you are head chef | 1,500 |
 | Gift | Give someone a gift while talking (see GIFTS.md) | 700 |
+| Contract promotion | Reach the next driving contract rank (see CONTRACT_CAREER.md). Not drawn once you are a Master driver | 1,500 |
 
 The version 1 wants record stores three activity IDs, per-activity completion counts, partial walking distance and the last reroll UTC day. Loading repairs invalid slots and discards unrecognised counts. Cloud progress compares completion counts. Empty counts match older saves. A newer reroll from an otherwise equal account save carries its list and partial walking distance. Two disconnected devices can each use a reroll before syncing.
