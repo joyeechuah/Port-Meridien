@@ -773,6 +773,15 @@ function padMenu(hit){
     b.classList.add("padSel");b.focus({preventScroll:true});b.scrollIntoView({block:"nearest"})}
   else if(hit(0)&&i>=0)bs[i].click();
 }
+// either stick scrolls the list in a screen opened from the pause menu: the Postcards list has no buttons for the
+// D-pad to move through, and the Passport's places not found yet have none, so a list taller than the screen could
+// only be seen in part with a controller
+function padScroll(g){
+  const sub=PAUSE_SUBS.map(([id])=>$(id)).find(e=>!e.classList.contains("hide"));if(!sub)return;
+  const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8,y=dz(g.axes[3]||0)||dz(g.axes[1]||0);if(!y)return;
+  const list=/** @type {HTMLElement[]} */([...sub.querySelectorAll("ol,ul,div")]).find(el=>el.scrollHeight>el.clientHeight+1&&/auto|scroll/.test(getComputedStyle(el).overflowY));
+  if(list)list.scrollTop+=y*14;
+}
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
   if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GP.index=null;GO.stick[0]=GO.stick[1]=0;return}
@@ -798,7 +807,7 @@ function pollPad(){
   else if(state==="DRIVE"&&TALK.p)talkPad(hit);
   else if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on&&!BOAT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on&&!BOAT.on)footExit()}
   // in the pause menu, B or Start closes a screen opened from it (passport, contracts) before the menu itself
-  else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}else padMenu(hit)}
+  else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}else{padMenu(hit);padScroll(g)}}
   else if(state==="LOAD"){if(hit(0)&&!$("lstart").classList.contains("hide"))$("lstart").click()}
   else if(state==="MAP"){if(hit(8)||hit(1)){if(!$("passport").classList.contains("hide"))passportClose();else closeMap()}}
   // B closes the picture just taken first, as Escape does; from Photo Mode itself it goes back

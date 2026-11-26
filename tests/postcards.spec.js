@@ -106,6 +106,7 @@ const FAKE_PAD = () => {
   };
   for (let i = 0; i < 17; i++)
     pad.buttons.push({ pressed: false, touched: false, value: 0 });
+  window.__pad = pad;
   window.__press = (i, v = 1) => {
     pad.buttons[i].value = v;
     pad.buttons[i].pressed = v > 0.5;
@@ -138,6 +139,37 @@ test("a controller's B closes Postcards back to the pause menu", async ({
   expect(
     await game.eval(() => document.activeElement && document.activeElement.id),
   ).toBe("pCollections");
+});
+
+test.describe("a short screen", () => {
+  test.use({ viewport: { width: 1024, height: 560 } });
+  test("a controller's stick scrolls the Postcards list to the last card", async ({
+    game,
+    page,
+  }) => {
+    await page.addInitScript(FAKE_PAD);
+    await game.open();
+    await game.driveOut();
+    await game.park();
+    await game.eval(() => __T.pauseOn());
+    await game.waitState("PAUSE");
+    await page.click("#pCollections");
+    const at = () =>
+      page.evaluate(() => {
+        const L = document.getElementById("cardList"),
+          last = L.lastElementChild.getBoundingClientRect();
+        return {
+          top: L.scrollTop,
+          room: L.scrollHeight > L.clientHeight,
+          lastShown: last.bottom <= L.getBoundingClientRect().bottom + 1,
+        };
+      });
+    expect(await at()).toEqual({ top: 0, room: true, lastShown: false });
+    await game.eval(() => (window.__pad.axes[3] = 1));
+    await expect.poll(() => at().then((r) => r.lastShown)).toBe(true);
+    await game.eval(() => (window.__pad.axes[3] = 0));
+    await expect(page.locator("#collections")).toBeVisible();
+  });
 });
 
 const box = (page, sel) =>
