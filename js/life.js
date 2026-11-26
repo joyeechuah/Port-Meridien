@@ -289,7 +289,7 @@ function talkTip(who){
 }
 function talkShow(line){
   const who=TALK.person;if(!who)return;const r=rel(who.id),f=r.f,bar=$("tkBarFill");
-  $("tkName").textContent=who.name;$("tkTrait").textContent=TRAIT_LABEL[who.trait];$("tkRelLbl").textContent=relLabel(r);
+  $("tkName").textContent=who.name;$("tkTrait").textContent=TRAIT_LABEL[who.trait];$("tkRelLbl").textContent=relLabel(r);show("tkBday",isBirthday(who.id));
   bar.style.width=Math.abs(f)/2+"%";bar.style.left=(f<0?50-Math.abs(f)/2:50)+"%";bar.classList.toggle("neg",f<0);
   if(line!==undefined)$("tkLine").textContent=line;
   // friends can be asked along for a ride (40 or more: Friend and up)
@@ -341,7 +341,7 @@ const EMO={};
 function emoTex(kind){
   if(EMO[kind])return EMO[kind];
   const c=document.createElement("canvas");c.width=c.height=64;const x=c.getContext("2d");
-  const col={smile:"#2f9e57",laugh:"#2f9e57",heart:"#d9435e",meh:"#7d8790",frown:"#d9822b",angry:"#d6453a",talk:"#4a78b8",wave:"#4a78b8"}[kind];
+  const col={smile:"#2f9e57",laugh:"#2f9e57",heart:"#d9435e",meh:"#7d8790",frown:"#d9822b",angry:"#d6453a",talk:"#4a78b8",wave:"#4a78b8",cake:"#d9435e"}[kind];
   x.fillStyle="rgba(255,255,255,.95)";x.beginPath();x.arc(32,32,27,0,TAU);x.fill();
   x.lineWidth=4;x.strokeStyle=col;x.stroke();x.fillStyle=col;x.lineCap="round";
   const eyes=()=>{x.beginPath();x.arc(23,26,3.2,0,TAU);x.arc(41,26,3.2,0,TAU);x.fill()};
@@ -354,6 +354,10 @@ function emoTex(kind){
   else if(kind==="frown"||kind==="angry"){eyes();x.beginPath();x.arc(32,52,12,1.2*Math.PI,1.8*Math.PI);x.stroke();
     if(kind==="angry"){x.beginPath();x.moveTo(17,17);x.lineTo(28,21);x.moveTo(47,17);x.lineTo(36,21);x.stroke()}}
   else if(kind==="talk"){for(const cx of[21,32,43]){x.beginPath();x.arc(cx,32,4,0,TAU);x.fill()}}
+  // a birthday: a cake with a candle
+  else if(kind==="cake"){x.fillStyle="#e9c58f";x.fillRect(18,32,28,13);x.fillStyle="#f4ecd8";x.fillRect(18,28,28,6);
+    x.fillStyle=col;for(const cx of[22,30,38])x.fillRect(cx,34,4,3);x.fillStyle="#4a78b8";x.fillRect(30.5,17,3,11);
+    x.fillStyle="#f2b33d";x.beginPath();x.ellipse(32,14,2.6,4,0,0,TAU);x.fill()}
   else{x.font="bold 21px sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText("Hi!",32,33)}
   return EMO[kind]=new THREE.CanvasTexture(c);
 }
@@ -379,6 +383,9 @@ function lifeUpdate(dt){
     const who=personOf(p);
     // someone you knocked down shows it the next time you're near them, on their feet again
     if(p.mad&&p.st!=="down"&&p.m.G.visible&&Math.hypot(p.x-me.x,p.z-me.z)<40){p.mad=false;emote(p,"angry")}
+    // someone whose birthday it is shows a cake when you're near (now and then)
+    else if(who&&!TALK.p&&p.m.G.visible&&p.st!=="down"&&isBirthday(who.id)&&LIFE.t-(p.caked??-99)>30&&Math.hypot(p.x-me.x,p.z-me.z)<14){
+      p.caked=LIFE.t;emote(p,"cake",3)}
     // a friend passing you on foot waves
     else if(who&&FOOT.on&&!TALK.p&&p.m.G.visible&&p.st!=="down"&&(save.rel[who.id]?.f??0)>=35&&LIFE.t-(p.waved??-99)>40&&Math.hypot(p.x-FOOT.x,p.z-FOOT.z)<7){
       p.waved=LIFE.t;emote(p,"wave",2)}
