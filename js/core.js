@@ -263,6 +263,13 @@ function giftClean(raw){
   const ids=[];if(Array.isArray(raw.ids))for(const id of raw.ids.slice(0,32))if(Number.isInteger(id)&&id>=0&&id<16&&!ids.includes(id))ids.push(id);
   return {v:1,day:Math.min(raw.day,today),ids};
 }
+// Daily allowances from the same account travel across devices, even when progress compares equal.
+function giftSync(local,remote,other){
+  const a=giftClean(local),b=giftClean(remote);
+  if(other||b.day>a.day)return b;
+  if(a.day>b.day)return a;
+  return {v:1,day:a.day,ids:[...new Set([...a.ids,...b.ids])].sort((x,y)=>x-y)};
+}
 function photoDayClean(raw){
   const today=Math.floor(Date.now()/86400000);
   return Number.isSafeInteger(raw?.day)&&raw.day>=0&&Number.isInteger(raw.count)?

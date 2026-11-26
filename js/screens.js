@@ -1164,6 +1164,7 @@ function clReconcile(doc){
     if(L===C&&cloud.wants&&wantsSync(cloud.wants)){wantsTidy();persist()}
     // the day's photos: the higher count for the same account; when this device's save was another account's, this
     // account's own count (the other's five used went over to an account that had used none)
+    if(save.gift||cloud.gift){const g=giftSync(save.gift,cloud.gift,other);if(JSON.stringify(g)!==JSON.stringify(save.gift)){save.gift=g;persist()}}
     const day=photoDayClean(cloud.photoDay);
     if(other?day.day!==save.photoDay.day||day.count!==save.photoDay.count:day.day>save.photoDay.day||day.day===save.photoDay.day&&day.count>save.photoDay.count){save.photoDay=day;persist()}
     clWork(cloud);clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}
@@ -1196,6 +1197,7 @@ function clApply(doc,cloud){const lost=[],sv=Object.assign({},cloud,{home:homeCl
   // the day's photos counted on this device stay counted when the same account's save, with an older count, is restored
   // over it (that reopened the five a day); another account's save keeps its own
   if(!CL.other){const a=photoDayClean(save.photoDay),b=photoDayClean(sv.photoDay);if(a.day>b.day||a.day===b.day&&a.count>b.count)sv.photoDay=a}
+  if(save.gift||cloud.gift)sv.gift=giftSync(save.gift,cloud.gift,CL.other);
   CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   // if the browser won't store it, nothing changed: saving and backing up carry on, and the choice stays to try again
   const written=saveWrite(sv,true);if(!written){CL.applying=false;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}

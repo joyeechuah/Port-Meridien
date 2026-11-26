@@ -1,12 +1,21 @@
-# Gifts
+# Gifts in Old Quay
 
-While you talk to anyone in Old Quay, **Give a gift** (key 9) costs 250 CR. Each person can have one gift from you per UTC day. The button reads "Gift given today" once they've had theirs, and it can't be pressed without 250 CR.
+During a conversation, **Give a gift** (9) opens the choices. Opening the menu costs nothing. Select with a number key, a tap, or the D-pad and A. Back, Escape or controller B returns to the conversation. A person accepts one present per UTC day. An unaffordable choice is disabled.
 
-A gift is chosen to suit the person's personality: flowers for someone cheerful, good coffee for a grump, a whoopee cushion for a joker, a book for someone chatty, a potted plant for someone shy and a travel mug for someone always in a hurry. It gives:
+| Key | Gift | Price |
+|---|---|---:|
+| 1 | Flowers | 250 CR |
+| 2 | Coffee | 120 CR |
+| 3 | Book | 180 CR |
+| 4 | Gadget | 400 CR |
 
-- friendship +10, times how the personality takes a present (shy 1.5, cheerful 1.3, chatty 1.1, a joker 1, in a hurry 0.8, grumpy 0.7). Like a friendly line, this is less as the friendship nears its top (× (1 − friendship/125)) and more with Charisma
-- 3 Charisma XP (with your mood's effect)
-- social +8, if nothing in this conversation has given company yet (the same rule as a friendly line)
-- the Gift want, and the Meet someone and Reach Friendly wants when it does those
+| Personality | Favourite | Dislikes |
+|---|---|---|
+| Cheerful | Flowers | Gadget |
+| Grumpy | Coffee | Flowers |
+| Joker | Gadget | Book |
+| Chatty | Book | Coffee |
+| Shy | Flowers | Coffee |
+| Busy | Coffee | Flowers |
 
-A gift counts as a line in the conversation, so someone always in a hurry still leaves after three. Who has had a gift today is kept in the save and travels with the cloud save. It isn't progress, so two devices that differ only there don't ask which to keep.
+Favourite gifts start at 15 friendship points, neutral gifts at 10 and disliked gifts at 4. Existing friendship and the Charisma perk scale the gain. Giving a present awards 3 base Charisma XP. It counts as a conversation line and can supply the usual social gain once. It counts for the gift want, a first meeting and crossing 15 friendship for Reach Friendly. The game's existing daily gift record is saved locally and backed up with the account.
