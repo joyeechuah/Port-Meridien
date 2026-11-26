@@ -825,8 +825,8 @@ function pollPad(){
   // times as fast at 120 fps as at 30). Not while designing your home, whose view it would turn unseen, to jump to on DONE
   {const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8;const turn=state==="GARAGE"&&!HV.on;GO.stick[0]=turn?dz(g.axes[2]||0):0;GO.stick[1]=turn?dz(g.axes[3]||0):0}
   if(state==="GARAGE"&&cuOpen()){if(hit(1))custClose(false);else if(hit(0))custClose(true)}
-  else if(state==="GARAGE"&&HV.on){if(hit(1)||hit(9))hvClose();else if(hit(3))hvTurn()}
   else if(state==="GARAGE"&&typeof partyOpen==="function"&&partyOpen()){if(hit(1))partyPanelClose();else padIn($("party"),hit)}
+  else if(state==="GARAGE"&&HV.on){if(hit(1)||hit(9))hvClose();else if(hit(3))hvTurn()}
   // Y: HANG OUT with a friend over, or the party's button (THROW A PARTY, SEE THEM OFF)
   else if(state==="GARAGE"&&hit(3)){const b=/** @type {HTMLButtonElement|undefined} */(["gGuest","gParty"].map(id=>$(id)).find(x=>!x.classList.contains("hide")&&!(/** @type {HTMLButtonElement} */(x).disabled)));if(b)b.click()}
   else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(2))needsRest();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick()}

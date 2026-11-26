@@ -160,6 +160,47 @@ test("leaving the garage calls a party off: the guests go, nothing is paid and t
   expect(r.wait).toBeLessThanOrEqual(0);
 });
 
+// Tab used to reach DESIGN HOME behind the panel, and Space then opened the designer under it (Codex's review of #127)
+test("the garage behind the party panel is out of reach: Tab stays inside, the designer can't open under it, and closing gives focus back", async ({
+  game,
+  page,
+}) => {
+  await game.open();
+  const P = await ids(game);
+  await home(game, { [P.cheerful]: { f: 80, n: 3 } });
+  await page.click("#gParty");
+  await expect(page.locator("#party")).toBeVisible();
+  const where = () =>
+    page.evaluate(() =>
+      document.activeElement && document.activeElement.closest("#party")
+        ? "party"
+        : document.activeElement && document.activeElement !== document.body
+          ? document.activeElement.id || document.activeElement.tagName
+          : "body",
+    );
+  const outside = [];
+  for (const k of ["Shift+Tab", "Tab"])
+    for (let i = 0; i < 20; i++) {
+      await page.keyboard.press(k);
+      const w = await where();
+      if (w !== "party" && w !== "body") outside.push(k + " → " + w);
+    }
+  expect(outside, "focus left the party panel").toEqual([]);
+  await page.keyboard.press("Space");
+  expect(await game.eval(() => __T.HV.on)).toBe(false);
+  // and opening the designer some other way doesn't either
+  await game.eval(() => document.getElementById("gDesign").click());
+  expect(await game.eval(() => __T.HV.on)).toBe(false);
+  await game.key("Escape");
+  await expect(page.locator("#party")).toBeHidden();
+  expect(
+    await game.eval(() => [
+      document.activeElement.id,
+      document.getElementById("gui").inert,
+    ]),
+  ).toEqual(["gParty", false]);
+});
+
 // a fake standard-layout controller the test can press (as in controls.spec.js)
 const FAKE_PAD = () => {
   const pad = {
@@ -213,7 +254,13 @@ test("with a controller: Y opens the party, the D-pad and A choose and send, B c
   await expect(page.locator("#pyReplies li.yes")).toHaveCount(1);
   await tap(1);
   await expect(page.locator("#party")).toBeHidden();
-  expect(await game.eval(() => __T.state)).toBe("GARAGE");
+  expect(
+    await game.eval(() => [
+      __T.state,
+      __T.HV.on,
+      document.getElementById("gui").inert,
+    ]),
+  ).toEqual(["GARAGE", false, false]);
 });
 
 for (const [name, w, h] of [

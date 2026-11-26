@@ -894,7 +894,7 @@ function partyEnd(){
 // they're only there while the party is on and you're home
 const PARTY_M=/** @type {Map<number,any>} */ (new Map()),PARTY_SEL=/** @type {number[]} */ ([]);
 function partySync(s=state){
-  const on=PARTY.active&&s==="GARAGE";if(s!=="GARAGE")show("party",false);
+  const on=PARTY.active&&s==="GARAGE";if(s!=="GARAGE"&&partyOpen()){show("party",false);$("gui").inert=false}
   for(const [id,M] of PARTY_M)if(!on||!PARTY.ids.includes(id)){scene.remove(M.G);M.face.m.dispose();PARTY_M.delete(id)}
   partyButton(s);
   if(!on)return;
@@ -919,9 +919,10 @@ function partyPanel(){
   if(PARTY.active){partyFinish();return}
   if(!partyCanHost())return;
   PARTY_SEL.length=0;partyRender();$("pyReplies").replaceChildren();show("pyStart",false);show("pyInvite",true);
-  show("party",true);try{$("pyInvite").focus({preventScroll:true})}catch(e){}
+  // the garage behind is out of reach while it's open (Tab used to reach DESIGN HOME, and Space opened it underneath)
+  show("party",true);$("gui").inert=true;try{$("pyInvite").focus({preventScroll:true})}catch(e){}
 }
-function partyPanelClose(){show("party",false);try{$("gParty").focus({preventScroll:true})}catch(e){}}
+function partyPanelClose(){show("party",false);$("gui").inert=false;try{$("gParty").focus({preventScroll:true})}catch(e){}}
 // the Friends who can be asked: up to three chosen; choosing again after the replies means sending again
 function partyRender(){
   const L=$("pyList");L.replaceChildren();
