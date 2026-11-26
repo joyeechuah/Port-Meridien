@@ -95,3 +95,26 @@ test("a hint isn't used up in a hidden tab, and NEW AT HOME waits while Customis
   await game.eval(() => __T.hintHome());
   await expect.poll(() => shown(game), { timeout: 4000 }).toContain("NEW AT HOME");
 });
+
+test("driving up to a postcard points out that it's collected on foot, once", async ({ game }) => {
+  await game.open({ hints: true });
+  await game.driveOut();
+  const card = await game.eval(() => __T.POSTCARDS[0]);
+  await game.park(card.x, card.z);
+  const seen = await game.eval(() => {
+    const T = __T,
+      out = [];
+    T.camera.position.set(T.P.x, T.P.y + 3, T.P.z);
+    T.postcardTick(0);
+    out.push(!!T.HINTS.postcard);
+    return out;
+  });
+  expect(seen).toEqual([true]);
+  await expect.poll(() => shown(game)).toContain("A POSTCARD");
+  // learnt: not again
+  await game.eval(() => {
+    for (const t of document.querySelectorAll("#toasts .toast")) t.remove();
+    __T.postcardTick(0);
+  });
+  expect(await shown(game)).not.toContain("A POSTCARD");
+});

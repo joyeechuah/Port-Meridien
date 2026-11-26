@@ -643,7 +643,8 @@ const HINT_KEY=SAVE_KEY+"-hints",HINT_TEXT={
   home:["NEW AT HOME","DESIGN HOME furnishes your mezzanine. Friends you invite over wait there."],
   you:["YOU","SKILLS has your skills, traits and aspirations; NEEDS, your wants and mood."],
   friends:["FRIENDS",isTouch?"Ask a friend along for a ride, or over to your place.":"Ask a friend along for a ride (7), or over to your place (8)."],
-  kitchen:["KITCHEN CAREER","Shifts and Cooking take you from Dishwasher to Head chef, with better pay at each rank."]};
+  kitchen:["KITCHEN CAREER","Shifts and Cooking take you from Dishwasher to Head chef, with better pay at each rank."],
+  postcard:["A POSTCARD","Get out and walk up to the card on the post to collect it. POSTCARDS in the pause menu lists all twelve."]};
 // the flags as stored now (another tab may have learnt one since this one loaded)
 function hintsStored(){try{const h=JSON.parse(localStorage.getItem(HINT_KEY)||"{}");return h&&typeof h==="object"&&!Array.isArray(h)?h:{}}catch(e){return {}}}
 const HINTS=hintsStored();
