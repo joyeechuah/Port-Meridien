@@ -361,7 +361,9 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
-  save.gift=giftClean(save.gift);save.gifted=giftedClean(save.gifted);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
+  save.gift=giftClean(save.gift);save.gifted=giftedClean(save.gifted);
+  // a save from before everyone given a gift was kept: the day's list it kept is that much of it (Codex's review)
+  if(!save.gifted.length&&save.gift.ids.length)save.gifted=save.gift.ids.slice().sort((a,b)=>a-b);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
   save.needs=needsClean(save.needs);save.work=workClean(save.work);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};

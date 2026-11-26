@@ -6,7 +6,7 @@
 
 | Question | Decision for now |
 | --- | --- |
-| Who | Sixteen people, each with a name and a personality, tied to a pedestrian slot so the same face is always the same person. A phone shows six of them, a computer ten |
+| Who | Sixteen people, each with a name, a personality and their own face. A phone has six out walking at a time, a computer ten; each time you leave Old Quay, the ones out step aside for the next in turn, so over a few visits everyone comes round. Someone riding with you or mid-conversation stays |
 | Personalities | Cheerful, Grumpy, Loves a joke, Chatty, Shy, Always in a hurry. Each changes how a line lands, and Grumpy turns a joke sour |
 | How you talk | On foot, walk up to someone: the prompt says "Talk · name". They stop and face you, and you stand still. Six lines: say hello, chat, tell a joke, compliment, ask for a local tip, be rude. Goodbye with Escape, E, B or the button |
 | Friendship | From -100 to 100, shown as a bar with a label: Stranger, Acquaintance, Friendly, Friend, Good friend, Best friend, or Dislikes you, Enemy. The same line twice in one conversation is worth less, and gains slow near the top |
