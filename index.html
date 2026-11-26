@@ -248,12 +248,14 @@ body.talking #pads,body.talking #keys{visibility:hidden}
 #damageHud{align-self:flex-start;pointer-events:auto;cursor:pointer;min-height:42px;background:rgba(10,22,31,.88);color:#f2b33d;border:1px solid rgba(242,179,61,.55);border-radius:4px;padding:7px 12px;font-size:11px;font-weight:800;letter-spacing:.08em;white-space:nowrap;text-align:left;touch-action:manipulation}
 body.outsideCar :is(#damageHud,#mblur){display:none}
 body.outsideCar #keys{opacity:1!important}
-/* On foot the speedometer's upper-right slot is free; leave the centre clear for the walker. */
-body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px + var(--st));bottom:auto;transform:none;width:max-content;max-width:min(32vw,210px);min-height:44px;padding:7px 10px;white-space:normal;overflow-wrap:anywhere}
-/* NOT SAVED: this browser won't store the save (js/core.js persist), beside the credits on the drive HUD and in the
-   garage; amber when the account has all of it */
+/* On foot the speedometer's upper-right slot is free; leave the centre clear for the walker. On a narrow phone it stops
+   short of the column on the left (js/play.js hudStack), which NOT SAVED beside the credits widens */
+body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px + var(--st));bottom:auto;transform:none;width:max-content;max-width:min(32vw,210px,calc(100vw - var(--hud-left-clear,0px) - 14px - var(--sr)));min-height:44px;padding:7px 10px;white-space:normal;overflow-wrap:anywhere}
+/* NOT SAVED: this browser won't store the save (js/core.js persist), under the credits on the drive HUD (a row of the
+   column, so the column doesn't widen into the buttons and the dial beside it) and beside them in the garage; amber
+   when the account has all of it */
 #saveHud,#gSave{pointer-events:auto;cursor:pointer;border-radius:3px;padding:3px 7px;margin-left:2px;font:inherit;font-size:9.5px;font-weight:800;letter-spacing:.06em;white-space:nowrap;vertical-align:middle}
-#gSave{margin-left:10px}
+#gSave{margin-left:10px}#tl>#saveHud{align-self:flex-start;margin:0}
 /* a narrow phone has no room beside the credits: there it goes under them, and the pills below move down to make room */
 @media (max-width:560px){#gSave{position:absolute;top:calc(100% + 6px);right:0;margin:0}#gui:has(#gSave:not(.hide)) #garageOptions .pill{margin-top:30px}}
 .saveWarn{background:rgba(10,22,31,.88);color:#ff8f82;border:1px solid #e2483d}.saveWarn.acct{color:#f2b33d;border-color:rgba(242,179,61,.55)}
@@ -346,8 +348,24 @@ body.touch #toasts{top:calc(196px + var(--st))}
    place instead of under them, so the column keeps its height and the minimap stays where it is (stacked, they ran
    down over the minimap) */
 @media (max-height:520px) and (min-width:561px){
-  body.touch #tl>#damageHud,body.touch #tl>#wanted,body.touch #tl>#gunHud,body.touch #tl>#ride{position:absolute;left:calc(100% + 8px)}
-  body.touch #tl>#damageHud{top:0}body.touch #tl>#wanted{top:42px}body.touch #tl>#gunHud{top:72px}body.touch #tl>#ride{top:102px}
+  body.touch #tl>#wanted,body.touch #tl>#gunHud,body.touch #tl>#ride{position:absolute;left:calc(100% + 8px)}
+  body.touch #tl>#wanted{top:42px}body.touch #tl>#gunHud{top:72px}body.touch #tl>#ride{top:102px}
+  /* the buttons along the top a little tighter, so the six in a car clear the money on a 640 px phone */
+  body.touch #chips .chip{padding:8px 8px;letter-spacing:.1em}
+}
+/* the damage pill beside the money only where the buttons along the top leave room for it: on a narrower landscape
+   phone it sat under MAP and CAM, so there it goes in the column under the money, and the minimap moves down by as
+   much (js/play.js hudStack) */
+@media (max-height:520px) and (min-width:780px){body.touch #tl>#damageHud{position:absolute;left:calc(100% + 8px);top:0}}
+/* there, NOT SAVED takes the place beside the money instead (as a row of the column it pushed the minimap down onto the
+   steering buttons), and the buttons along the top are tighter still, to clear it */
+@media (max-height:520px) and (min-width:561px) and (max-width:779px){
+  body.touch #tl>#saveHud{position:absolute;left:calc(100% + 8px);top:7px}
+  body.touch #chips .chip{padding:8px 6px;letter-spacing:.06em}
+}
+/* and where a car's six buttons reach the money even so (under 670 px), under the buttons, left of the dial */
+@media (max-height:520px) and (min-width:561px) and (max-width:669px){
+  body.touch:not(.outsideCar) #tl>#saveHud{top:36px;left:calc(100vw - 230px - var(--sl) - var(--sr))}
 }
 body.touch #prompt{bottom:calc(150px + var(--sb))}
 body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
@@ -677,7 +695,8 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
 <div id="hud" class="hide">
   <div id="vig"></div><div id="mblur"></div><div id="edge"></div>
   <div id="tl">
-    <div class="money"><span class="coin">CR</span><b id="crv">0</b><button type="button" id="saveHud" class="hide saveWarn" aria-live="polite">NOT SAVED</button></div>
+    <div class="money"><span class="coin">CR</span><b id="crv">0</b></div>
+    <button type="button" id="saveHud" class="hide saveWarn" aria-live="polite">NOT SAVED</button>
     <button type="button" id="damageHud" class="hide" aria-label="Vehicle damage. Tap to see repair options.">DAMAGE 0% · REPAIR</button>
     <div class="lvl"><span>LEVEL <b id="lvv">1</b></span><div class="xp"><i id="xpf"></i></div></div>
     <div class="loc"><span id="zone">OLD QUAY</span><span class="num" id="clock">16:30</span></div>
