@@ -128,14 +128,14 @@ test.describe("contracts", () => {
           T.P.vx = T.P.vz = 0;
         }
         window.__bot = null;
-        return { started, c0, runs0 };
+        return { started, c0, runs0, reward: T.contractPay(J) };
       }, id);
       const run = await game.routeBot(40000);
       const r = await game.eval(
         ([id, b]) => {
           const T = __T,
             J = T.JOBS.find((j) => j.id === id);
-          return { started: b.started, paid: T.save.cr - b.c0, reward: J.reward, active: !!T.job, runs: (T.save.jobs.runs[id] || 0) - b.runs0, gps: T.gps.t, hud: !document.getElementById("jobhud").classList.contains("hide"), saved: T.save.jobActive, limit: J.limit || null };
+          return { started: b.started, paid: T.save.cr - b.c0, reward: b.reward, active: !!T.job, runs: (T.save.jobs.runs[id] || 0) - b.runs0, gps: T.gps.t, hud: !document.getElementById("jobhud").classList.contains("hide"), saved: T.save.jobActive, limit: J.limit || null };
         },
         [id, before]
       );

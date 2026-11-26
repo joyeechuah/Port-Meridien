@@ -104,6 +104,22 @@ $("pPass").onclick=passportOpen;$("mapPass").onclick=passportOpen;$("pzClose").o
    the game starts it says so, pays nothing, and clears it. */
 const JOB_R=16,JOB_KPH=30;
 const JOB_TYPES={parcel:"PARCEL DELIVERY",courier:"TIMED COURIER",tour:"SCENIC TOUR"};
+// Parcel, courier and tour completions all advance the same driving career.
+const CONTRACT_RANKS=[
+  {name:"Trainee driver",completed:0,bonus:0},
+  {name:"Local driver",completed:3,bonus:5},
+  {name:"Trusted driver",completed:8,bonus:10},
+  {name:"Senior driver",completed:15,bonus:15},
+  {name:"Master driver",completed:25,bonus:20}
+];
+const contractCount=()=>save.jobs.parcel+save.jobs.courier+save.jobs.tour;
+function contractRank(){
+  const count=contractCount();
+  let rank=0;
+  while(rank+1<CONTRACT_RANKS.length&&count>=CONTRACT_RANKS[rank+1].completed)rank++;
+  return rank;
+}
+const contractPay=(J,rank=contractRank())=>Math.round(J.reward*(100+CONTRACT_RANKS[rank].bonus)/100);
 const JOB_TOWNS=[["eivissa","OLD QUAY","Old Quay"],["santa_eularia","EASTBANK","Eastbank"],["sant_antoni","WESTHAVEN","Westhaven"],["sant_josep","CEDAR HEIGHTS","Cedar Heights"],
   ["sant_joan","NORTH COMMON","North Common"],["sant_llorenc","CENTRAL GROVE","Central Grove"],["portinatx","NORTH POINT","North Point"],["es_cubells","SOUTH BLUFF","South Bluff"]];
 // the curated set, by stable id; stops are town points. Courier limits are the route's ideal time (the same
@@ -181,10 +197,21 @@ function jobEnd(how,why){
   if(!job||job.ended)return false;
   const J=job.def;job.ended=true;job=null;
   save.jobActive=null;
-  if(how==="completed"){save.jobs[J.type]++;save.jobs.runs[J.id]=(save.jobs.runs[J.id]||0)+1;save.jobs.earned+=J.reward}else save.jobs[how==="failed"?"failed":"abandoned"]++;
-  if(how==="completed")earn(J.reward);else persist();
+  let pay=0;
+  if(how==="completed"){
+    const before=contractRank();
+    pay=contractPay(J,before);
+    save.jobs[J.type]++;save.jobs.runs[J.id]=(save.jobs.runs[J.id]||0)+1;save.jobs.earned+=pay;
+    const rank=contractRank();
+    if(rank>before){
+      wantEvent("contractPromotion");
+      if(rank===CONTRACT_RANKS.length-1)wantsTidy();
+      toast("CONTRACT PROMOTION",CONTRACT_RANKS[rank].name+" · +"+CONTRACT_RANKS[rank].bonus+"% contract pay","gold");
+    }
+    earn(pay);
+  }else{save.jobs[how==="failed"?"failed":"abandoned"]++;persist()}
   clearGPS();jobMarker(false);show("jobhud",false);
-  if(how==="completed")toast("CONTRACT COMPLETE",J.title+" · +"+fmtCr(J.reward)+" CR","gold");
+  if(how==="completed")toast("CONTRACT COMPLETE",J.title+" · +"+fmtCr(pay)+" CR","gold");
   else if(how==="failed")toast("CONTRACT FAILED",why||"No reward","bad");
   else if(why)toast("CONTRACT ABANDONED",why,"bad");
   if(!$("jobs").classList.contains("hide"))renderJobs();
@@ -219,12 +246,12 @@ function jobHUD(){
   $("jbType").textContent=JOB_TYPES[J.type];$("jbObj").textContent=job.near?"Slow down to stop at "+jobTarget().name:jobObjective();
   $("jbTime").textContent=J.type==="courier"?(job.timing?fmtSecs(job.left):"Limit "+fmtSecs(J.limit)):"";
   $("jbTime").classList.toggle("low",!!(job.timing&&job.left<15));
-  $("jbPay").textContent="+"+fmtCr(J.reward)+" CR";
+  $("jbPay").textContent="+"+fmtCr(contractPay(J))+" CR";
 }
 // ---- the contracts screen, from the pause menu
 function renderJobs(){
-  const s=save.jobs,why=jobBlocked();
-  $("jbStats").textContent="Completed: "+s.parcel+" parcel · "+s.courier+" courier · "+s.tour+" tour"+(s.tour===1?"":"s")+" · earned "+fmtCr(s.earned)+" CR";
+  const s=save.jobs,why=jobBlocked(),rank=contractRank(),current=CONTRACT_RANKS[rank],next=CONTRACT_RANKS[rank+1];
+  $("jbStats").textContent=current.name+" · +"+current.bonus+"% pay"+(next?" · "+(next.completed-contractCount())+" more for "+next.name:"")+" · Completed: "+s.parcel+" parcel · "+s.courier+" courier · "+s.tour+" tour"+(s.tour===1?"":"s")+" · earned "+fmtCr(s.earned)+" CR";
   const cur=$("jbCur");cur.innerHTML="";
   if(job){const J=job.def,b=document.createElement("b"),sp=document.createElement("span");b.textContent="Under way: "+JOB_TYPES[J.type]+" · "+J.title;sp.textContent=jobObjective()+(job.timing?" · "+fmtSecs(job.left)+" left":"");
     const r=document.createElement("button"),a=document.createElement("button");r.className="mbtn";r.id="jbRestart";r.textContent="RESTART";r.onclick=()=>{const why=jobRestartWhy();if(why){$("jbNote").textContent=why+" to restart: this contract carries on.";return}jobRestart();jobsClose();if(state==="PAUSE")pauseOff()};
@@ -238,7 +265,7 @@ function renderJobs(){
     const t=document.createElement("div"),k=document.createElement("i"),b=document.createElement("b"),sp=document.createElement("span");
     k.textContent=JOB_TYPES[J.type];b.textContent=J.title;
     const extra=J.type==="courier"?" · "+fmtSecs(J.limit)+" from pickup":J.type==="tour"?" · "+J.stops.length+" stops: "+J.stops.map(s=>s.name).join(", "):"";
-    sp.textContent=J.diff+" · "+(J.len/1000).toFixed(1)+" km"+extra+" · +"+fmtCr(J.reward)+" CR"+(save.jobs.runs[J.id]?" · done "+save.jobs.runs[J.id]+"×":"");
+    sp.textContent=J.diff+" · "+(J.len/1000).toFixed(1)+" km"+extra+" · +"+fmtCr(contractPay(J))+" CR"+(save.jobs.runs[J.id]?" · done "+save.jobs.runs[J.id]+"×":"");
     t.append(k,b,sp);row.appendChild(t);
     const g=document.createElement("button");g.className="mbtn"+(job&&job.def===J?"":" pri");g.textContent=job&&job.def===J?"UNDER WAY":"START";g.disabled=!!why;g.setAttribute("aria-label","Start "+J.title);
     g.onclick=()=>{if(jobStart(J)){jobsClose();if(state==="PAUSE")pauseOff()}};row.appendChild(g);list.appendChild(row);
