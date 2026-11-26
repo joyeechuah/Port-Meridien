@@ -12,6 +12,15 @@ const PEOPLE=[
   ["Aiko","joker"],["Omar","cheerful"],["Sofia","chatty"],["Jonah","grumpy"],["Priya","shy"],["Mateo","busy"],
   ["Nadia","cheerful"],["Elias","joker"],["Mei","chatty"],["Hugo","shy"]
 ].map(([name,trait],id)=>({id,name,trait}));
+const BIRTHDAY_CYCLE=16;
+// Permanent resident IDs give each person one slot in the repeating cycle of UTC days.
+function birthdayOf(id){return Number.isInteger(id)&&id>=0&&id<BIRTHDAY_CYCLE&&PEOPLE[id]?id:null}
+function isBirthday(id,day=Math.floor(Date.now()/86400000)){
+  return Number.isSafeInteger(day)&&day>=0&&birthdayOf(id)===day%BIRTHDAY_CYCLE;
+}
+function birthdayLine(id,day=Math.floor(Date.now()/86400000)){
+  return isBirthday(id,day)?"“It's my birthday today.”":"";
+}
 const TRAIT_LABEL={cheerful:"Cheerful",grumpy:"Grumpy",joker:"Loves a joke",chatty:"Chatty",shy:"Shy",busy:"Always in a hurry"};
 // (each place in town has its resident for now: js/people.js pedRotate)
 const personOf=p=>PEOPLE[p.pid??PEDS.indexOf(p)]||null;
@@ -56,7 +65,9 @@ function talkOpen(p){
   // you turn to face them, and they turn to face you (pedUpdate)
   FOOT.h=Math.atan2(p.x-FOOT.x,p.z-FOOT.z);FOOT.v=0;
   emote(p,"talk",1.6);
-  talkShow(r.n?(r.f>=35?who.name+" is glad to see you.":r.f<=-15?who.name+" doesn't look pleased to see you.":who.name+" remembers you."):"You walk up to "+who.name+".");
+  const greeting=r.n?(r.f>=35?who.name+" is glad to see you.":r.f<=-15?who.name+" doesn't look pleased to see you.":who.name+" remembers you."):"You walk up to "+who.name+".";
+  const birthday=birthdayLine(who.id);
+  talkShow(birthday?greeting+" "+birthday:greeting);
   promptAct=null;show("prompt",false);
   talkSel(0);const b=$("tkActs").children[0];if(b&&!isTouch)/** @type {HTMLElement} */(b).focus({preventScroll:true});
   return true;
@@ -120,17 +131,18 @@ function giftMenu(open){
   talkSel(i);bs[i]?.focus({preventScroll:true});
 }
 // (a day recorded ahead of the clock, put back while playing, still counts as today: the latest day is kept)
-function giftGiven(id){const g=save.gift;return g.day>=Math.floor(Date.now()/86400000)&&g.ids.includes(id)}
+function giftGiven(id,day=Math.floor(Date.now()/86400000)){const g=save.gift;return g.day>=day&&g.ids.includes(id)}
 function talkGift(id){
   const item=GIFTS.find(g=>g.id===id);if(!item||tabIdle)return false;
-  const who=TALK.person,p=TALK.p;if(!who||!p||TALK.busy>0||TALK.end>0||giftGiven(who.id)||save.cr<item.price)return false;
-  const r=rel(who.id),today=Math.floor(Date.now()/86400000);
+  const who=TALK.person,p=TALK.p,today=Math.floor(Date.now()/86400000);
+  if(!who||!p||TALK.busy>0||TALK.end>0||giftGiven(who.id,today)||save.cr<item.price)return false;
+  const r=rel(who.id);
   if(save.gift.day<today)save.gift={v:1,day:today,ids:[]};
   save.gift.ids.push(who.id);save.cr-=item.price;updateMoney();
   // (and, for the Generous aspiration, everyone who has ever had one)
   const ever=save.gifted;if(Array.isArray(ever)&&!ever.includes(who.id)){ever.push(who.id);ever.sort((a,b)=>a-b)}
   const [favourite,disliked]=GIFT_PREFS[who.trait],weight=id===favourite?1.5:id===disliked ? .4 : 1;
-  const d=Math.round(10*weight*(1-Math.max(0,r.f)/125)*skillFactor("charisma"));
+  const d=Math.round(10*weight*(1-Math.max(0,r.f)/125)*skillFactor("charisma"))*(isBirthday(who.id,today)?2:1);
   skillAward("charisma",3);TALK.n++;TALK.busy=.7;
   relSet(who.id,r.f+d,r.n+(TALK.n===1?1:0));
   if(!TALK.social&&!(NS.social[who.id]>NS.t)){TALK.social=true;NS.social[who.id]=NS.t+30;needsAdd("social",8)}

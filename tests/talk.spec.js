@@ -215,10 +215,12 @@ test.describe("talking to people", () => {
       return { cr: T.save.cr, xp: T.save.skills.charisma, rel: T.save.rel[i], social: T.NEEDS.social, line: document.getElementById("tkLine").textContent,
         off: b.disabled, text: b.textContent, want: T.save.wants.active.includes("gift"), gift: T.save.gift, gifted: T.save.gifted };
     }, i);
-    const today = await game.eval(() => Math.floor(Date.now() / 86400000));
+    const { today, birthday } = await game.eval(({ i, day }) => ({
+      today: Math.floor(Date.now() / 86400000), birthday: __T.isBirthday(i, day),
+    }), { i, day: after.gift.day });
     // 10 for a gift, half as much again for someone shy, and less at friendship 20: 10 × 1.5 × (1 − 20/125) = 12.6
     // (and, the first thing in this conversation, it counts the conversation)
-    expect(after.rel).toEqual({ f: 33, n: 3 });
+    expect(after.rel).toEqual({ f: birthday ? 46 : 33, n: 3 });
     // the gift's 250 CR, and the want's 700 back
     expect(after.cr).toBe(before.cr - 250 + 700);
     expect(after.xp).toBeGreaterThan(before.xp);
@@ -230,7 +232,7 @@ test.describe("talking to people", () => {
     // a second one today does nothing
     await steps(game, 60);
     await game.key("9");
-    expect(await game.eval((i) => [__T.save.cr, __T.save.rel[i].f], i)).toEqual([after.cr, 33]);
+    expect(await game.eval((i) => [__T.save.cr, __T.save.rel[i].f], i)).toEqual([after.cr, after.rel.f]);
     // the record is kept: after a reload it's still given today
     await game.reload();
     expect(await game.eval((i) => [__T.giftGiven(i), __T.save.gift.ids], i)).toEqual([true, [i]]);
