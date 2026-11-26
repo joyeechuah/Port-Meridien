@@ -110,7 +110,7 @@ function homeBuild(){
   if(HV.pick>=save.home.items.length)HV.pick=-1;
   hvMarks();
   // a guest waiting at home sits on (or stands by) what's there now
-  if(typeof guestSync==="function"&&GUEST.who)guestSync();
+  if(typeof guestSync==="function"&&(GUEST.who||typeof PARTY!=="undefined"&&PARTY.active))guestSync();
 }
 // only inside the house (and on the way out of it): from the road the room would be a dozen draws for nothing
 function hvShow(s){if(HV.root)HV.root.visible=s==="GARAGE"||s==="EXIT"||s==="LOAD"}

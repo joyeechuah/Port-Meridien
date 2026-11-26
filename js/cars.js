@@ -765,7 +765,10 @@ const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],
 // a controller in the pause menu: the D-pad moves between the buttons of the menu (or of the screen opened from it),
 // with an outline on the one picked, and A presses it
 function padMenu(hit){
-  const sub=PAUSE_SUBS.map(([id])=>$(id)).find(e=>!e.classList.contains("hide")),box=sub||$("pause");
+  const sub=PAUSE_SUBS.map(([id])=>$(id)).find(e=>!e.classList.contains("hide"));padIn(sub||$("pause"),hit);
+}
+// the same in any panel: the D-pad moves between its buttons and A presses the one picked
+function padIn(box,hit){
   const bs=/** @type {HTMLElement[]} */([...box.querySelectorAll("button,a.mbtn,input")]).filter(b=>b.offsetParent&&!(/** @type {HTMLButtonElement} */(b).disabled));
   if(!bs.length)return;
   const i=bs.indexOf(/** @type {HTMLElement} */(document.activeElement)),d=hit(12)||hit(14)?-1:hit(13)||hit(15)?1:0;
@@ -823,6 +826,9 @@ function pollPad(){
   {const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8;const turn=state==="GARAGE"&&!HV.on;GO.stick[0]=turn?dz(g.axes[2]||0):0;GO.stick[1]=turn?dz(g.axes[3]||0):0}
   if(state==="GARAGE"&&cuOpen()){if(hit(1))custClose(false);else if(hit(0))custClose(true)}
   else if(state==="GARAGE"&&HV.on){if(hit(1)||hit(9))hvClose();else if(hit(3))hvTurn()}
+  else if(state==="GARAGE"&&typeof partyOpen==="function"&&partyOpen()){if(hit(1))partyPanelClose();else padIn($("party"),hit)}
+  // Y: HANG OUT with a friend over, or the party's button (THROW A PARTY, SEE THEM OFF)
+  else if(state==="GARAGE"&&hit(3)){const b=/** @type {HTMLButtonElement|undefined} */(["gGuest","gParty"].map(id=>$(id)).find(x=>!x.classList.contains("hide")&&!(/** @type {HTMLButtonElement} */(x).disabled)));if(b)b.click()}
   else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(2))needsRest();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick()}
   // in the dealership A buys the car shown (or drives it, if it's yours), X takes it for a test drive
   else if(state==="DEALER"){const on=id=>{const b=$(id);return !b.classList.contains("hide")&&!b.disabled};

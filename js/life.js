@@ -404,19 +404,21 @@ const needOf=k=>Math.round(NEEDS[k]);
 const needsOfSave=sv=>needsClean(sv&&sv.needs);
 function homeWaitClean(raw){
   const seconds=k=>Number.isFinite(raw?.[k])?clamp(Math.ceil(raw[k]),0,180):0;
-  return {snack:seconds("snack"),play:seconds("play")};
+  const party=seconds("party");
+  return {snack:seconds("snack"),play:seconds("play"),...(party?{party}:{})};
 }
-const homeUntil={snack:0,play:0};
+const homeUntil={snack:0,play:0,party:0};
 function homeWaitLoad(raw){
   const wait=homeWaitClean(raw);save.homeWait=wait;
-  homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;
+  homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;homeUntil.party=NS.t+(wait.party||0);
 }
 homeWaitLoad(save.homeWait);
 const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=NEED_ORDER.map(k=>n[k]).join(",");
+  if(wait.party)return key+"/"+wait.snack+"/"+wait.play+"/"+wait.party;
   return wait.snack||wait.play?key+"/"+wait.snack+"/"+wait.play:key};
 // the save's needs become the ones in play: on loading, and when another device's are newer (js/screens.js)
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
-function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
+function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
 function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&state==="GARAGE"&&NEEDS[k]>was)skillAward("cooking",hasTrait("handy")?10:5);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
@@ -769,34 +771,40 @@ function talkInvite(){
   talkShow("“See you at your place, then!”");toast("INVITED",who.name+" will be at your home: go home to hang out","gold");return true;
 }
 // where a guest stands: in front of (or beside) a seat of yours, else by the railing; on a free half-metre cell
-function guestSpot(){
-  const plan=save.home,tries=[];
+function guestSpot(taken=[]){
+  // (at a party, a metre clear of anyone already standing)
+  const plan=save.home,tries=[],free=(x,z)=>homeFits(plan,"stool",x,z,0)&&!taken.some(t=>Math.abs(t.x-x)<2&&Math.abs(t.z-z)<2);
   for(const p of plan.items){if(homeById.get(p.id).group!=="seating")continue;const r=homeRect(p.id,p.x,p.z,p.r);
     tries.push([r.x+Math.floor(r.w/2),r.z-1],[r.x-1,r.z],[r.x+r.w,r.z],[r.x+Math.floor(r.w/2),r.z+r.d])}
   tries.push([20,3],[14,3],[26,3],[10,6],[30,6]);
-  for(const[x,z]of tries)if(homeFits(plan,"stool",x,z,0))return{x,z};
+  for(const[x,z]of tries)if(free(x,z))return{x,z};
   // all of those taken: the free cell nearest the middle of the railing, and only with none free at all, inside the
   // furniture there
   let best=null,far=Infinity;
-  for(let z=0;z<HOME_ROWS;z++)for(let x=0;x<HOME_COLS;x++){const d=Math.hypot(x-20,z-3);if(d<far&&homeFits(plan,"stool",x,z,0)){far=d;best={x,z}}}
+  for(let z=0;z<HOME_ROWS;z++)for(let x=0;x<HOME_COLS;x++){const d=Math.hypot(x-20,z-3);if(d<far&&free(x,z)){far=d;best={x,z}}}
   return best||{x:20,z:3};
 }
 // at home (the garage, designing included) the guest stands there, facing the room's railing; elsewhere they're out of
 // sight, and once you've hung out they've gone home
 function guestSync(s=state){
+  if(typeof partySync==="function")partySync(s);
   if(GUEST.who&&!GUEST.done&&rel(GUEST.who.id).f<RIDE_AT)guestCancel();
   if(GUEST.done||!GUEST.who){guestDrop();show("gGuest",false);return}
   const home=s==="GARAGE";show("gGuest",home);$("gGuest").textContent="HANG OUT · "+GUEST.who.name.toUpperCase();
   if(!home){if(GUEST.m)GUEST.m.G.visible=false;return}
   if(!GUEST.m){const id=GUEST.who.id;GUEST.h=.94+rnd(id,38)*.12;GUEST.m=pedModel(id,GUEST.h,pedLook(id))}
-  const M=GUEST.m,G=M.G,seat=guestSeat();GUEST.seat=seat;
+  const seat=guestSeat();GUEST.seat=seat;guestPlace(GUEST.m,GUEST.h,seat,[]);
+}
+// a guest at home: on a seat (a little forward of its middle, facing the way it faces; the legs, one piece each from
+// hip to shoe, reach forward and down to the floor and the hands rest in the lap), or else standing on a free cell by
+// the railing, facing it, away from the cells others stand on (taken, filled in here)
+function guestPlace(M,h,seat,taken){
+  const G=M.G;
   if(seat){
-    // sitting on it, a little forward of its middle, facing the way it faces; the legs (one piece each, hip to shoe)
-    // reach forward and down to the floor and the hands rest in the lap
     const r=homeRect(seat.id,seat.x,seat.z,seat.r),th=gYaw-seat.r*Math.PI/2,p=gW(HOME_ORIGIN.x+(r.x+r.w/2)*HOME_CELL,HOME_ORIGIN.z+(r.z+r.d/2)*HOME_CELL,HOME_ORIGIN.y);
-    p.x-=Math.sin(th)*.14;p.z-=Math.cos(th)*.14;p.y+=GUEST_SEAT[seat.id]-.92*GUEST.h;
+    p.x-=Math.sin(th)*.14;p.z-=Math.cos(th)*.14;p.y+=GUEST_SEAT[seat.id]-.92*h;
     G.position.copy(p);G.rotation.set(0,th+Math.PI,0);for(const l of M.legs)l.rotation.x=-1.05;for(const a of M.arms)a.rotation.x=-.5;
-  }else{const c=guestSpot(),d=gW(0,-1,0).sub(gW(0,0,0));
+  }else{const c=guestSpot(taken),d=gW(0,-1,0).sub(gW(0,0,0));taken.push(c);
     G.position.copy(gW(HOME_ORIGIN.x+(c.x+.5)*HOME_CELL,HOME_ORIGIN.z+(c.z+.5)*HOME_CELL,HOME_ORIGIN.y));G.rotation.set(0,Math.atan2(d.x,d.z),0);
     for(const l of M.legs)l.rotation.x=0;for(const a of M.arms)a.rotation.x=0}
   G.visible=true;
@@ -822,4 +830,126 @@ function guestHangOut(){
   toast(who.name.toUpperCase(),GUEST_LINES[who.trait]+" · friendship +"+gain,"gold");return true;
 }
 $("gGuest").onclick=()=>guestHangOut();
+
+
+// Home parties. Invitations and attendance belong to this visit. Only the remaining wait and earned rewards are saved.
+const PARTY={ids:/** @type {number[]} */ ([]),active:false};
+const PARTY_RSVP={
+  cheerful:[40,"I'd love to see everyone."],joker:[40,"I've got a good story for the party."],
+  chatty:[45,"It'll be good to catch up."],shy:[55,"I feel at home around you."],
+  grumpy:[60,"For you, I'll come."],busy:[65,"I'll make time for this."]
+};
+const PARTY_NO={cheerful:"Maybe after we get to know each other.",joker:"Let's hang out another time.",
+  chatty:"Let's talk a bit more first.",shy:"I'd rather know you better first.",
+  grumpy:"I'm staying in tonight.",busy:"I can't clear my schedule."};
+function partyAtHome(){
+  return typeof homeEditable==="function"&&homeEditable()&&!document.hidden&&!WANTED.lvl&&
+    !(GUEST.who&&!GUEST.done)&&!(typeof clOverlayOpen==="function"&&clOverlayOpen());
+}
+function partyCanHost(){return partyAtHome()&&NS.t>=homeUntil.party}
+function partyInvite(ids){
+  if(!partyCanHost()||PARTY.active||!Array.isArray(ids)||ids.length>3||
+    new Set(ids).size!==ids.length||ids.some(id=>!Number.isInteger(id)||!PEOPLE[id]))return [];
+  const replies=ids.map(id=>{
+    const who=PEOPLE[id],r=rel(id),friend=r.n>0&&r.f>=RIDE_AT,accepted=friend&&r.f>=PARTY_RSVP[who.trait][0];
+    return {id,accepted,reason:accepted?PARTY_RSVP[who.trait][1]:friend?PARTY_NO[who.trait]:"Become Friends first."};
+  });
+  PARTY.ids=replies.filter(r=>r.accepted).map(r=>r.id);
+  return replies;
+}
+function partyStart(){
+  if(!partyCanHost()||PARTY.active)return false;
+  PARTY.ids=PARTY.ids.filter(id=>rel(id).n>0&&rel(id).f>=PARTY_RSVP[PEOPLE[id].trait][0]);
+  if(!PARTY.ids.length)return false;
+  PARTY.active=true;return true;
+}
+function partyScore(){
+  if(!PARTY.ids.length)return 0;
+  const traits=PARTY.ids.map(id=>PEOPLE[id].trait);
+  let mix=0;
+  for(let i=0;i<traits.length;i++)for(let j=0;j<i;j++){
+    const pair=[traits[i],traits[j]].sort().join("/");
+    if(["chatty/cheerful","cheerful/joker","busy/shy"].includes(pair))mix+=6;
+    if(["grumpy/joker","chatty/shy","busy/chatty"].includes(pair))mix-=6;
+  }
+  const comfort=typeof homeComfort==="function"?homeComfort(save.home):0;
+  const charisma=typeof skillLevel==="function"?skillLevel("charisma"):0;
+  return clamp(25+5*traits.length+Math.floor(comfort*.3)+3*charisma+mix,0,100);
+}
+function partyClear(){PARTY.active=false;PARTY.ids=[]}
+function partyEnd(){
+  if(!partyCanHost()||!PARTY.active)return false;
+  const ids=PARTY.ids,score=partyScore(),good=score>=60;
+  partyClear();homeUntil.party=NS.t+180;
+  for(const id of ids){const r=rel(id);relSet(id,r.f+2+Math.floor(score/20),r.n+1)}
+  needsAdd("social",8+4*ids.length);needsAdd("fun",5+Math.floor(score/5));
+  if(typeof skillAward==="function")skillAward("charisma",3*ids.length);
+  if(good)feel("happy","A good party at home");
+  if(typeof persist==="function")persist();
+  return {score,guests:ids.slice(),happy:good};
+}
+
+/* ---------- the party at home: its button, panel and guests (docs/PARTIES.md) ---------- */
+// each guest on a seat of their own, comfiest first (as guestSeat picks for one), the rest standing by the railing;
+// they're only there while the party is on and you're home
+const PARTY_M=/** @type {Map<number,any>} */ (new Map()),PARTY_SEL=/** @type {number[]} */ ([]);
+function partySync(s=state){
+  const on=PARTY.active&&s==="GARAGE";if(s!=="GARAGE")show("party",false);
+  for(const [id,M] of PARTY_M)if(!on||!PARTY.ids.includes(id)){scene.remove(M.G);M.face.m.dispose();PARTY_M.delete(id)}
+  partyButton(s);
+  if(!on)return;
+  const seats=[];for(const k of Object.keys(GUEST_SEAT))for(const p of save.home.items)if(p.id===k)seats.push(p);
+  const taken=[];
+  // (no one stands within a metre of a seat someone's on)
+  for(const p of seats.slice(0,PARTY.ids.length)){const r=homeRect(p.id,p.x,p.z,p.r);for(let x=r.x;x<r.x+r.w;x++)for(let z=r.z;z<r.z+r.d;z++)taken.push({x,z})}
+  PARTY.ids.forEach((id,i)=>{const h=.94+rnd(id,38)*.12;let M=PARTY_M.get(id);if(!M){M=pedModel(id,h,pedLook(id));PARTY_M.set(id,M)}guestPlace(M,h,seats[i]||null,taken)});
+}
+const partyFriends=()=>PEOPLE.filter(p=>rel(p.id).n>0&&rel(p.id).f>=RIDE_AT);
+// THROW A PARTY in the garage (where HANG OUT goes for a single guest, so the two never show together); SEE THEM OFF
+// once it's on; and while the last one's wait runs, how long is left
+function partyButton(s=state){
+  const b=$("gParty"),single=!!(GUEST.who&&!GUEST.done),show_=s==="GARAGE"&&!single&&(PARTY.active||partyFriends().length>0);
+  show("gParty",show_);if(!show_)return;
+  const wait=Math.ceil((homeUntil.party-NS.t)/60);
+  b.disabled=!PARTY.active&&wait>0;
+  b.textContent=PARTY.active?"SEE THEM OFF · PARTY "+partyScore():wait>0?"PARTY · AGAIN IN "+wait+" MIN":"THROW A PARTY";
+}
+function partyOpen(){return !$("party").classList.contains("hide")}
+function partyPanel(){
+  if(PARTY.active){partyFinish();return}
+  if(!partyCanHost())return;
+  PARTY_SEL.length=0;partyRender();$("pyReplies").replaceChildren();show("pyStart",false);show("pyInvite",true);
+  show("party",true);try{$("pyInvite").focus({preventScroll:true})}catch(e){}
+}
+function partyPanelClose(){show("party",false);try{$("gParty").focus({preventScroll:true})}catch(e){}}
+// the Friends who can be asked: up to three chosen; choosing again after the replies means sending again
+function partyRender(){
+  const L=$("pyList");L.replaceChildren();
+  for(const who of partyFriends()){
+    const on=PARTY_SEL.includes(who.id),b=document.createElement("button"),n=document.createElement("b"),t=document.createElement("span");
+    b.className="pyp mbtn";b.setAttribute("aria-pressed",String(on));b.disabled=!on&&PARTY_SEL.length>=3;
+    n.textContent=who.name;b.dataset.id=String(who.id);t.textContent=TRAIT_LABEL[who.trait]+" · "+relLabel(rel(who.id));b.append(n,t);
+    b.onclick=()=>{const i=PARTY_SEL.indexOf(who.id);if(i>=0)PARTY_SEL.splice(i,1);else if(PARTY_SEL.length<3)PARTY_SEL.push(who.id);
+      show("pyStart",false);show("pyInvite",true);$("pyReplies").replaceChildren();partyRender();try{L.querySelector('[data-id="'+who.id+'"]').focus({preventScroll:true})}catch(e){}};
+    L.appendChild(b);
+  }
+  $("pyCount").textContent=PARTY_SEL.length+" of 3 chosen";$("pyInvite").disabled=!PARTY_SEL.length;
+}
+function partySend(){
+  const replies=partyInvite(PARTY_SEL.slice()),box=$("pyReplies");box.replaceChildren();
+  for(const r of replies){const li=document.createElement("li"),who=PEOPLE[r.id];li.className=r.accepted?"yes":"no";
+    li.textContent=(r.accepted?who.name+" is coming: ":who.name+" can't come: ")+"“"+r.reason+"”";box.appendChild(li)}
+  // someone's coming: START takes SEND's place (choosing again brings SEND back)
+  const any=PARTY.ids.length>0;show("pyStart",any);show("pyInvite",!any);
+  if(any){$("pyStart").textContent="START THE PARTY · SCORE "+partyScore();try{$("pyStart").focus({preventScroll:true})}catch(e){}}
+  else if(replies.length){const li=document.createElement("li");li.className="no";li.textContent="Nobody can come this time. Ask someone else, or get to know them better.";box.appendChild(li)}
+}
+function partyGo(){if(!partyStart())return;partyPanelClose();partySync();
+  toast("PARTY","Your guests are here · SEE THEM OFF when it's time","gold")}
+function partyFinish(){
+  const names=PARTY.ids.map(id=>PEOPLE[id].name),r=partyEnd();if(!r){partySync();return}
+  partySync();restSync();
+  toast("PARTY · SCORE "+r.score,(r.score>=60?"A good party! ":"")+"Friendship up with "+names.join(", ")+".","gold");
+}
+$("gParty").onclick=partyPanel;$("pyInvite").onclick=partySend;$("pyStart").onclick=partyGo;$("pyClose").onclick=partyPanelClose;
 
