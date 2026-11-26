@@ -329,7 +329,9 @@ function finishEvent(tx){
   // winning, a gold time or a cup: Confident (js/life.js feel)
   const cupWon=!!cupRows&&cupRows.rows.some(r=>r[0]==="Cup won");
   if((cupWon||(E.type==="race"?pos===1:medal===0))&&typeof feel==="function")feel("confident",cupWon?"You won the cup":E.type==="race"?"You won the race":"A gold time");
-  if(rew)earn(rew);if(cupRows&&cupRows.prize)earn(cupRows.prize);persist();
+  // the round's reward and a cup's prize in one write with the cup marked won: in two, a refused second write lost
+  // the prize for good (the cup counted as won, so it never paid again; Codex's review)
+  const pay=rew+(cupRows&&cupRows.prize||0);if(pay)earn(pay);else persist();
   // the result shows once the car has stopped past the line (updateEvent): it used to show at once, with the car
   // frozen at race speed, which carried on the moment you pressed OK
   ev.phase="finish";ev.fin={t,pos,title,rows,T:0,next:cupRows&&cupRows.next};locked=true;

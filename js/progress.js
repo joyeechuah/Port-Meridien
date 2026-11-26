@@ -51,9 +51,11 @@ function discoverLandmark(L){
   if(!L||save.found[L.id])return false;
   save.found[L.id]=1;wantEvent("landmark");
   const n=foundCount(),done=n>=LANDMARKS.length&&!save.passBonus;if(done)save.passBonus=true;
-  const reward=Math.round(LANDMARK_REWARD*skillFactor("photography"));earn(reward);
+  // the landmark's reward and the set bonus in one write with the passport marked complete (in two, a refused second
+  // write lost the bonus for good: Codex's review)
+  const reward=Math.round(LANDMARK_REWARD*skillFactor("photography"));earn(reward+(done?PASSPORT_BONUS:0));
   toast("LANDMARK DISCOVERED",L.name+" · +"+fmtCr(reward)+" CR · "+n+"/"+LANDMARKS.length,"gold");if(typeof feel==="function")feel("inspired","You found "+L.name);
-  if(done){earn(PASSPORT_BONUS);toast("EXPLORER PASSPORT COMPLETE","Every landmark found · +"+fmtCr(PASSPORT_BONUS)+" CR","gold")}
+  if(done)toast("EXPLORER PASSPORT COMPLETE","Every landmark found · +"+fmtCr(PASSPORT_BONUS)+" CR","gold");
   if(!$("passport").classList.contains("hide"))renderPassport();
   return true;
 }
