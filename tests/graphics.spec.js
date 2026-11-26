@@ -107,3 +107,36 @@ test("Auto restores sharpness after an ineffective trial and ignores isolated st
   expect(result.trial).toContain(1.75);
   expect(result.end).toBe(2);
 });
+
+// The garage and the dealer's showroom are looked at closely and barely move: AUTO keeps them sharp. A phone's slow
+// frames in the garage used to step the picture down to three quarters, which looked blurred.
+test("Auto holds full sharpness in the garage, and the road picks up where driving left it", async ({ game, page }) => {
+  await page.addInitScript(() => Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 2 }));
+  await game.open({ save: { v: 3, gfx: 0 } });
+  await game.driveOut();
+  await game.park();
+  const ratio = () => game.eval(() => __T.renderer.getPixelRatio());
+  // slow frames on the road: the picture steps down
+  // (a GPU-bound scene: each lower step makes the frames quicker)
+  await game.eval(() => {
+    const T = __T;
+    for (let s = 0; s < 20; ) {
+      const dt = 0.04 * T.renderer.getPixelRatio();
+      T.adaptRes(dt);
+      s += dt;
+    }
+  });
+  const road = await ratio();
+  expect(road).toBeLessThan(2);
+  // home: full sharpness, and slow frames there don't step it down
+  await game.eval(() => __T.goGarage());
+  await game.waitState("GARAGE");
+  await game.frames(3);
+  expect(await ratio()).toBe(2);
+  await game.frames(30);
+  expect(await ratio()).toBe(2);
+  // back out: where driving had it
+  await game.driveOut();
+  await game.frames(3);
+  expect(await ratio()).toBe(road);
+});
