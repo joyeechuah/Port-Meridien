@@ -1537,8 +1537,13 @@ function buildVedra(){
   rockIslet(cx*(r+250)+Math.cos(a+1.6)*190,cz*(r+250)+Math.sin(a+1.6)*190,a+Math.PI/2-.4,130,60,52,8);
 }
 // boats: merged into one mesh each; anchored ones bob in the bays, a few cruise offshore with a wake
-function hullGeo(L,Wd,D){
-  const s=new THREE.Shape();s.moveTo(-Wd/2,-L/2);s.lineTo(Wd/2,-L/2);s.lineTo(Wd/2,L*.12);s.quadraticCurveTo(Wd*.48,L*.42,0,L/2);s.quadraticCurveTo(-Wd*.48,L*.42,-Wd/2,L*.12);s.lineTo(-Wd/2,-L/2);
+// a hull's outline (bow towards -z once laid flat), as a solid of depth D; with t, only its rim t wide (a gunwale)
+function hullOutline(L,Wd,P=new THREE.Shape()){
+  P.moveTo(-Wd/2,-L/2);P.lineTo(Wd/2,-L/2);P.lineTo(Wd/2,L*.12);P.quadraticCurveTo(Wd*.48,L*.42,0,L/2);P.quadraticCurveTo(-Wd*.48,L*.42,-Wd/2,L*.12);P.lineTo(-Wd/2,-L/2);
+  return P;
+}
+function hullGeo(L,Wd,D,t=0){
+  const s=hullOutline(L,Wd);if(t)s.holes.push(hullOutline(L-2*t,Wd-2*t,new THREE.Path()));
   return new THREE.ExtrudeGeometry(s,{depth:D,bevelEnabled:false,curveSegments:6}).rotateX(-Math.PI/2);
 }
 function boatGeo(kind){

@@ -473,3 +473,34 @@ test.describe("harbour and boat", () => {
     expect([b.boat, b.foot]).toEqual([false, false]);
   });
 });
+
+// The motorboat's hull points the way it sails: its bow (the narrow end of the hull) ahead, the motor and the wake
+// behind. hullGeo builds its bow towards -z, as the harbour's other boats are turned to sail; the motorboat's parts are
+// laid out bow towards +z, and its hull wasn't turned with them, so it went blunt end first with the motor on the bow.
+test("the motorboat's bow is ahead of it and its motor behind", async ({ game }) => {
+  await game.open();
+  const r = await game.eval(() => {
+    const T = __T,
+      B = T.BOAT.m,
+      hull = B.children[0].geometry,
+      p = hull.attributes.position,
+      half = { ahead: 0, behind: 0 };
+    hull.computeBoundingBox();
+    const bb = hull.boundingBox,
+      L = bb.max.z - bb.min.z;
+    // the widest the hull is in its front and back tenths
+    for (let i = 0; i < p.count; i++) {
+      const z = p.getZ(i),
+        w = Math.abs(p.getX(i));
+      if (z > bb.max.z - L * 0.1) half.ahead = Math.max(half.ahead, w);
+      if (z < bb.min.z + L * 0.1) half.behind = Math.max(half.behind, w);
+    }
+    // the motor: the metal box furthest from the middle
+    const motor = B.children.filter((c) => c.geometry && c.geometry.type === "BoxGeometry").reduce((a, c) => (Math.abs(c.position.z) > Math.abs(a.position.z) ? c : a));
+    // ahead in the world is (sin h, cos h): the hull's narrow end should be there
+    const ahead = new THREE.Vector3(0, 0, bb.max.z).applyQuaternion(B.quaternion),
+      f = { x: Math.sin(T.BOAT.h), z: Math.cos(T.BOAT.h) };
+    return { narrowAhead: half.ahead < half.behind * 0.6, motorBehind: motor.position.z < 0, aheadDot: +(ahead.x * f.x + ahead.z * f.z).toFixed(2) > 0 };
+  });
+  expect(r).toEqual({ narrowAhead: true, motorBehind: true, aheadDot: true });
+});
