@@ -29,6 +29,7 @@ const NAMES = (
   "DIAG VRANGE resetResolutionSample jobTarget jobsClose jobsOpen keys mapToWorld mapZoomAt nearestRoad nearestRoadGlobal openDealer openIntro " +
   "openMap openMapPopup pad passportClose passportOpen pauseOff pauseOn pc persist photoCapture photoEnter " +
   "photoExit photoLook photoLookSet photoReset prNow promptAct renderer resetToRoad routeBetween save scene " +
+  "contractRank contractPay " +
   "VERGE vergeSites toast toastFit " +
   "GIFT_CR GIFT_TAKES talkGift giftGiven giftClean " +
   "TRAITS traitsClean traitsApply hasTrait traitLoss " +
