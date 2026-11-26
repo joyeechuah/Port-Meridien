@@ -288,17 +288,19 @@ function talkTip(who){
   return TIPS[(who.id+r.n+TALK.n)%TIPS.length];
 }
 function talkShow(line){
-  const who=TALK.person;if(!who)return;const r=rel(who.id),f=r.f,bar=$("tkBarFill");
+  const who=TALK.person;if(!who)return;const r=rel(who.id),f=r.f,bar=$("tkBarFill"),picked=tkButtons()[TALK.sel];
   $("tkName").textContent=who.name;$("tkTrait").textContent=TRAIT_LABEL[who.trait];$("tkRelLbl").textContent=relLabel(r);show("tkBday",isBirthday(who.id));
   bar.style.width=Math.abs(f)/2+"%";bar.style.left=(f<0?50-Math.abs(f)/2:50)+"%";bar.classList.toggle("neg",f<0);
   if(line!==undefined)$("tkLine").textContent=line;
   // friends can be asked along for a ride (40 or more: Friend and up)
-  const ride=$("tkRide"),was=!ride.classList.contains("hide");show("tkRide",f>=RIDE_AT);show("tkInvite",f>=RIDE_AT);
-  if(was!==(f>=RIDE_AT))talkSel(Math.min(TALK.sel,tkButtons().length-1));
+  show("tkRide",f>=RIDE_AT);show("tkInvite",f>=RIDE_AT);
   const asked=GUEST.who===who&&!GUEST.done,inv=$("tkInvite");inv.disabled=asked;
   inv.innerHTML=asked?"Coming over to your place":"Come over to my place <kbd>8</kbd>";
   const gift=$("tkGift"),given=giftGiven(who.id);gift.disabled=given||GIFTS.every(g=>save.cr<g.price);
   gift.innerHTML=given?"Gift given today":"Give a gift <kbd>9</kbd>";
+  // the line picked for a controller stays the same line when others come or go, or the nearest one when it goes
+  // itself: asking a friend over turned its button off, the outline stayed on it, and A then gave a gift instead
+  {const bs=tkButtons(),i=bs.indexOf(picked);talkSel(i>=0?i:Math.min(TALK.sel,bs.length-1))}
   show("talk",true);document.body.classList.add("talking");if(f>=RIDE_AT)hint("friends");
 }
 // keys while talking: 1 to 6 say the lines, 7 and 8 ask a friend along or over, 9 gives a gift, and Escape, E or

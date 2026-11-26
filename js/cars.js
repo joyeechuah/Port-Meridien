@@ -805,6 +805,8 @@ function pollPad(){
   if(clOverlayOpen()){if(hit(1))clEscape();return}
   if(WORK.panel){GP.steer=GP.gas=GP.brake=0;GP.fire=GP.hb=false;workPad(hit);return}
   const inputState=state;
+  // (the pause menu's scroll clock starts again on each visit: it kept the last one's time, and the first move jumped)
+  if(state!=="PAUSE")GP.t=0;
   if(state==="ARRIVAL"){if(hit(0)||hit(1)||hit(9))finishArrival();return}
   else if(state==="WARDROBE"){
     if(hit(14)||hit(12))moveLook(-1);

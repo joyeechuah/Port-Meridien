@@ -160,6 +160,9 @@ function rivalModel(cd,key){
   return m;
 }
 function startEvent(E,cup){
+  // a friend with you gets out here first, as one won't get in during a race or a time trial (js/life.js rideWhy). They
+  // used to stay in the seat for the whole race, or, still walking to the car, be brought to the grid and get in there
+  if(typeof RIDE!=="undefined"&&RIDE.p&&typeof rideEnd==="function")rideEnd("out");
   P.damage=P.damageT=0;repairWarnLevel=0;
   const R=E.route,me=curCar(),idx=CARS.indexOf(me);
   ev={E,R,lanes:null,t:-3,phase:"count",cp:0,hint:0,s:14,sNow:14,d:99,ai:[],done:false,wrongT:0,last:4,px:null,pz:null,gate:gateOf(R,E.cps[0]),reT:0,missT:0,diff:E.type==="race"?save.diff:1,obs:[],cup:cup||null,tg:cup&&E.type==="tt"?cupTimes(E,cup.cls):E,rec:E.type==="tt"?[]:null,ghost:E.type==="tt"&&save.ghost[E.id]?save.ghost[E.id]:null};
