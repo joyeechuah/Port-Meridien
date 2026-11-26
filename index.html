@@ -258,8 +258,9 @@ body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px +
 #gSave{margin-left:10px}#tl>#saveHud{align-self:flex-start;margin:0}
 /* a narrow phone has no room beside the credits: there it goes under them, and the pills below move down to make room */
 @media (max-width:560px){#gSave{position:absolute;top:calc(100% + 6px);right:0;margin:0}#gui:has(#gSave:not(.hide)) #garageOptions .pill{margin-top:30px}
-  /* HANG OUT, the seventh pill down, reached the car arrows: it goes on the left, level with REST, where nothing is */
-  #gGuest{top:calc(184px + var(--st));right:auto;left:calc(22px + var(--sl))}}
+  /* seven pills down the right (HANG OUT, with a friend over, the seventh) fit above the car arrows: 34 px apart */
+  #gCloud{top:calc(98px + var(--st))}#gGun{top:calc(132px + var(--st))}#gRest{top:calc(166px + var(--st))}
+  #gSnack{top:calc(200px + var(--st))}#gPlay{top:calc(234px + var(--st))}#gGuest{top:calc(268px + var(--st))}}
 .saveWarn{background:rgba(10,22,31,.88);color:#ff8f82;border:1px solid #e2483d}.saveWarn.acct{color:#f2b33d;border-color:rgba(242,179,61,.55)}
 #damageHud.high{color:#f2b33d}
 #damageHud.critical{color:#ff8f82;border-color:#e2483d}
@@ -487,9 +488,9 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   #gdots{display:none}
   #gpick .gnav{pointer-events:auto;width:44px;height:44px;background:var(--panel);border:1px solid var(--line)}
 }
-/* on a portrait phone the car arrows stay clear of the garage's column of pills (PLAY, the lowest, ends at 290 px, or 320
-   with NOT SAVED above it) */
-@media (max-width:560px) and (min-height:521px){#gpick{top:max(45%,calc(350px + var(--st)))}}
+/* on a portrait phone the car arrows stay clear of the garage's column of pills (HANG OUT, the lowest, ends at 294 px, or
+   324 with NOT SAVED above it) */
+@media (max-width:560px) and (min-height:521px){#gpick{top:max(45%,calc(356px + var(--st)))}}
 /* Short landscape screens put the equipment row above the car-selection arrows. */
 @media (min-width:561px) and (max-height:520px){
   /* REST (your needs, js/life.js) goes on a second line when the row would reach the garage's name */

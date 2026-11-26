@@ -1,6 +1,7 @@
 // The garage on a phone with every pill on (SNACK and PLAY from the home's furniture, SAVE MY PROGRESS, HANG OUT with
 // a friend over, NOT SAVED beside the credits): no two of its controls overlap, and all are on screen. HANG OUT used to
-// reach the car arrows in portrait, and REST ran under the right arrow in landscape.
+// reach the car arrows in portrait (the pills are closer together there now), and REST ran under the right arrow in
+// landscape.
 const { test, expect } = require("./support/game");
 
 const overlap = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
@@ -27,8 +28,10 @@ for (const [name, w, h] of [
       await game.open();
       await game.eval(() => {
         const T = __T;
-        T.save.rel[2] = { f: 50, n: 3 };
-        T.GUEST.who = T.PEOPLE[2];
+        // the friend with the longest name, for the widest HANG OUT
+        const i = T.PEOPLE.reduce((a, q, k) => (q.name.length > T.PEOPLE[a].name.length ? k : a), 0);
+        T.save.rel[i] = { f: 50, n: 3 };
+        T.GUEST.who = T.PEOPLE[i];
         T.GUEST.done = false;
         T.guestSync("GARAGE");
         window.__refuse = true;
