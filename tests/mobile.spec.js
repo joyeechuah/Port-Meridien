@@ -228,6 +228,47 @@ test.describe("garage view on a phone held upright", () => {
   });
 });
 
+test.describe("garage pinch starting on a button", () => {
+  test.use({ viewport: { width: 412, height: 800 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+
+  // the first finger of a pinch on the next-car arrow used to press nothing and only turn the view: the second finger,
+  // on the view, was taken as a one-finger turn
+  test("a pinch whose first finger lands on the next-car arrow zooms and doesn't change car; a tap on it still does", async ({ game, page }) => {
+    await game.open();
+    await game.waitState("GARAGE");
+    const cdp = await page.context().newCDPSession(page);
+    const arrow = await page.locator("#gnext").evaluate((b) => {
+      const r = b.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    const free = { x: arrow.x, y: arrow.y - 120 };
+    expect(await page.evaluate(([a, f]) => [document.elementFromPoint(a.x, a.y).closest("button").id, document.elementFromPoint(f.x, f.y).id], [arrow, free])).toEqual(["gnext", "c"]);
+    const now = () => game.eval(() => ({ zoom: +__T.GO.zoom.toFixed(2), held: __T.GO.ptr.size, cur: __T.gSel, state: __T.state }));
+    const a = await now();
+    const two = (dy) => [
+      { id: 1, x: arrow.x, y: arrow.y },
+      { id: 2, x: free.x, y: free.y - dy },
+    ];
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [two(0)[0]] });
+    await page.waitForTimeout(40);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: two(0) });
+    for (let i = 1; i <= 10; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: two(i * 20) });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [two(200)[0]] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForTimeout(350);
+    const b = await now();
+    expect(b.zoom).toBeLessThan(0.7);
+    expect([b.held, b.cur, b.state]).toEqual([0, a.cur, "GARAGE"]);
+    // one finger on the arrow alone is a press
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [two(0)[0]] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect.poll(() => now().then((n) => n.cur)).not.toBe(a.cur);
+  });
+});
+
 test.describe("brake and reverse button", () => {
   test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
 
