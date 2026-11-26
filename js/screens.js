@@ -1049,7 +1049,9 @@ const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PR
   const shifts=workClean(sv.work).completed;if(shifts)o.work={completed:shifts};
   // no friendships yet (js/life.js) is the same progress as a save from before they existed, so the new empty field
   // doesn't make two devices disagree
-  if(o.rel&&typeof o.rel==="object"&&!Object.keys(o.rel).length)delete o.rel;return clHash(clCanon(o))};
+  if(o.rel&&typeof o.rel==="object"&&!Object.keys(o.rel).length)delete o.rel;
+  // (nobody given a gift yet, the same: js/life.js)
+  if(Array.isArray(o.gifted)&&!o.gifted.length)delete o.gifted;return clHash(clCanon(o))};
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;

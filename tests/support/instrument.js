@@ -32,7 +32,7 @@ const NAMES = (
   "contractRank contractPay " +
   "VERGE vergeSites toast toastFit " +
   "talkGift giftGiven giftClean " +
-  "GIFTS GIFT_PREFS giftMenu giftSync " +
+  "GIFTS GIFT_PREFS giftMenu giftSync giftedClean " +
   "TRAITS traitsClean traitsApply hasTrait traitLoss " +
   "NET netAt netState netTick fbLoad FB_LOADS " +
   "seaT setGPS clearGPS setState skyClock skyU startEvent startTestDrive state streakReset testDrive " +

@@ -346,7 +346,7 @@ function cupsOpen(){if(state!=="PAUSE")return;renderCups();$("pause").inert=true
 function cupsClose(){show("cups",false);$("pause").inert=false;try{$("pCups").focus({preventScroll:true})}catch(e){}}
 $("pCups").onclick=cupsOpen;$("cpClose").onclick=cupsClose;
 
-/* ---------- aspirations: six long goals of three steps each, worked out from what you've done, each step paid once ---------- */
+/* ---------- aspirations: eight long goals of three steps each, worked out from what you've done, each step paid once ---------- */
 const ASPIRE_PAY=[1500,4000,10000];
 const friendsAt=f=>Object.values(save.rel).filter(r=>r&&r.n>0&&r.f>=f).length;
 const cupsWon=()=>CUPS.filter(C=>save.champ[C.cls]&&save.champ[C.cls].won).length;
@@ -354,6 +354,9 @@ const skillsAt=l=>Object.keys(SKILL_RATE).filter(k=>skillLevel(k)>=l).length;
 const wantsDone=()=>Object.values(save.wants.completed).reduce((a,b)=>a+b,0);
 // (the kitchen and the home are js/work.js's and js/home.js's, which load later: until then their steps can't be met)
 const rankAt=r=>typeof workRank==="function"&&workRank()>=r;
+// the driving contracts' rank (above), and how many people have ever had a gift from you (js/life.js)
+const driverAt=r=>typeof contractRank==="function"&&contractRank()>=r;
+const giftedTo=()=>Array.isArray(save.gifted)?save.gifted.length:0;
 /** @type {{id:string,name:string,steps:[string,()=>boolean][]}[]} */
 const ASPIRATIONS=[
   {id:"chef",name:"Master chef",steps:[["Prep cook at the kitchen",()=>rankAt(1)],["Sous chef",()=>rankAt(3)],["Head chef",()=>rankAt(4)]]},
@@ -362,7 +365,9 @@ const ASPIRATIONS=[
   {id:"social",name:"Social butterfly",steps:[["Someone Friendly",()=>friendsAt(15)>=1],["Three Friends",()=>friendsAt(40)>=3],["A Best friend",()=>friendsAt(90)>=1]]},
   {id:"racer",name:"Speed demon",steps:[["Win a cup",()=>cupsWon()>=1],["Win three cups",()=>cupsWon()>=3],["Win every cup",()=>cupsWon()>=CUPS.length]]},
   {id:"skills",name:"Renaissance",steps:[["A skill at level 3",()=>skillsAt(3)>=1],["Three skills at level 5",()=>skillsAt(5)>=3],["A skill at level 10",()=>skillsAt(10)>=1]]},
-  {id:"wants",name:"Go-getter",steps:[["10 wants done",()=>wantsDone()>=10],["30 wants done",()=>wantsDone()>=30],["100 wants done",()=>wantsDone()>=100]]}
+  {id:"wants",name:"Go-getter",steps:[["10 wants done",()=>wantsDone()>=10],["30 wants done",()=>wantsDone()>=30],["100 wants done",()=>wantsDone()>=100]]},
+  {id:"driver",name:"Road warrior",steps:[["Local driver on contracts",()=>driverAt(1)],["Senior driver",()=>driverAt(3)],["Master driver",()=>driverAt(4)]]},
+  {id:"generous",name:"Generous",steps:[["Gifts for 3 people",()=>giftedTo()>=3],["Gifts for 8 people",()=>giftedTo()>=8],["A gift for everyone in Old Quay",()=>giftedTo()>=16]]}
 ];
 // the save's record: version 1, how many steps of each have been paid (0 to 3); anything else counts as none
 function aspireClean(raw){

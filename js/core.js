@@ -262,6 +262,8 @@ function skillDistance(k,metres){
 // then neither blocks the photos until that day nor gives five more
 // who has had a gift from you today (js/life.js talkGift), once a day each, by UTC day: another day's list is as good
 // as none, and a day still to come (a clock put back) counts as today
+// everyone who has ever had a gift from you (the Generous aspiration, js/progress.js): their ids, once each, in order
+function giftedClean(raw){return Array.isArray(raw)?[...new Set(raw.slice(0,64).filter(id=>Number.isInteger(id)&&id>=0&&id<16))].sort((a,b)=>a-b):[]}
 function giftClean(raw){
   const today=Math.floor(Date.now()/86400000),none={v:1,day:-1,ids:/** @type {number[]} */ ([])};
   if(!raw||typeof raw!=="object"||raw.v!==1||!Number.isSafeInteger(raw.day)||raw.day<0)return none;
@@ -291,7 +293,7 @@ function workClean(w){
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={gift:giftClean(null),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
+const save={gift:giftClean(null),gifted:/** @type {number[]} */ ([]),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
 // the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
 // version starts again from the starting values; a missing or broken number is put back to its own starting value,
@@ -359,7 +361,7 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
-  save.gift=giftClean(save.gift);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
+  save.gift=giftClean(save.gift);save.gifted=giftedClean(save.gifted);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
   save.needs=needsClean(save.needs);save.work=workClean(save.work);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};
