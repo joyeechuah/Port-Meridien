@@ -758,7 +758,7 @@ function clearInput(){if(typeof workClose==="function")workClose();for(const k i
 let locked=false,autoHold=false;
 // a game controller (the first one connected, standard layout): left stick steers, right trigger is the gas, left
 // trigger the brake, A the handbrake; Start pauses, View/Back opens the map, Y changes camera, X is the prompt key
-const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,index:null,prev:[]};
+const GP={on:false,steer:0,gas:0,brake:0,hb:false,rear:false,fire:false,index:null,prev:[],t:0};
 // screens opened from the pause menu, and how each closes
 /** @type {[string, () => void][]} */
 const PAUSE_SUBS=[["repair",()=>closeRepair()],["passport",()=>passportClose()],["jobs",()=>jobsClose()],["cups",()=>cupsClose()],["skills",()=>skillsClose()],["needs",()=>needsClose()],["play",()=>netClose()],["collections",()=>collectionsClose()]];
@@ -779,14 +779,16 @@ function padIn(box,hit){
 // either stick scrolls the list in a screen opened from the pause menu: the Postcards list has no buttons for the
 // D-pad to move through, and the Passport's places not found yet have none, so a list taller than the screen could
 // only be seen in part with a controller
-function padScroll(g){
+// (at 840 px a second, whatever the frame rate: it was 14 px a frame, four times as far at 120 frames a second as at
+// 30; Codex's audit)
+function padScroll(g,dt=1/60){
   const sub=PAUSE_SUBS.map(([id])=>$(id)).find(e=>!e.classList.contains("hide"));if(!sub)return;
   const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8,y=dz(g.axes[3]||0)||dz(g.axes[1]||0);if(!y)return;
   // the innermost first (a list inside a card that scrolls too), and what's left of the move, once it's at its end, to
   // the one round it: the card used to take it all, and its list never moved (Codex's review)
   const els=/** @type {HTMLElement[]} */([...sub.querySelectorAll("ol,ul,div")]).filter(el=>el.scrollHeight>el.clientHeight+1&&/auto|scroll/.test(getComputedStyle(el).overflowY));
   els.sort((a,b)=>a.contains&&a.contains(b)?1:b.contains&&b.contains(a)?-1:0);
-  let d=y*14;
+  let d=y*840*dt;
   for(const el of els){const was=el.scrollTop;el.scrollTop=was+d;d-=el.scrollTop-was;if(Math.abs(d)<1)break}
 }
 function pollPad(){
@@ -814,7 +816,7 @@ function pollPad(){
   else if(state==="DRIVE"&&TALK.p)talkPad(hit);
   else if(state==="DRIVE"){if(hit(9))pauseOn();else if(hit(8))openMap();else if(hit(3)&&!FOOT.on&&!BOAT.on)cycleCam();else if(hit(2)&&promptAct)promptAct();else if(hit(1)&&!FOOT.on&&!BOAT.on)footExit()}
   // in the pause menu, B or Start closes a screen opened from it (passport, contracts) before the menu itself
-  else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}else{padMenu(hit);padScroll(g)}}
+  else if(state==="PAUSE"){if(hit(9)||hit(1)){const sub=PAUSE_SUBS.find(([id])=>!$(id).classList.contains("hide"));if(sub)sub[1]();else pauseOff()}else{padMenu(hit);const now=performance.now(),pdt=GP.t?clamp((now-GP.t)/1000,0,.1):1/60;GP.t=now;padScroll(g,pdt)}}
   else if(state==="LOAD"){if(hit(0)&&!$("lstart").classList.contains("hide"))$("lstart").click()}
   else if(state==="MAP"){if(hit(8)||hit(1)){if(!$("passport").classList.contains("hide"))passportClose();else closeMap()}}
   // B closes the picture just taken first, as Escape does; from Photo Mode itself it goes back

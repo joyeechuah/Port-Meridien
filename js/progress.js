@@ -147,8 +147,10 @@ function postcardTick(dt){
   for(const[id,m] of POSTCARD_MARKS){
     const G=m.G;G.visible=!got.includes(id)&&(G.position.x-cx)**2+(G.position.z-cz)**2<320*320;
     if(G.visible&&!postcardCalm){m.card.rotation.y=postcardT*1.1+i;m.card.position.y=1.38+Math.sin(postcardT*1.8+i)*.04}
-    // the first time you come near one in free ride: what it is, and that it's collected on foot
-    if(G.visible&&state==="DRIVE"&&!HINTS.postcard&&(G.position.x-me.x)**2+(G.position.z-me.z)**2<45*45)hint("postcard");
+    // the first time you come near one in free ride: what it is, and that it's collected on foot (not in a race or a
+    // test drive, which used it up: Codex's audit)
+    if(G.visible&&state==="DRIVE"&&!HINTS.postcard&&!(typeof ev!=="undefined"&&ev)&&!(typeof testDrive!=="undefined"&&testDrive)&&
+      (G.position.x-me.x)**2+(G.position.z-me.z)**2<45*45)hint("postcard");
     i++;
   }
 }

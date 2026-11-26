@@ -10,9 +10,30 @@ const { ROOT, TAG, stampOf } = require("./source");
 const SITE = ["index.html", "404.html", "js", "audio"];
 
 // copies src's site into out and stamps it; returns the scripts in load order, or throws on anything wrong
+// It builds in a sibling directory and only then replaces out, so a run that fails (a missing file, a bad tag) leaves
+// the last good build in place (it used to delete it first: Codex's audit). out mustn't be, contain or sit inside src
 function stageSite(src = ROOT, out = path.resolve("_site")) {
-  fs.rmSync(out, { recursive: true, force: true });
-  fs.mkdirSync(out, { recursive: true });
+  src = path.resolve(src);
+  out = path.resolve(out);
+  const inside = (a, b) => {
+    const r = path.relative(b, a);
+    return r === "" || (!r.startsWith("..") && !path.isAbsolute(r));
+  };
+  if (inside(out, src) && SITE.some((f) => inside(out, path.join(src, f)))) throw new Error(`staging into ${out} would write over the site's own files`);
+  if (inside(src, out)) throw new Error(`staging into ${out} would delete the source at ${src}`);
+  for (const f of SITE) if (!fs.existsSync(path.join(src, f))) throw new Error(`the site's ${f} isn't in ${src}`);
+  const work = fs.mkdtempSync(path.join(path.dirname(out), "." + path.basename(out) + "-"));
+  try {
+    const scripts = stageInto(src, work);
+    fs.rmSync(out, { recursive: true, force: true });
+    fs.renameSync(work, out);
+    return scripts;
+  } catch (e) {
+    fs.rmSync(work, { recursive: true, force: true });
+    throw e;
+  }
+}
+function stageInto(src, out) {
   for (const f of SITE) fs.cpSync(path.join(src, f), path.join(out, f), { recursive: true });
   const page = path.join(out, "index.html"),
     scripts = [];

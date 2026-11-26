@@ -722,7 +722,8 @@ $("repairNow").onclick=()=>{
   if(pc)showDamageSmoke(pc,0);
   persist();updateMoney();repairConfirm=false;
   show("repair",false);
-  if(repairReturnPause)show("pause",true);else pauseOff();
+  // (back in the pause menu, its button says the car is repaired: it said the old damage until the menu reopened)
+  if(repairReturnPause){$("pRepair").textContent="VEHICLE CONDITION · "+Math.ceil(Math.max(0,P.damage||0))+"%";show("pause",true)}else pauseOff();
   show("damageHud",false);
   toast("VEHICLE REPAIRED","Roadside repair: -"+fmtCr(price)+" CR","gold");
 };
@@ -1235,11 +1236,13 @@ function clWork(cloud){
 function clNeeds(cloud){
   needsCommit();   // bench and speed rewards can be newer than the last local checkpoint
   // the party's wait first, whichever needs are kept (js/life.js partyWaitMerge), and kept through them
-  const before=needsKey(save);if(typeof partyWaitMerge==="function"){partyWaitMerge(cloud.homeWait);needsCommit()}
+  const before=needsKey(save),at0=homeUntil.partyAt;if(typeof partyWaitMerge==="function"){partyWaitMerge(cloud.homeWait);needsCommit()}
   const party=homeUntil.party-NS.t,partyAt=homeUntil.partyAt;
   const here=needsKey(save),there=needsKey(cloud);
   if(here!==there&&(!CL.meta.needs||CL.meta.needs===before)){needsLoad(needsOfSave(cloud));homeWaitLoad(cloud.homeWait);homeUntil.party=NS.t+party;homeUntil.partyAt=partyAt;needsCommit();persist();if(state==="GARAGE")restSync()}
-  else if(here!==before)persist();
+  // (a newer party's stamp is saved here too, with nothing else changed: it isn't in the needs' key, and a reload used
+  // to lose it, so an older party could win the next comparison)
+  else if(here!==before||homeUntil.partyAt!==at0)persist();
   if(state==="GARAGE"&&typeof partyButton==="function"&&save.rel)partyButton();
   if(needsKey(save)===there)CL.meta.needs=there}
 // the account's save becomes this device's (its ghost laps stay), and the game starts again from it
@@ -1252,6 +1255,13 @@ function clApply(doc,cloud){const lost=[],sv=Object.assign({},cloud,{home:homeCl
   // over it (that reopened the five a day); another account's save keeps its own
   if(!CL.other){const a=photoDayClean(save.photoDay),b=photoDayClean(sv.photoDay);if(a.day>b.day||a.day===b.day&&a.count>b.count)sv.photoDay=a}
   if(save.gift||cloud.gift)sv.gift=giftSync(save.gift,cloud.gift,CL.other);
+  // the same account's party wait: for the same party, the shorter of the two (a restore brought back the longer, which
+  // sync would have kept short: Codex's audit); a newer party's, its own; an older one's, this device's
+  if(!CL.other&&typeof homeUntil!=="undefined"){const w=cloud.homeWait&&typeof cloud.homeWait==="object"?cloud.homeWait:{},
+      at=Number.isSafeInteger(w.partyAt)&&w.partyAt>0?w.partyAt:0,there=Number.isFinite(w.party)?Math.max(0,Math.ceil(w.party)):0,
+      left=Math.max(0,Math.ceil(homeUntil.party-NS.t)),wait=Math.min(180,at>homeUntil.partyAt||!at&&!homeUntil.partyAt?there:at===homeUntil.partyAt?Math.min(left,there):left),
+      hw=Object.assign({},w),stamp=Math.max(at,homeUntil.partyAt);
+    delete hw.party;delete hw.partyAt;if(wait)hw.party=wait;if(stamp)hw.partyAt=stamp;sv.homeWait=hw}
   CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   // if the browser won't store it, nothing changed: saving and backing up carry on, and the choice stays to try again
   // (and nothing from this device goes up in the meantime without comparing again: its older save would replace the
