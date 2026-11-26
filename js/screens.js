@@ -1038,7 +1038,8 @@ function fbLoad(f){
 const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn","needs","homeWait","flash","violence","armed"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
-const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PREFS.includes(k))o[k]=sv[k];
+// (the save's number, gen, is this device's own: neither progress nor sent to the account)
+const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&k!=="gen"&&!CL_PREFS.includes(k))o[k]=sv[k];
   delete o.postcards;if(sv.postcards?.length){const cards=postcardsClean(sv.postcards);if(cards.length)o.postcards=cards}
   delete o.traits;if(sv.traits){const t=traitsClean(sv.traits);if(t.ids.length||t.day>=0)o.traits=t}
   delete o.wants;const counts=sv.wants&&wantsClean(sv.wants).completed;if(counts&&Object.keys(counts).length)o.wants=counts;
@@ -1054,7 +1055,7 @@ const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&!CL_PR
   if(o.rel&&typeof o.rel==="object"&&!Object.keys(o.rel).length)delete o.rel;
   // (nobody given a gift yet, the same: js/life.js)
   if(Array.isArray(o.gifted)&&!o.gifted.length)delete o.gifted;return clHash(clCanon(o))};
-const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;return o};
+const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;delete o.gen;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
   // (an aspiration step paid is progress, even with the credits spent back to the start: js/progress.js)
@@ -1113,7 +1114,8 @@ function clLoadMeta(){let m=null;try{m=JSON.parse(localStorage.getItem(CLOUD_KEY
   // another account signing in here is asked before that progress goes to it. Only the id: no name or email of a
   // signed-out account is kept on the device (older saves stored the name; it's dropped here)
   // disk: the progress this browser held as the last backup went up (clDisk)
-  const o=Object.assign({uid:null,name:"",email:"",rev:0,prog:"",disk:"",full:"",needs:"",at:0,rehash:false,owner:null,ownerName:""},m&&typeof m==="object"?m:{});
+  // diskGen: the number of the save stored here then (js/core.js saveWrite); disk, for a save from before the numbers
+  const o=Object.assign({uid:null,name:"",email:"",rev:0,prog:"",disk:"",diskGen:0,full:"",needs:"",at:0,rehash:false,owner:null,ownerName:""},m&&typeof m==="object"?m:{});
   if(o.uid&&!o.owner)o.owner=o.uid;
   // Migrate even when the remembered session has expired or Firebase is offline.
   if(o.name||o.email||o.ownerName){
@@ -1133,7 +1135,7 @@ function clSet(st,msg){CL.st=st;CL.msg=msg||"";clRender();saveMark()}
 function clBoot(){
   CL.ad=clAdapter();
   // straight after a restore from the account: the save as this game reads it is the version now in step
-  if(CL.meta.rehash){CL.meta.rehash=false;CL.meta.prog=CL.meta.disk=clProg(save);CL.meta.full=clHash(clCanon(clPayload(save)));CL.meta.needs=needsKey(save);clSaveMeta()}
+  if(CL.meta.rehash){CL.meta.rehash=false;CL.meta.prog=clProg(save);CL.meta.diskGen=SAVE.gen;CL.meta.disk=SAVE.gen?"":CL.meta.prog;CL.meta.full=clHash(clCanon(clPayload(save)));CL.meta.needs=needsKey(save);clSaveMeta()}
   if(CL.meta.uid&&CL.ad)clConnect(false);else clRender();
   addEventListener("online",()=>{if(CL.user&&(CL.st==="offline"||CL.st==="pending"))clSync()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&CL.user)clSync()});
@@ -1186,8 +1188,17 @@ function clReconcile(doc){
   if(clFresh(save))return clApply(doc,cloud);                                      // a new device: bring the account's progress here
   // this device's save is as it was when it last synced: what went up then, or the older save this browser still held
   // because it wouldn't store that one (js/core.js persist). Then the account's copy is the newer, even at the same
-  // revision: sending this device's up would undo progress that's on no device's storage
-  const still=!!CL.meta.prog&&(CL.meta.prog===L||CL.meta.disk===L);
+  // revision: sending this device's up would undo progress that's on no device's storage. Which save is stored is
+  // told by its number (js/core.js saveWrite), not its contents: loading tidies a save (saveTrim), and a newer save can
+  // come back to an earlier state. A save from before the numbers is compared as stored. Both only while this
+  // session's save is the one stored: unchanged since it was loaded (js/main.js), or with its last write gone in
+  const m=CL.meta,gen=SAVE.gen;let still=!!m.prog&&m.prog===L,unsure=false;
+  if(m.prog&&!still&&(L===SAVE.bootProg||SAVE.ok)){
+    if(m.diskGen>0&&gen>0){still=gen===m.diskGen;unsure=gen<m.diskGen}
+    else if(m.diskGen>0)unsure=true;                                                 // a numbered save noted, none here
+    else if(m.disk&&!gen)still=m.disk===clBootDisk();
+  }
+  if(unsure){CL.pick={doc,cloud};clSet("conflict","This device and your account have different progress. Choose which to keep.");clPickShow();return}
   if(CL.meta.rev===rev&&CL.meta.prog&&!still)return clUpload(rev);                  // only this device moved on since it last synced
   if(CL.meta.rev&&still)return clApply(doc,cloud);                                   // only the account moved on (another device, or this one's own backup)
   CL.pick={doc,cloud};clSet("conflict","This device and your account have different progress. Choose which to keep.");clPickShow()}
@@ -1228,16 +1239,19 @@ function clApply(doc,cloud){const lost=[],sv=Object.assign({},cloud,{home:homeCl
 // this device's save goes to the account, if nobody else wrote there since (otherwise: compare again)
 function clUpload(rev,onlyIfChanged){if(tabIdle||CL.applying||CL.signingOut)return Promise.resolve();
   const user=CL.user;
-  const pay=clPayload(save),full=clHash(clCanon(pay)),prog=clProg(save),disk=clDisk();
+  const pay=clPayload(save),full=clHash(clCanon(pay)),prog=clProg(save),diskGen=SAVE.gen,disk=diskGen?"":clDisk();
   if(onlyIfChanged&&full===CL.meta.full){clSet("synced");return Promise.resolve()}
   CL.busy=true;CL.lastPut=Date.now();clRender();
   return CL.ad.put(user.uid,{save:JSON.stringify(pay),v:save.v||2,summary:clSummary(save)},rev).then(r=>clForUser(user,()=>{CL.busy=false;
     if(!r.ok){CL.meta.rev=-1;return clReconcile(r.doc)}
-    CL.meta.rev=r.rev;CL.meta.prog=prog;CL.meta.disk=disk;CL.meta.full=full;CL.meta.needs=needsKey(pay);CL.meta.at=Date.now();clOwn();clSaveMeta();clSet("synced");
+    CL.meta.rev=r.rev;CL.meta.prog=prog;CL.meta.disk=disk;CL.meta.diskGen=diskGen;CL.meta.full=full;CL.meta.needs=needsKey(pay);CL.meta.at=Date.now();clOwn();clSaveMeta();clSet("synced");
     if(clHash(clCanon(clPayload(save)))!==full)clChanged()})).catch(e=>clForUser(user,()=>{CL.busy=false;clSet(clOff(e)?"offline":"pending",clErr(e))}))}
 // the progress of the save this browser holds, as a backup starts: this session's, or an older one when the browser
 // wouldn't store a newer (clReconcile compares a reloaded save with it)
 function clDisk(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");return s&&typeof s==="object"&&!Array.isArray(s)?clProg(s):""}catch(e){return ""}}
+// the same of the save stored as the game started (js/core.js saveRaw), read once
+let clBootFp=/** @type {string|null} */ (null);
+function clBootDisk(){if(clBootFp===null){try{const s=JSON.parse(saveRaw||"null");clBootFp=s&&typeof s==="object"&&!Array.isArray(s)?clProg(s):""}catch(e){clBootFp=""}}return clBootFp}
 // a backup after the progress changed (a few seconds after, on leaving the page, when back online, and BACK UP NOW)
 function clSync(){clearTimeout(CL.timer);CL.timer=0;if(!CL.user||CL.busy||CL.applying||CL.signingOut||tabIdle||CL.st==="conflict"||CL.st==="connecting")return Promise.resolve();
   // If the new account could not be read, retry the comparison before writing another player's local progress.
@@ -1254,7 +1268,7 @@ function clSignOut(){if(!CL.ad||CL.signingOut||CL.applying)return;
     // An already submitted first backup may succeed even if its reply arrives after sign-out.
     const owner=CL.meta.owner||(CL.busy&&CL.user?CL.user.uid:null);
     clearTimeout(CL.timer);CL.timer=0;CL.user=null;CL.pick=null;CL.busy=false;CL.other=false;CL.signingOut=null;
-    CL.meta={uid:null,name:"",email:"",rev:0,prog:"",disk:"",full:"",needs:"",at:0,rehash:false,owner:owner||null,ownerName:""};
+    CL.meta={uid:null,name:"",email:"",rev:0,prog:"",disk:"",diskGen:0,full:"",needs:"",at:0,rehash:false,owner:owner||null,ownerName:""};
     clSaveMeta();clSet("guest");toast("SIGNED OUT","Your progress stays on this device; it isn't backed up now");
   },()=>{
     CL.signingOut=null;clSet(CL.st,"Couldn't sign out. Try again.");clChanged();
