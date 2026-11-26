@@ -1041,7 +1041,8 @@ function pedModel(k,h,look){
 // Who's about in Old Quay: there are fewer places for people (6 on a phone, 10 on a computer) than the sixteen who live
 // there, so each time you leave, everyone but a friend with you makes way for the next in turn, and all sixteen come
 // round (on a phone only the first six could ever be met: Codex's review of #114). Each looks and stands as always
-let pedTurn=0;
+// someone you knocked down still shows it the next time you meet them, even if they've made way meanwhile (js/life.js)
+let pedTurn=0;const pedMad=new Set();
 function pedRotate(){
   if(typeof PEOPLE==="undefined"||PEDS.length>=PEOPLE.length)return;
   if(!pedTurn)pedTurn=PEDS.length;
@@ -1049,8 +1050,9 @@ function pedRotate(){
   for(const p of PEDS){if(p===RIDE.p||p===TALK.p)continue;
     let id=pedTurn%PEOPLE.length;while(here.has(id))id=++pedTurn%PEOPLE.length;
     pedTurn++;here.add(id);if(id===p.pid)continue;
+    if(p.mad)pedMad.add(p.pid);
     scene.remove(p.m.G);p.m.face.m.dispose();
-    p.m=pedModel(id,.94+rnd(id,38)*.12);p.pid=id;p.mad=false;p.hitAt=undefined}
+    p.m=pedModel(id,.94+rnd(id,38)*.12);p.pid=id;p.mad=pedMad.delete(id);p.hitAt=undefined}
 }
 function buildPeds(){
   const xs=[560,620,690,760],o=PED_V.line,B=/** @type {any[]} */ ([]);
