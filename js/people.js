@@ -1285,10 +1285,23 @@ function buildHarbour(){
   const B=new THREE.Group(),hull=new THREE.MeshStandardMaterial({color:0xf2f2ee,roughness:.5}),navy=new THREE.MeshStandardMaterial({color:0x1d3a5c,roughness:.6}),
     glass=new THREE.MeshStandardMaterial({color:0x9fc4d8,roughness:.2,transparent:true,opacity:.55});
   const bp=(g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;B.add(o);return o};
-  bp(hullGeo(6.4,2.3,1.0),hull,0,-.45,0);bp(hullGeo(6.1,2.05,.06),wood,0,.5,0);
-  bp(new THREE.BoxGeometry(2.34,.16,5.2),navy,0,.42,-.5);
-  bp(new THREE.BoxGeometry(1.3,.75,.7),hull,0,.9,.5);bp(new THREE.BoxGeometry(1.4,.5,.06),glass,0,1.5,.85).rotation.x=-.35;
-  bp(new THREE.BoxGeometry(1.5,.45,.6),navy,0,.75,-.9);bp(new THREE.BoxGeometry(.5,.9,.6),metal,0,.55,-3.25);
+  // (hullGeo points its bow towards -z, as the harbour's other boats are turned to sail: turned round here, or the
+  // pointed end was at the motor and the boat went blunt end first)
+  const H=g=>g.rotateY(Math.PI),red=new THREE.MeshBasicMaterial({color:0xe2483d}),green=new THREE.MeshBasicMaterial({color:0x35c46a});
+  // the hull with a navy stripe at the waterline, and a white gunwale round a teak deck set below it (a navy strip down
+  // the cockpit used to be wider than the hull, and stuck out of its sides)
+  bp(H(hullGeo(6.4,2.3,.9)),hull,0,-.45,0);bp(H(hullGeo(6.43,2.33,.16)),navy,0,-.12,0);
+  bp(H(hullGeo(6.1,2.05,.04)),wood,0,.44,0);bp(H(hullGeo(6.46,2.36,.24,.13)),hull,0,.4,0);
+  // the console and its windscreen, the helm seat behind it, and a bench across the stern
+  bp(new THREE.BoxGeometry(1.3,.75,.7),hull,0,.84,.5);bp(new THREE.BoxGeometry(1.4,.5,.06),glass,0,1.46,.85).rotation.x=-.35;
+  bp(new THREE.BoxGeometry(.5,.08,.32),metal,0,1.24,.3);
+  bp(new THREE.BoxGeometry(1.5,.4,.6),hull,0,.66,-.9);bp(new THREE.BoxGeometry(1.46,.1,.56),navy,0,.91,-.9);
+  bp(new THREE.BoxGeometry(1.9,.4,.5),hull,0,.66,-2.6);bp(new THREE.BoxGeometry(1.86,.1,.46),navy,0,.91,-2.6);
+  // the outboard: its cowling over the transom and its leg down into the water
+  bp(new THREE.BoxGeometry(.5,.62,.55),metal,0,.86,-3.42);bp(new THREE.BoxGeometry(.52,.12,.57),navy,0,1.18,-3.42);
+  bp(new THREE.BoxGeometry(.16,.9,.22),metal,0,.15,-3.5);
+  // port and starboard lights at the bow
+  bp(new THREE.BoxGeometry(.08,.06,.14),red,-.55,.66,1.95);bp(new THREE.BoxGeometry(.08,.06,.14),green,.55,.66,1.95);
   const wk=new THREE.BufferGeometry();wk.setAttribute("position",new THREE.Float32BufferAttribute([0,0,-2.6, 3.4,0,-24, -3.4,0,-24],3));wk.computeVertexNormals();
   wk.setAttribute("uv",new THREE.Float32BufferAttribute([.5,1, 1,0, 0,0],2));
   // strongest at the stern, gone by the far end (a flat wedge read as a beam of light on a phone)
