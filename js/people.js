@@ -1163,7 +1163,7 @@ function pedUpdate(dt){
   vergeTick(dt);
   if(!PEDS.length)return;
   const me=BOAT.on?BOAT:FOOT.on?FOOT:P,on=Math.hypot(me.x-660,me.z-36)<PED_V.near;
-  if(on!==pedOn){pedOn=on;if(!on){for(const p of PEDS)if(p!==RIDE.p){p.m.G.visible=false;if(p.pool)p.pool.visible=false;if(p.st==="down"&&p.out)pedRespawn(p,me)}pedRotate()}}
+  if(on!==pedOn){pedOn=on;if(!on){for(const p of PEDS)if(p!==RIDE.p){p.m.G.visible=false;if(p.pool)p.pool.visible=false;if(p.st==="down"&&p.out)pedRespawn(p,me)}if(typeof pedRotate==="function")pedRotate()}}
   if(!on)return;
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of PEDS){
