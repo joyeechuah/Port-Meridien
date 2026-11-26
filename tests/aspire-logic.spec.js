@@ -1,4 +1,4 @@
-// Aspirations (js/progress.js): six long goals of three steps, worked out from what the save already holds, each step
+// Aspirations (js/progress.js): eight long goals of three steps, worked out from what the save already holds, each step
 // paid once and in order when persist asks; the save keeps only how many steps were paid
 const { test, expect } = require("@playwright/test");
 const fs = require("node:fs"),
@@ -20,7 +20,7 @@ function game() {
   return { g, run, toasts };
 }
 
-test("the saved record keeps only steps paid, 0 to 3, for the six aspirations", () => {
+test("the saved record keeps only steps paid, 0 to 3, for the eight aspirations", () => {
   const { run } = game();
   const empty = { v: 1, claimed: {} };
   for (const raw of ["null", "[]", "{v:2,claimed:{chef:1}}", "{v:1}", "{v:1,claimed:[2]}"]) expect(run("aspireClean(" + raw + ")")).toEqual(empty);
@@ -59,14 +59,15 @@ test("each aspiration's steps follow its own progress; the kitchen and the home 
   expect(g.save.aspire.claimed).toEqual({ chef: 3, home: 3, social: 3, skills: 2, wants: 2 });
 });
 
-test("the panel lists the six with their steps and the next reward", () => {
+test("the panel lists the eight with their steps and the next reward", () => {
   const { g, run } = game();
   run("save.aspire={v:1,claimed:{chef:3,racer:1}};aspireRender()");
   const rows = g.$("skAsp").children;
-  expect(rows.length).toBe(6);
+  expect(rows.length).toBe(8);
   const text = (i) => rows[i].children.map((c) => c.textContent);
   expect(text(0)).toEqual(["Master chef", undefined, "3/3", "Complete"]);
   expect(text(3)).toEqual(["Speed demon", undefined, "1/3", "Next: Win three cups · 4,000 CR"]);
+  expect(text(7)).toEqual(["Generous", undefined, "0/3", "Next: Gifts for 3 people · 1,500 CR"]);
 });
 
 test("no step paid matches a save from before aspirations; a step paid is progress", () => {
@@ -86,5 +87,20 @@ test("a save whose only sign of play is a paid aspiration step isn't fresh, so t
   expect(run("clFresh(" + start + "})")).toBe(true);
   expect(run("clFresh(" + start + ',aspire:{v:1,claimed:{home:1}}})')).toBe(false);
   expect(run("clFresh(" + start + ',aspire:{v:1,claimed:{}}})')).toBe(true);
+});
+
+test("Road warrior follows the driving contract rank, and Generous everyone who has ever had a gift", () => {
+  const { g, run, toasts } = game();
+  // the contract career's rank (js/progress.js, outside this slice), here by hand
+  run("var rank=0;function contractRank(){return rank}");
+  run("rank=3;save.gifted=[0,4,9]");
+  run("aspireCheck()");
+  expect(g.save.aspire.claimed).toEqual({ driver: 2, generous: 1 });
+  expect(g.save.cr).toBe(1000 + 1500 + 4000 + 1500);
+  expect(toasts.map((t) => t[0])).toEqual(["ASPIRATION · ROAD WARRIOR", "ASPIRATION · ROAD WARRIOR", "ASPIRATION · GENEROUS"]);
+  run("rank=4;save.gifted=Array.from({length:16},(_,i)=>i)");
+  run("aspireCheck()");
+  expect(g.save.aspire.claimed).toEqual({ driver: 3, generous: 3 });
+  expect(g.save.cr).toBe(8000 + 10000 + 4000 + 10000);
 });
 

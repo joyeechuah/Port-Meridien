@@ -213,7 +213,7 @@ test.describe("talking to people", () => {
     const after = await game.eval((i) => {
       const T = __T, b = document.getElementById("tkGift");
       return { cr: T.save.cr, xp: T.save.skills.charisma, rel: T.save.rel[i], social: T.NEEDS.social, line: document.getElementById("tkLine").textContent,
-        off: b.disabled, text: b.textContent, want: T.save.wants.active.includes("gift"), gift: T.save.gift };
+        off: b.disabled, text: b.textContent, want: T.save.wants.active.includes("gift"), gift: T.save.gift, gifted: T.save.gifted };
     }, i);
     const today = await game.eval(() => Math.floor(Date.now() / 86400000));
     // 10 for a gift, half as much again for someone shy, and less at friendship 20: 10 × 1.5 × (1 − 20/125) = 12.6
@@ -224,7 +224,7 @@ test.describe("talking to people", () => {
     expect(after.xp).toBeGreaterThan(before.xp);
     // company, +8 (less what the clock has taken since)
     expect(after.social).toBeCloseTo(58, 1);
-    expect(after).toMatchObject({ off: true, text: "Gift given today", want: false, gift: { v: 1, day: today, ids: [i] } });
+    expect(after).toMatchObject({ off: true, text: "Gift given today", want: false, gift: { v: 1, day: today, ids: [i] }, gifted: [i] });
     // someone shy's favourite, in their own words
     expect(after.line).toContain("loves the flowers");
     // a second one today does nothing
@@ -240,14 +240,14 @@ test.describe("talking to people", () => {
 
   test("a gift needs the credits for it, and a save's gift record is cleaned on loading", async ({ game }) => {
     const today = Math.floor(Date.now() / 86400000);
-    await game.open({ save: { v: 3, cr: 100, gift: { v: 1, day: 1e15, ids: [3, 3, "x", 99, -1, 2.5, 7] } } });
+    await game.open({ save: { v: 3, cr: 100, gift: { v: 1, day: 1e15, ids: [3, 3, "x", 99, -1, 2.5, 7] }, gifted: [9, 3, 3, "x", 99, -1, 2.5, 7] } });
     const r = await game.eval(() => {
       const T = __T, p = T.PEDS[0];
       T.TALK.p = p; T.TALK.person = T.PEOPLE[0]; T.TALK.busy = 0; T.TALK.end = 0; T.TALK.n = 0;
-      return { gift: T.save.gift, broke: T.talkGift("coffee"), cr: T.save.cr, clean: [T.giftClean({ v: 2, day: 5, ids: [1] }), T.giftClean({ v: 1, day: -3, ids: [1] }), T.giftClean(null)] };
+      return { gift: T.save.gift, gifted: T.save.gifted, broke: T.talkGift("coffee"), cr: T.save.cr, clean: [T.giftClean({ v: 2, day: 5, ids: [1] }), T.giftClean({ v: 1, day: -3, ids: [1] }), T.giftClean(null)] };
     });
     const none = { v: 1, day: -1, ids: [] };
-    expect(r).toEqual({ gift: { v: 1, day: today, ids: [3, 7] }, broke: false, cr: 100, clean: [none, none, none] });
+    expect(r).toEqual({ gift: { v: 1, day: today, ids: [3, 7] }, gifted: [3, 7, 9], broke: false, cr: 100, clean: [none, none, none] });
   });
 
   test("knocking someone down costs their friendship, they can't be talked to while down, and they show it the next time you meet", async ({ game }) => {

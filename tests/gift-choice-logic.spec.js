@@ -15,7 +15,7 @@ function game(trait) {
   btn("tkLine").textContent = "Jo is glad to see you.";
   box.children = [btn("tkGift"), btn("bye"), ...["flowers","coffee","book","gadget","back"].map(id => btn("tk-" + id,id))];
   const ctx = { $: id => buttons[id], TALK: { p: {}, person: { trait, id: 1, name: "Jo" }, busy: 0, n: 0, end: 0 },
-    tabIdle: false, save: { cr: 500, gift: { day: -1, ids: [] } }, Date, xp: 0, writes: 0, wants: [],
+    tabIdle: false, save: { cr: 500, gift: { day: -1, ids: [] }, gifted: [] }, Date, xp: 0, writes: 0, wants: [],
     r: { f: 13, n: 2 }, rel: () => ctx.r, relSet: (_, f, n) => { ctx.r = { f,n }; },
     skillFactor: () => 1, skillAward: (_, xp) => { ctx.xp += xp; }, updateMoney() {}, NS: { t: 1, social: {} },
     needsAdd() {}, emote() {}, RIDE_AT: 40, wantEvent: k => ctx.wants.push(k),
@@ -32,6 +32,8 @@ for (const [trait,fav,disliked] of [["cheerful","flowers","gadget"],["grumpy","c
       expect(run('talkGift("' + id + '")')).toBe(true);
       expect(ctx.r.f).toBe(13 + Math.round((id===fav ? 15 : id===disliked ? 4 : 10)*(1-13/125)));
       expect([ctx.save.cr,ctx.xp,ctx.writes,ctx.wants]).toEqual([500-price,3,1,["gift","friendly"]]);
+      // and kept, once, among everyone who has ever had one
+      expect(ctx.save.gifted).toEqual([1]);
       // in their own words for a favourite and for one they don't care for; anything else, a polite thank you
       expect(ctx.line).toMatch(id===fav ? /^Jo loves the / : id===disliked ? /^Jo takes the .* politely\. / : /^Jo likes the .*kind of you/);
       ctx.TALK.busy=0;

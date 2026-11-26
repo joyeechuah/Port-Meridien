@@ -99,6 +99,8 @@ test.describe("contracts", () => {
         t.wx = t.wz = 1e6;
         t.lost = false;
       }
+      // the Road warrior aspiration's steps paid already, so a contract's credits are its pay alone (js/progress.js)
+      __T.save.aspire.claimed.driver = 3;
     });
     const ids = await game.eval(() => __T.JOBS.map((j) => j.id));
     const results = {};

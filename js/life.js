@@ -126,6 +126,8 @@ function talkGift(id){
   const r=rel(who.id),today=Math.floor(Date.now()/86400000);
   if(save.gift.day<today)save.gift={v:1,day:today,ids:[]};
   save.gift.ids.push(who.id);save.cr-=item.price;updateMoney();
+  // (and, for the Generous aspiration, everyone who has ever had one)
+  const ever=save.gifted;if(Array.isArray(ever)&&!ever.includes(who.id)){ever.push(who.id);ever.sort((a,b)=>a-b)}
   const [favourite,disliked]=GIFT_PREFS[who.trait],weight=id===favourite?1.5:id===disliked ? .4 : 1;
   const d=Math.round(10*weight*(1-Math.max(0,r.f)/125)*skillFactor("charisma"));
   skillAward("charisma",3);TALK.n++;TALK.busy=.7;
