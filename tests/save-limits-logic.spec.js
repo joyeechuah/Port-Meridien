@@ -17,7 +17,8 @@ function game(room) {
   return g;
 }
 test("without room for the ghost laps the progress goes in without them, and for five minutes only that is tried", () => {
-  const g = game(0), lite = JSON.stringify(Object.assign({}, game(0).save, { ghost: {} })).length;
+  // (each save written is numbered: js/core.js saveWrite)
+  const g = game(0), lite = JSON.stringify(Object.assign({}, game(0).save, { ghost: {}, gen: 1 })).length;
   g.room = lite;
   vm.runInContext("persist()", g);
   const stored = JSON.parse(g.store.pm);
@@ -49,8 +50,8 @@ test("account restore retries its own snapshot and advances the revision only af
   for (const fits of [false, true]) {
     const g = game(0);
     const cloud = { cr: 200, owned: ["golf"] };
-    const restored = { ...cloud, home: {}, ghost: {} };
-    g.room = fits ? JSON.stringify(restored).length : 1;
+    const restored = { ...cloud, home: {}, ghost: {} }, stored = { ...restored, gen: 1 };
+    g.room = fits ? JSON.stringify(stored).length : 1;
     Object.assign(g, { CL: { other: true, meta: { rev: 3 } }, clearTimeout() {}, clOwn() {},
       homeClean: () => ({}), clAt: () => 0, clSaveMeta() {}, clSet() {},
       window: { __cloudNoReload: true }, cloud });
@@ -59,7 +60,7 @@ test("account restore retries its own snapshot and advances the revision only af
     expect(g.tries).toEqual(["full","lite"]);
     // (not stored: the revision is spoilt, so this device's older save can't go up at the account's revision)
     expect(g.CL.meta.rev).toBe(fits ? 7 : -1);
-    expect(JSON.parse(g.store.pm)).toEqual(fits ? restored : { cr: 120000 });
+    expect(JSON.parse(g.store.pm)).toEqual(fits ? stored : { cr: 120000 });
     expect(g.save.ghost.south.d).toHaveLength(400);
     if (fits) expect(g.window.__cloudApplied).toEqual(restored);
     else expect(g.CL.pick.cloud).toEqual(cloud);
