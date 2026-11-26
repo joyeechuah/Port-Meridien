@@ -2,7 +2,7 @@
 
 Anyone you are Friends with (friendship 40 or more) can be asked over while you talk: **Come over to my place** (key 8), beside **Come for a ride**. Asking someone else instead replaces the first invitation. The invitation lasts for this session.
 
-At home, your guest sits on your comfiest seat (a sofa, then a reading chair, a window bench, then a stool), facing the way it faces. With no seat they stand on the mezzanine by the railing, on a free half-metre cell. Moving, turning or selling furniture seats them again. They can be seen from the garage and from DESIGN HOME. **HANG OUT · NAME** in the garage then gives:
+At home, your guest sits on your comfiest seat (a sofa, then a reading chair, a window bench, then a stool), facing the way it faces. With no seat they stand on the mezzanine by the railing, on a free half-metre cell (if furniture fills the usual spots there, on the free cell nearest the middle of the railing). Moving, turning or selling furniture seats them again. They can be seen from the garage and from DESIGN HOME. **HANG OUT · NAME** in the garage then gives:
 
 - social +30 and fun +10, lifted by the home's comfort (up to 10% at comfort 100) and by 20% for a Homebody, as REST, SNACK and PLAY are
 - 4 Charisma XP (with your mood's effect)

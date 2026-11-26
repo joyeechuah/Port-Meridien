@@ -23,7 +23,7 @@ const NAMES = (
   "gYaw guestSeat GUEST_SEAT GUEST guestSync guestHangOut guestSpot talkInvite talkShow openRepair closeRepair clOverlayOpen netModel netDropModel netRender netOpen netInvite OUTFITS WANT_CATALOG wantsClean wantsSync wantEvent wantsReroll SKILL_RATE skillThreshold skillLevel skillsClean skillFactor moodPercent skillMetres skillDistance skillAward skillPhoto photoDayClean skillsOpen skillsClose HOME_ITEMS HOME_ORIGIN HOME_CELL HOME_COLS HOME_ROWS HOME_CAP HOME_CLEAR HOME_WALLS HOME_FLOORS homeFits homePlace homeMove homeTurn homeSell homeFinish homeClean homeProgress homeComfort homeHas homeUse homeGain homeWaitClean homeWaitLoad HV homeBuild hvOpen hvClose gY hvTap hvAim hvTurn hvSell hvPanel hvSpot hvCam homeRect homeById WORK workOpen workClose workStart workServe workTick workCancel workKey workPad workClean kitchenMeal RIDE RIDE_V RIDE_LINES rideWhy talkRide rideTick rideEnd rideBoard ridePrompt NEEDS NS SIT VISIT NEED_LOSS NEEDS_START needsTick needsAdd needsMood needsTip needsRest needsEat needsRace needsLoad needsCommit needsClean needsKey needsOfSave needsOpen needsClose needsLabel sitDown sitEnd kitchenText restSync padMenu clNeeds PAUSE_SUBS kphNow PEOPLE TALK TALKS talkPad talkSel clPeople talkOpen talkPick talkClose talkable rel relLabel lifeHurt PR_MAX curCarEnv carIndoors SONGS MUSIC WARM QUAY footClear PEDS PED_NODES PED_EDGES PED_V pedOn pedUpdate pedClear WANTED COP_V copClock crime copUpdate copDispatch copNav copLoseT copsChasing wantedBlock initCops copBump jobBlocked setLane OFFICER OFF_V exitSeq wantedHud copClear copCaught openDealer goGarage repairPanel GUN HEALTH gunPick gunFire gunFoot gunCar KITS copCarFire hurt knockedOut VIOL copStandDown AC AU BOATS CARS DEALER DEALER_MARK EDGES EVENTS FR GARAGE_CAP H HOUSE JOBS JOB_R LANDMARKS LANDMARK_REWARD MV " +
   "NODES P PASSPORT_BONUS PH PHOTO_LOOKS PZ RADARS RES ROADS JOB_PTS SAVE_KEY SHOW STARTERS TODS TRAFFIC VTL W " +
   "adaptRes applyDayNight attachCar camMode camera carById closeDealer closeMap curCar curId cycleCam dPick dSel " +
-  "hint HINTS HINT_KEY " +
+  "hint HINTS HINT_KEY hintHome hintsStored " +
   "FACES discoverLandmark drawMap driveUpdate collidePlayer showDamageSmoke spawnTraffic earn edgePos endTestDrive ev fastTravel finishEvent parkAll phTarget edgeY PIER BOAT BOAT_V onPier boatBoard boatLand boatEnd boatFree OGRID meshH obstaclesNear paintOf LEFT STREET takeTraffic takeLeft streetReset footTarget FOOT FOOT_V footExit footEnter footStopTick copOfficerIn carClearY kphNow footEnd footGround footPlace updateEvent endEvent fishT fitZoom " +
   "foam foundCount gPick gSel gW goDrive goGarage gps grassT groundH hudOn job jobEnd jobRestart jobStart " +
   "DIAG VRANGE resetResolutionSample jobTarget jobsClose jobsOpen keys mapToWorld mapZoomAt nearestRoad nearestRoadGlobal openDealer openIntro " +
@@ -31,7 +31,8 @@ const NAMES = (
   "photoExit photoLook photoLookSet photoReset prNow promptAct renderer resetToRoad routeBetween save scene " +
   "contractRank contractPay " +
   "VERGE vergeSites toast toastFit " +
-  "GIFT_CR GIFT_TAKES talkGift giftGiven giftClean " +
+  "talkGift giftGiven giftClean " +
+  "GIFTS GIFT_PREFS giftMenu giftSync " +
   "TRAITS traitsClean traitsApply hasTrait traitLoss " +
   "NET netAt netState netTick fbLoad FB_LOADS " +
   "seaT setGPS clearGPS setState skyClock skyU startEvent startTestDrive state streakReset testDrive " +

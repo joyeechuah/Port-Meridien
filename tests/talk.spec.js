@@ -206,8 +206,10 @@ test.describe("talking to people", () => {
       return { cr: T.save.cr, xp: T.save.skills.charisma, shown: !b.classList.contains("hide"), off: b.disabled, text: b.textContent };
     }, i);
     // (the price kept together on one line)
-    expect(before).toMatchObject({ shown: true, off: false, text: "Give a gift ·\u00a0250\u00a0CR 9" });
+    expect(before).toMatchObject({ shown: true, off: false, text: "Give a gift 9" });
     await game.key("9");
+    expect(await game.eval(() => __T.save.cr)).toBe(before.cr);
+    await game.key("1");
     const after = await game.eval((i) => {
       const T = __T, b = document.getElementById("tkGift");
       return { cr: T.save.cr, xp: T.save.skills.charisma, rel: T.save.rel[i], social: T.NEEDS.social, line: document.getElementById("tkLine").textContent,
@@ -223,7 +225,8 @@ test.describe("talking to people", () => {
     // company, +8 (less what the clock has taken since)
     expect(after.social).toBeCloseTo(58, 1);
     expect(after).toMatchObject({ off: true, text: "Gift given today", want: false, gift: { v: 1, day: today, ids: [i] } });
-    expect(after.line).toContain("a little potted plant");
+    // someone shy's favourite, in their own words
+    expect(after.line).toContain("loves the flowers");
     // a second one today does nothing
     await steps(game, 60);
     await game.key("9");
@@ -241,7 +244,7 @@ test.describe("talking to people", () => {
     const r = await game.eval(() => {
       const T = __T, p = T.PEDS[0];
       T.TALK.p = p; T.TALK.person = T.PEOPLE[0]; T.TALK.busy = 0; T.TALK.end = 0; T.TALK.n = 0;
-      return { gift: T.save.gift, broke: T.talkGift(), cr: T.save.cr, clean: [T.giftClean({ v: 2, day: 5, ids: [1] }), T.giftClean({ v: 1, day: -3, ids: [1] }), T.giftClean(null)] };
+      return { gift: T.save.gift, broke: T.talkGift("coffee"), cr: T.save.cr, clean: [T.giftClean({ v: 2, day: 5, ids: [1] }), T.giftClean({ v: 1, day: -3, ids: [1] }), T.giftClean(null)] };
     });
     const none = { v: 1, day: -1, ids: [] };
     expect(r).toEqual({ gift: { v: 1, day: today, ids: [3, 7] }, broke: false, cr: 100, clean: [none, none, none] });

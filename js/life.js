@@ -39,8 +39,8 @@ const TAKES={
   shy:{hello:1.2,chat:.8,joke:.8,compliment:1.5,tip:1,rude:2},
   busy:{hello:.8,chat:.5,joke:.7,compliment:.8,tip:1.2,rude:1}
 };
-/** @type {{p:any,person:any,used:Object<string,number>,n:number,busy:number,end:number,sel:number,fireHold:boolean,social:boolean}} */
-const TALK={p:null,person:null,used:{},n:0,busy:0,end:0,sel:0,fireHold:false,social:false};
+/** @type {{p:any,person:any,used:Object<string,number>,n:number,busy:number,end:number,sel:number,fireHold:boolean,social:boolean,giftLine:string|null}} */
+const TALK={p:null,person:null,used:{},n:0,busy:0,end:0,sel:0,fireHold:false,social:false,giftLine:null};
 const LIFE={t:0};
 // who you can talk to: someone near you on the pavement, not lying down, crossing the road or still shaken by your car
 const talkable=p=>!WORK.active&&FOOT.on&&!TALK.p&&!!personOf(p)&&p.m.G.visible&&p.st!=="down"&&p.st!=="cross"&&p!==RIDE.p&&!(copClock-(p.hitAt??-99)<4);
@@ -63,7 +63,7 @@ function talkOpen(p){
 function talkClose(){
   const p=TALK.p;if(!p)return;
   if(p.st==="talk"){if(p.was==="wait"){p.st="wait";p.t=0}else{p.st="idle";p.t=1.2}}
-  TALK.p=TALK.person=null;show("talk",false);document.body.classList.remove("talking");
+  TALK.p=TALK.person=null;TALK.giftLine=null;$("tkActs").classList.remove("giving");show("talk",false);document.body.classList.remove("talking");
 }
 // say something: the friendship moves by the line's weight, times how this person takes it, less each time you repeat
 // it in one conversation, and less as a friendship nears its top
@@ -93,30 +93,54 @@ function talkPick(k){
   talkShow(line);persist();
   return true;
 }
-// a gift, for anyone, once a day each (UTC days, as with the traits): GIFT_CR credits for friendship by how they take
-// a present (less as a friendship nears its top, more with Charisma), Charisma XP, and company as a friendly line gives
-const GIFT_CR=250,GIFT_TAKES={cheerful:1.3,grumpy:.7,joker:1,chatty:1.1,shy:1.5,busy:.8};
-const GIFT_LINES={cheerful:["a bunch of flowers","“Flowers! For me? You're a star.”"],grumpy:["a bag of good coffee","“Hm. Proper coffee. ...Thanks.”"],
-  joker:["a whoopee cushion","“A whoopee cushion! Now we're talking.”"],chatty:["a book everyone's talking about","“I've wanted to read this for ages!”"],
-  shy:["a little potted plant","“Oh... it's lovely. Thank you.”"],busy:["a travel mug","“Perfect for the commute. Thanks!”"]};
-function giftGiven(id){const g=save.gift;return g.day===Math.floor(Date.now()/86400000)&&g.ids.includes(id)}
-function talkGift(){
-  const who=TALK.person,p=TALK.p;if(!who||!p||TALK.busy>0||TALK.end>0||giftGiven(who.id)||save.cr<GIFT_CR)return false;
+// Gift prices are in the same order as the four keyboard and controller choices.
+const GIFTS=[
+  {id:"flowers",name:"Flowers",price:250},{id:"coffee",name:"Coffee",price:120},
+  {id:"book",name:"Book",price:180},{id:"gadget",name:"Gadget",price:400}
+];
+const GIFT_PREFS={cheerful:["flowers","gadget"],grumpy:["coffee","flowers"],joker:["gadget","book"],
+  chatty:["book","coffee"],shy:["flowers","coffee"],busy:["coffee","flowers"]};
+// what each personality says to its favourite and to the one it doesn't care for (anything else: a polite thank you)
+const GIFT_SAYS={cheerful:["“Flowers! You're a star.”","“A gadget! I'll... find a use for it.”"],
+  grumpy:["“Proper coffee. Finally, someone gets it.”","“Flowers. They'll be dead by Tuesday.”"],
+  joker:["“A gadget! What does this button do?”","“A book? Does it have pictures?”"],
+  chatty:["“I've wanted to read this for ages! Let me tell you why...”","“Coffee? I talk fast enough already!”"],
+  shy:["“Oh... they're lovely. Thank you.”","“Coffee... thank you. I'll try it.”"],
+  busy:["“Coffee! Exactly what keeps me going.”","“Flowers? I'll never find a vase in time.”"]};
+// the choice of gift: the lines give way to the four gifts and Back, and the line above asks what it's to be (put back
+// on Back; a gift's own reaction replaces it)
+function giftMenu(open){
+  if(open&&(!TALK.person||TALK.busy>0||TALK.end>0||giftGiven(TALK.person.id)))return;
+  const box=$("tkActs"),line=$("tkLine");box.classList.toggle("giving",open);
+  if(open){TALK.giftLine=line.textContent;line.textContent="What will you give "+TALK.person.name+"?"}
+  else if(TALK.giftLine!=null){line.textContent=TALK.giftLine;TALK.giftLine=null}
+  for(const item of GIFTS)$("tk-"+item.id).disabled=save.cr<item.price;
+  const bs=tkButtons(),gift=bs.indexOf($("tkGift")),i=open?0:gift>=0?gift:bs.length-1;
+  talkSel(i);bs[i]?.focus({preventScroll:true});
+}
+// (a day recorded ahead of the clock, put back while playing, still counts as today: the latest day is kept)
+function giftGiven(id){const g=save.gift;return g.day>=Math.floor(Date.now()/86400000)&&g.ids.includes(id)}
+function talkGift(id){
+  const item=GIFTS.find(g=>g.id===id);if(!item||tabIdle)return false;
+  const who=TALK.person,p=TALK.p;if(!who||!p||TALK.busy>0||TALK.end>0||giftGiven(who.id)||save.cr<item.price)return false;
   const r=rel(who.id),today=Math.floor(Date.now()/86400000);
-  if(save.gift.day!==today)save.gift={v:1,day:today,ids:[]};
-  save.gift.ids.push(who.id);save.cr-=GIFT_CR;updateMoney();
-  const d=Math.round(10*GIFT_TAKES[who.trait]*(1-Math.max(0,r.f)/125)*skillFactor("charisma"));
+  if(save.gift.day<today)save.gift={v:1,day:today,ids:[]};
+  save.gift.ids.push(who.id);save.cr-=item.price;updateMoney();
+  const [favourite,disliked]=GIFT_PREFS[who.trait],weight=id===favourite?1.5:id===disliked ? .4 : 1;
+  const d=Math.round(10*weight*(1-Math.max(0,r.f)/125)*skillFactor("charisma"));
   skillAward("charisma",3);TALK.n++;TALK.busy=.7;
   relSet(who.id,r.f+d,r.n+(TALK.n===1?1:0));
   if(!TALK.social&&!(NS.social[who.id]>NS.t)){TALK.social=true;NS.social[who.id]=NS.t+30;needsAdd("social",8)}
-  emote(p,"heart");
-  const now=rel(who.id);let line="You give "+who.name+" "+GIFT_LINES[who.trait][0]+". "+GIFT_LINES[who.trait][1];
+  emote(p,id===favourite?"heart":id===disliked?"meh":"smile");
+  const what=item.name.toLowerCase(),now=rel(who.id);TALK.giftLine=null;
+  let line=id===favourite?who.name+" loves the "+what+". "+GIFT_SAYS[who.trait][0]:id===disliked?who.name+" takes the "+what+" politely. "+GIFT_SAYS[who.trait][1]:
+    who.name+" likes the "+what+". “Thanks, that's kind of you.”";
   wantEvent("gift");
   if(!r.n&&now.n)wantEvent("meet");
   if(r.f<15&&now.f>=15)wantEvent("friendly");
   if(r.f<RIDE_AT&&now.f>=RIDE_AT)line+=" You're friends now: ask "+who.name+" to come for a ride.";
   if(who.trait==="busy"&&TALK.n>=3){line+=" “Sorry, I have to run!”";TALK.end=1.4}
-  talkShow(line);persist();return true;
+  talkShow(line);giftMenu(false);persist();return true;
 }
 // Spoken lines follow the existing friendship reaction. Tip introductions lead straight
 // into the actual hint. Use the saved encounter count and this line's use count so
@@ -258,28 +282,33 @@ function talkShow(line){
   if(was!==(f>=RIDE_AT))talkSel(Math.min(TALK.sel,tkButtons().length-1));
   const asked=GUEST.who===who&&!GUEST.done,inv=$("tkInvite");inv.disabled=asked;
   inv.innerHTML=asked?"Coming over to your place":"Come over to my place <kbd>8</kbd>";
-  const gift=$("tkGift"),given=giftGiven(who.id);gift.disabled=given||save.cr<GIFT_CR;
-  gift.innerHTML=given?"Gift given today":"Give a gift ·&nbsp;"+fmtCr(GIFT_CR)+"&nbsp;CR <kbd>9</kbd>";
+  const gift=$("tkGift"),given=giftGiven(who.id);gift.disabled=given||GIFTS.every(g=>save.cr<g.price);
+  gift.innerHTML=given?"Gift given today":"Give a gift <kbd>9</kbd>";
   show("talk",true);document.body.classList.add("talking");if(f>=RIDE_AT)hint("friends");
 }
 // keys while talking: 1 to 6 say the lines, 7 and 8 ask a friend along or over, 9 gives a gift, and Escape, E or
 // Backspace says goodbye. True when the key was used
 function talkKey(k){
   if(!TALK.p)return false;
+  if($("tkActs").classList.contains("giving")){
+    if(k==="escape"||k==="e"||k==="backspace")giftMenu(false);
+    else if(/^[1-4]$/.test(k))talkGift(GIFTS[Number(k)-1].id);
+    return true;
+  }
   if(k==="escape"||k==="e"||k==="backspace"){talkClose();return true}
   const i="123456".indexOf(k);if(k.length===1&&i>=0){talkPick(TALKS[i].id);return true}
   if(k==="7"&&!$("tkRide").classList.contains("hide")){talkRide();return true}
   if(k==="8"&&!$("tkInvite").classList.contains("hide")){talkInvite();return true}
-  if(k==="9"){talkGift();return true}
+  if(k==="9"){if(!$("tkGift").disabled)giftMenu(true);return true}
   return false;
 }
 // the line picked for a controller: its outline and the index A uses move together, and with keyboard focus (focusin)
-const tkButtons=()=>/** @type {HTMLElement[]} */([...$("tkActs").children]).filter(b=>!b.classList.contains("hide"));
-function talkSel(i){TALK.sel=i;const bs=tkButtons();[...$("tkActs").children].forEach(b=>b.classList.toggle("sel",bs.indexOf(/** @type {HTMLElement} */(b))===i))}
+const tkButtons=()=>/** @type {HTMLButtonElement[]} */([...$("tkActs").children]).filter(b=>!b.classList.contains("hide")&&!b.disabled&&b.hasAttribute("data-present")===$("tkActs").classList.contains("giving"));
+function talkSel(i){TALK.sel=i;const bs=tkButtons();[...$("tkActs").children].forEach(b=>b.classList.toggle("sel",bs.indexOf(/** @type {HTMLButtonElement} */(b))===i))}
 // a controller: the D-pad moves between the lines, A says the one picked, B or X says goodbye, Start pauses
 function talkPad(hit){
   const bs=tkButtons();
-  if(hit(1)||hit(2)){talkClose();return}
+  if(hit(1)||hit(2)){if($("tkActs").classList.contains("giving"))giftMenu(false);else talkClose();return}
   if(hit(9)){pauseOn();return}
   const d=hit(12)||hit(14)?-1:hit(13)||hit(15)?1:0;
   if(d){talkSel((TALK.sel+d+bs.length)%bs.length);bs[TALK.sel].focus({preventScroll:true})}
@@ -692,9 +721,15 @@ const ridePrompt=()=>RIDE.st==="ride"&&RIDE.t>5&&kphNow()<5?{t:"Drop off "+RIDE.
     b.innerHTML=t.label+" <kbd>"+(i+1)+"</kbd>";b.onclick=()=>talkPick(t.id);box.appendChild(b)});
   const ride=document.createElement("button");ride.className="btn tkAct hide";ride.id="tkRide";ride.dataset.k="ride";ride.innerHTML="Come for a ride <kbd>7</kbd>";ride.onclick=()=>talkRide();box.appendChild(ride);
   const inv=document.createElement("button");inv.className="btn tkAct hide";inv.id="tkInvite";inv.dataset.k="invite";inv.innerHTML="Come over to my place <kbd>8</kbd>";inv.onclick=()=>talkInvite();box.appendChild(inv);
-  const gift=document.createElement("button");gift.className="btn tkAct";gift.id="tkGift";gift.dataset.k="gift";gift.innerHTML="Give a gift <kbd>9</kbd>";gift.onclick=()=>talkGift();box.appendChild(gift);
+  const gift=document.createElement("button");gift.className="btn tkAct";gift.id="tkGift";gift.dataset.k="gift";gift.innerHTML="Give a gift <kbd>9</kbd>";gift.onclick=()=>giftMenu(true);box.appendChild(gift);
   const bye=document.createElement("button");bye.className="btn ghost tkAct";bye.dataset.k="bye";bye.innerHTML="Goodbye <kbd>Esc</kbd>";bye.onclick=talkClose;box.appendChild(bye);
-  box.addEventListener("focusin",e=>{const i=tkButtons().indexOf(/** @type {HTMLElement} */(e.target));if(i>=0)talkSel(i)})}
+  for(const [i,item] of GIFTS.entries()){
+    const b=document.createElement("button");b.className="btn tkAct";b.id="tk-"+item.id;b.dataset.present=item.id;
+    b.innerHTML=item.name+" ·&nbsp;"+item.price+"&nbsp;CR <kbd>"+(i+1)+"</kbd>";b.onclick=()=>talkGift(item.id);box.appendChild(b);
+  }
+  const back=document.createElement("button");back.className="btn ghost tkAct";back.dataset.present="back";
+  back.innerHTML="Back <kbd>Esc</kbd>";back.onclick=()=>giftMenu(false);box.appendChild(back);
+  box.addEventListener("focusin",e=>{const i=tkButtons().indexOf(/** @type {HTMLButtonElement} */(e.target));if(i>=0)talkSel(i)})}
 
 /* ================================================================ A FRIEND OVER: asked while talking (Friend and up), they
    wait on the mezzanine at home until you hang out with them there; for this session */
@@ -714,7 +749,11 @@ function guestSpot(){
     tries.push([r.x+Math.floor(r.w/2),r.z-1],[r.x-1,r.z],[r.x+r.w,r.z],[r.x+Math.floor(r.w/2),r.z+r.d])}
   tries.push([20,3],[14,3],[26,3],[10,6],[30,6]);
   for(const[x,z]of tries)if(homeFits(plan,"stool",x,z,0))return{x,z};
-  return{x:20,z:3};
+  // all of those taken: the free cell nearest the middle of the railing, and only with none free at all, inside the
+  // furniture there
+  let best=null,far=Infinity;
+  for(let z=0;z<HOME_ROWS;z++)for(let x=0;x<HOME_COLS;x++){const d=Math.hypot(x-20,z-3);if(d<far&&homeFits(plan,"stool",x,z,0)){far=d;best={x,z}}}
+  return best||{x:20,z:3};
 }
 // at home (the garage, designing included) the guest stands there, facing the room's railing; elsewhere they're out of
 // sight, and once you've hung out they've gone home

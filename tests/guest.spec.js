@@ -120,3 +120,14 @@ test("a guest sits on your comfiest seat, facing the way it faces; with no seat 
   expect(stand.lift).toBeCloseTo(0.92 * (await game.eval(() => __T.GUEST.h)), 3);
 });
 
+test("with no seat and every usual spot taken, a guest stands on the nearest free cell, not inside the furniture", async ({ game }) => {
+  await game.open();
+  const r = await game.eval(() => {
+    const T = __T;
+    T.save.home.items = [[20, 3], [14, 3], [26, 3], [10, 6], [30, 6]].map(([x, z]) => ({ id: "vase", x, z, r: 0 }));
+    const c = T.guestSpot();
+    return { c, free: T.homeFits(T.save.home, "stool", c.x, c.z, 0) };
+  });
+  expect(r.free).toBe(true);
+  expect(Math.hypot(r.c.x - 20, r.c.z - 3)).toBe(1);
+});

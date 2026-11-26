@@ -306,16 +306,46 @@ test.describe("cloud save", () => {
     expect((await cloud(game)).puts).toBeGreaterThan(puts);
   });
 
+  test("progress backed up while this browser wouldn't store it isn't undone on the next start: the account's copy comes back", async ({ game, page }) => {
+    await page.addInitScript(FAKE_CLOUD);
+    await game.open();
+    await progress(game, 200000);
+    await signIn(page, game);
+    await expect.poll(() => status(game).then((s) => s.st)).toBe("synced");
+    // storage full for the game's save; the account's small note here still goes in
+    await game.eval(() => {
+      const set = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (k, v) {
+        if (k === __T.SAVE_KEY) throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+        return set.call(this, k, v);
+      };
+    });
+    const puts = (await cloud(game)).puts;
+    await game.eval(() => __T.earn(700000));
+    await expect.poll(async () => (await cloud(game)).puts, { timeout: 15000 }).toBeGreaterThan(puts);
+    expect(JSON.parse((await cloud(game)).docs.u1.save).cr).toBe(900000);
+    expect(await game.eval(() => JSON.parse(localStorage.getItem(__T.SAVE_KEY)).cr)).toBe(200000);
+    // the next start, with room again: this browser's older save is the one it held at that backup, so the account's
+    // comes back rather than the older one going up over it (the restore's own reload is held back here)
+    await page.addInitScript(() => { window.__cloudNoReload = true; });
+    await game.reload();
+    await expect.poll(() => game.eval(() => window.__cloudApplied && window.__cloudApplied.cr), { timeout: 15000 }).toBe(900000);
+    expect(JSON.parse((await cloud(game)).docs.u1.save).cr).toBe(900000);
+    expect(await game.eval(() => JSON.parse(localStorage.getItem(__T.SAVE_KEY)).cr)).toBe(900000);
+  });
+
   test("if the browser won't store the account's progress, nothing changes and saving carries on", async ({ game, page }) => {
     await page.addInitScript(FAKE_CLOUD);
     await game.open();
     await setCloud(game, `const sv=JSON.parse(JSON.stringify(__T.save));sv.cr=500000;delete sv.ghost;s.docs.u1={save:JSON.stringify(sv),rev:3,at:Date.now()};`);
-    // the next write of the game's save fails (storage full)
+    // the next two writes of the game's save fail (storage full): the account's progress, and the same again without
+    // this device's ghost laps (js/core.js saveWrite)
     await game.eval(() => {
       const set = Storage.prototype.setItem;
+      let refuse = 2;
       Storage.prototype.setItem = function (k, v) {
-        if (k === __T.SAVE_KEY) {
-          Storage.prototype.setItem = set;
+        if (k === __T.SAVE_KEY && refuse > 0) {
+          if (--refuse === 0) Storage.prototype.setItem = set;
           throw new Error("QuotaExceededError");
         }
         return set.call(this, k, v);

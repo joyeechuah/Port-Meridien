@@ -268,6 +268,13 @@ function giftClean(raw){
   const ids=[];if(Array.isArray(raw.ids))for(const id of raw.ids.slice(0,32))if(Number.isInteger(id)&&id>=0&&id<16&&!ids.includes(id))ids.push(id);
   return {v:1,day:Math.min(raw.day,today),ids};
 }
+// Daily allowances from the same account travel across devices, even when progress compares equal.
+function giftSync(local,remote,other){
+  const a=giftClean(local),b=giftClean(remote);
+  if(other||b.day>a.day)return b;
+  if(a.day>b.day)return a;
+  return {v:1,day:a.day,ids:[...new Set([...a.ids,...b.ids])].sort((x,y)=>x-y)};
+}
 function photoDayClean(raw){
   const today=Math.floor(Date.now()/86400000);
   return Number.isSafeInteger(raw?.day)&&raw.day>=0&&Number.isInteger(raw.count)?
@@ -387,9 +394,11 @@ function persist(){if(tabIdle)return;if(typeof needsCommit==="function")needsCom
 // five minutes only that (each try writes the whole save). If neither goes in, what's stored stays as it was: the last
 // save that went in, never removed to make room. 2: the whole save went in, 1: all but the ghost laps, 0: nothing
 const SAVE={ok:true,liteUntil:0,liteWarned:false};
-function saveWrite(){
-  if(Date.now()>=SAVE.liteUntil)try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));SAVE.liteUntil=0;return 2}catch(e){SAVE.liteUntil=Date.now()+300000}
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},save,{ghost:{}})));return 1}catch(e){}
+// (an account's progress being restored, js/screens.js clApply, is tried whole first whatever the five minutes say,
+// and doesn't start them: it isn't the save the game goes on writing)
+function saveWrite(snapshot=save, restoring=false){
+  if(restoring||Date.now()>=SAVE.liteUntil)try{localStorage.setItem(SAVE_KEY,JSON.stringify(snapshot));SAVE.liteUntil=0;return 2}catch(e){if(!restoring)SAVE.liteUntil=Date.now()+300000}
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},snapshot,{ghost:{}})));return 1}catch(e){}
   return 0}
 const paintOf=id=>STREET.has(id)?STREET.get(id).paint:save.paint[id]!==undefined?save.paint[id]:carById(id).body;
 
