@@ -326,6 +326,9 @@ function finishEvent(tx){
   if(cupRows)rows.push(...cupRows.rows);
   // finishing is fun, wherever you came (js/life.js); quitting isn't
   needsRace();
+  // winning, a gold time or a cup: Confident (js/life.js feel)
+  const cupWon=!!cupRows&&cupRows.rows.some(r=>r[0]==="Cup won");
+  if((cupWon||(E.type==="race"?pos===1:medal===0))&&typeof feel==="function")feel("confident",cupWon?"You won the cup":E.type==="race"?"You won the race":"A gold time");
   if(rew)earn(rew);if(cupRows&&cupRows.prize)earn(cupRows.prize);persist();
   // the result shows once the car has stopped past the line (updateEvent): it used to show at once, with the car
   // frozen at race speed, which carried on the moment you pressed OK

@@ -52,7 +52,7 @@ function discoverLandmark(L){
   save.found[L.id]=1;wantEvent("landmark");
   const n=foundCount(),done=n>=LANDMARKS.length&&!save.passBonus;if(done)save.passBonus=true;
   const reward=Math.round(LANDMARK_REWARD*skillFactor("photography"));earn(reward);
-  toast("LANDMARK DISCOVERED",L.name+" · +"+fmtCr(reward)+" CR · "+n+"/"+LANDMARKS.length,"gold");
+  toast("LANDMARK DISCOVERED",L.name+" · +"+fmtCr(reward)+" CR · "+n+"/"+LANDMARKS.length,"gold");if(typeof feel==="function")feel("inspired","You found "+L.name);
   if(done){earn(PASSPORT_BONUS);toast("EXPLORER PASSPORT COMPLETE","Every landmark found · +"+fmtCr(PASSPORT_BONUS)+" CR","gold")}
   if(!$("passport").classList.contains("hide"))renderPassport();
   return true;
@@ -161,6 +161,7 @@ function postcardPickup(){
   persist();
   toast(full?"POSTCARD SET COMPLETE":"POSTCARD FOUND",card.title+" · "+album.length+"/"+POSTCARDS.length+
     (full?" · +"+fmtCr(POSTCARD_REWARD)+" CR":""),"gold");
+  if(typeof feel==="function")feel("inspired","A postcard: "+card.title);
   return true;
 }
 function renderPostcards(){

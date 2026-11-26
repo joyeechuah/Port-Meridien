@@ -134,7 +134,7 @@ function talkGift(id){
   skillAward("charisma",3);TALK.n++;TALK.busy=.7;
   relSet(who.id,r.f+d,r.n+(TALK.n===1?1:0));
   if(!TALK.social&&!(NS.social[who.id]>NS.t)){TALK.social=true;NS.social[who.id]=NS.t+30;needsAdd("social",8)}
-  emote(p,id===favourite?"heart":id===disliked?"meh":"smile");
+  emote(p,id===favourite?"heart":id===disliked?"meh":"smile");if(id===favourite&&typeof feel==="function")feel("happy",who.name+" loved your gift");
   const what=item.name.toLowerCase(),now=rel(who.id);TALK.giftLine=null;
   let line=id===favourite?who.name+" loves the "+what+". "+GIFT_SAYS[who.trait][0]:id===disliked?who.name+" takes the "+what+" politely. "+GIFT_SAYS[who.trait][1]:
     who.name+" likes the "+what+". “Thanks, that's kind of you.”";
@@ -426,12 +426,34 @@ function needsMood(){
   if(NS.low&&needOf(NS.low)>=35)NS.low=null;
   let lo=null;for(const k of NEED_ORDER)if(needOf(k)<=25&&(lo===null||needOf(k)<needOf(lo)))lo=k;
   if(!NS.low)NS.low=lo;else if(lo&&lo!==NS.low&&needOf(lo)<=15&&needOf(lo)<needOf(NS.low))NS.low=lo;
-  return WANTED.lvl?"Tense":NS.low?MOOD_OF[NS.low]:NEED_ORDER.every(k=>needOf(k)>=70)?"Content":"Okay";
+  return WANTED.lvl?"Tense":NS.low?MOOD_OF[NS.low]:feeling()?FEELINGS[feeling()].mood:NEED_ORDER.every(k=>needOf(k)>=70)?"Content":"Okay";
+}
+// Feelings (docs/MOODS.md): something that has just happened lifts you for a few minutes of play (the needs' clock,
+// NS.t, which stops in menus, the garage and Photo Mode). Only the latest counts. The police and a low need come first;
+// otherwise the feeling is your mood. This session only, like the needs' own clock
+const FEELINGS=/** @type {Object<string,{mood:string,secs:number}>} */ ({happy:{mood:"Happy",secs:240},confident:{mood:"Confident",secs:240},
+  inspired:{mood:"Inspired",secs:180},energised:{mood:"Energised",secs:240}});
+const FEEL={id:/** @type {string|null} */ (null),why:"",until:0};
+function feel(id,why){
+  const F=FEELINGS[id];if(!F)return false;
+  const was=feeling();FEEL.id=id;FEEL.why=why;FEEL.until=NS.t+F.secs;
+  if(was!==id&&typeof toast==="function")toast("FEELING "+F.mood.toUpperCase(),why+" · "+moodEffect(F.mood),"gold");
+  return true;
+}
+function feeling(){if(FEEL.id&&NS.t>=FEEL.until)FEEL.id=null;return FEEL.id}
+// what a mood does to the skills (js/core.js moodPercent), in words
+function moodEffect(mood){
+  const one={Confident:"Driving",Inspired:"Photography",Energised:"Fitness"}[mood];
+  return mood==="Lonely"?"Charisma grows 50% faster · other skills grow 15% slower":one?one+" grows 50% faster":mood==="Happy"?"Skills grow 25% faster":
+    mood==="Content"?"Skills grow 15% faster":mood==="Okay"?"Skills grow at their usual rate":"Skills grow 15% slower";
 }
 // the one suggestion the pause menu makes: about the mood, or the need lowest now
 function needsTip(){
   const m=needsMood();if(m==="Tense")return"The police are after you. Lose them first; the rest can wait.";
   if(m==="Content")return"You're in good shape. Enjoy the city.";
+  const lift={Happy:"You're happy: whatever you practise now comes on faster.",Confident:"You're feeling confident: a good time for a race.",
+    Inspired:"You're inspired: a good time to take some photos.",Energised:"You're full of energy: a good time for a run on foot."}[m];
+  if(lift)return lift;
   if(NS.low)return NEED_TIP[NS.low];
   return NEED_TIP[NEED_ORDER.reduce((a,b)=>needOf(b)<needOf(a)?b:a)];
 }
@@ -471,7 +493,7 @@ function needsHints(){
 // out or chose GO HOME is no rest in itself
 function needsRest(){
   if(!homeEditable()||document.hidden||WANTED.lvl||NS.t<NS.restAt||needOf("energy")>=100)return false;
-  needsAdd("energy",homeGain("rest"));
+  needsAdd("energy",homeGain("rest"));if(homeHas(save.home,"rest")&&typeof feel==="function")feel("energised","A rest in your own bed");
   NS.restAt=NS.t+30;persist();restSync();return true;
 }
 function homeGain(action){
@@ -549,9 +571,10 @@ function needsRender(){
     li.textContent=it.label+(id==="walk"?" ("+Math.floor(save.wants.metres)+"/500 m)":"")+" · "+fmtCr(wantPay(it))+" CR";list.appendChild(li)}
   // one reroll a day (UTC): once it's used, the button says when the next one comes
   const used=!rerollAvailable(save.wants,Math.floor(Date.now()/86400000));$("ndReroll").disabled=used;$("ndReroll").textContent=used?"NEW REROLL TOMORROW":"REROLL WANTS";
-  const mood=needsMood();$("ndMood").textContent=mood;
-  $("ndMoodEffect").textContent=mood==="Lonely"?"Charisma grows 50% faster · other skills grow 15% slower":
-    mood==="Content"?"Skills grow 15% faster":mood==="Okay"?"Skills grow at their usual rate":"Skills grow 15% slower";
+  const mood=needsMood();$("ndMood").textContent=mood;$("ndMoodEffect").textContent=moodEffect(mood);
+  // the feeling behind the mood, and how long it has left; one held back by a low need or the police says so
+  const f=typeof feeling==="function"?feeling():null,F=f?FEELINGS[f]:null,left=F?Math.max(1,Math.ceil((FEEL.until-NS.t)/60)):0;
+  $("ndFeel").textContent=F?(F.mood===mood?"":F.mood+" once you're no longer "+mood.toLowerCase()+": ")+FEEL.why+" · "+left+" min left":"";
   $("ndTip").textContent=needsTip();
   for(const k of NEED_ORDER){const v=needOf(k),[w,c]=NEED_STATE(v),row=$("nd_"+k);
     row.querySelector("i").style.width=v+"%";row.querySelector(".ndb").setAttribute("aria-valuenow",String(v));
@@ -794,7 +817,7 @@ function guestHangOut(){
   const who=GUEST.who;if(!who||GUEST.done||state!=="GARAGE"||tabIdle)return false;
   const r=rel(who.id),comfy=typeof homeComfort==="function"?homeComfort(save.home):0,gain=4+Math.floor(comfy/25);
   const lift=typeof homeComfort==="function"?homeLift():1;
-  relSet(who.id,r.f+gain,r.n+1);needsAdd("social",30*lift);needsAdd("fun",10*lift);skillAward("charisma",4);
+  relSet(who.id,r.f+gain,r.n+1);needsAdd("social",30*lift);needsAdd("fun",10*lift);skillAward("charisma",4);if(typeof feel==="function")feel("happy",who.name+" came over");
   GUEST.done=true;guestSync();persist();restSync();
   toast(who.name.toUpperCase(),GUEST_LINES[who.trait]+" · friendship +"+gain,"gold");return true;
 }

@@ -230,9 +230,13 @@ function skillLevel(k){
 function skillFactor(k){return 1+SKILL_RATE[k]*skillLevel(k)}
 // Units of 1/400 XP stay in this session. Each skill carries its own change of mood.
 const skillCarry={driving:0,cooking:0,charisma:0,fitness:0,photography:0,handiness:0};
+// (Happy, Confident, Inspired and Energised are feelings: something that has just happened, js/life.js feel)
+const MOOD_SKILL={Confident:"driving",Inspired:"photography",Energised:"fitness"};
 function moodPercent(mood,k){
+  if(mood==="Happy")return 125;
   if(mood==="Content")return 115;
   if(mood==="Lonely"&&k==="charisma")return 150;
+  if(MOOD_SKILL[mood])return MOOD_SKILL[mood]===k?150:100;
   return mood==="Okay"?100:85;
 }
 function skillAward(k,xp){
