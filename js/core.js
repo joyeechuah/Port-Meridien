@@ -293,8 +293,11 @@ function workClean(w){
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={gift:giftClean(null),gifted:/** @type {number[]} */ ([]),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
+const save={gen:0,gift:giftClean(null),gifted:/** @type {number[]} */ ([]),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
+// the save as this browser stored it, read as the game starts: until a save is written here, a backup's note of what
+// was stored is compared with it (js/screens.js clBootDisk), before loading has tidied anything in it
+let saveRaw=/** @type {string|null} */ (null);
 // the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
 // version starts again from the starting values; a missing or broken number is put back to its own starting value,
 // and keys the game doesn't know are left out. Used on loading, and on a save from the account (js/screens.js)
@@ -305,7 +308,8 @@ function needsClean(n){
   return o;
 }
 try{
-  const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");
+  saveRaw=localStorage.getItem(SAVE_KEY);
+  const s=JSON.parse(saveRaw||"null");
   if(s&&typeof s==="object"&&!Array.isArray(s)){
     // only the fields the game knows, so stray keys in storage can't add anything to the save
     const old=!s.v;loadedV=+s.v||0;for(const k of Object.keys(save))if(Object.prototype.hasOwnProperty.call(s,k))save[k]=s[k];
@@ -361,6 +365,7 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
+  save.gen=Number.isSafeInteger(save.gen)&&save.gen>0?save.gen:0;
   save.gift=giftClean(save.gift);save.gifted=giftedClean(save.gifted);
   // a save from before everyone given a gift was kept: the day's list it kept is that much of it (Codex's review)
   if(!save.gifted.length&&save.gift.ids.length)save.gifted=save.gift.ids.slice().sort((a,b)=>a-b);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
@@ -397,12 +402,16 @@ function persist(){if(tabIdle)return;if(typeof needsCommit==="function")needsCom
 // The whole save; if that won't go in, the same without the time trial ghost laps (replays, not progress), and for
 // five minutes only that (each try writes the whole save). If neither goes in, what's stored stays as it was: the last
 // save that went in, never removed to make room. 2: the whole save went in, 1: all but the ghost laps, 0: nothing
-const SAVE={ok:true,liteUntil:0,liteWarned:false};
+// Every save written here is numbered (gen), one more than the last that went in: the number of the save stored is
+// gen, and a backup notes it (js/screens.js clUpload), so the next start can tell that very save from a newer one, even
+// one that has come back to an earlier state, whatever loading has tidied in it since
+const SAVE={ok:true,liteUntil:0,liteWarned:false,gen:save.gen|0,bootProg:""};
 // (an account's progress being restored, js/screens.js clApply, is tried whole first whatever the five minutes say,
 // and doesn't start them: it isn't the save the game goes on writing)
 function saveWrite(snapshot=save, restoring=false){
-  if(restoring||Date.now()>=SAVE.liteUntil)try{localStorage.setItem(SAVE_KEY,JSON.stringify(snapshot));SAVE.liteUntil=0;return 2}catch(e){if(!restoring)SAVE.liteUntil=Date.now()+300000}
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},snapshot,{ghost:{}})));return 1}catch(e){}
+  const gen=(SAVE.gen|0)+1,put=o=>{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},o,{gen})));SAVE.gen=save.gen=gen;saveRaw=null};
+  if(restoring||Date.now()>=SAVE.liteUntil)try{put(snapshot);SAVE.liteUntil=0;return 2}catch(e){if(!restoring)SAVE.liteUntil=Date.now()+300000}
+  try{put(Object.assign({},snapshot,{ghost:{}}));return 1}catch(e){}
   return 0}
 const paintOf=id=>STREET.has(id)?STREET.get(id).paint:save.paint[id]!==undefined?save.paint[id]:carById(id).body;
 

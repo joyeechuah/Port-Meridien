@@ -13,7 +13,7 @@ function game(stored={}){
     return nodes.get(id);
   };
   const ctx=vm.createContext({window:{},document:{hidden:false,createElement:()=>({dataset:{}})},
-    save:{cr:10000,...stored},state:"GARAGE",WANTED:{lvl:0},CL:{meta:{}},tabIdle:false,$,
+    save:{cr:10000,...stored},state:"GARAGE",WANTED:{lvl:0},CL:{meta:{}},tabIdle:false,$,SAVE:{ok:true,gen:0,bootProg:""},
     STARTERS:["starter"],show(id,visible){$(id).visible=visible;},updateMoney(){},
     persist(){vm.runInContext("needsCommit()",ctx);writes.push(JSON.parse(JSON.stringify(ctx.save)));}});
   const core=read("core"),screens=read("screens");
