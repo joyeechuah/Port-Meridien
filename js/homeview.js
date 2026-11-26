@@ -127,7 +127,8 @@ const hvCam=()=>{
   return{pos:look.clone().addScaledVector(dir,L),look};
 };
 function hvOpen(){
-  if(state!=="GARAGE"||HV.on||cuOpen()||tabIdle)return;
+  // (not under the party's panel: Codex's review of #127)
+  if(state!=="GARAGE"||HV.on||cuOpen()||tabIdle||typeof partyOpen==="function"&&partyOpen())return;
   HV.on=true;HV.sel=null;HV.pick=-1;HV.r=0;HV.at=HV.tap=HV.down=null;HV.ptrs.clear();HV.multi=false;GO.stick[0]=GO.stick[1]=0;
   // the ceiling and the roof lift off, as in a dolls' house
   // (everything wholly above 8.3 m: the ceiling, its beams, lamps and light bars, and the roof)
