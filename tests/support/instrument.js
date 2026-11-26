@@ -31,6 +31,7 @@ const NAMES = (
   "photoExit photoLook photoLookSet photoReset prNow promptAct renderer resetToRoad routeBetween save scene " +
   "contractRank contractPay " +
   "VERGE vergeSites toast toastFit " +
+  "personOf pedLook rnd pedRotate " +
   "talkGift giftGiven giftClean " +
   "GIFTS GIFT_PREFS giftMenu giftSync giftedClean " +
   "TRAITS traitsClean traitsApply hasTrait traitLoss " +

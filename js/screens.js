@@ -1056,8 +1056,10 @@ const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&k!=="g
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;delete o.gen;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
-  // (an aspiration step paid is progress, even with the credits spent back to the start: js/progress.js)
+  // (an aspiration step paid is progress, even with the credits spent back to the start: js/progress.js; and so is
+  // anyone ever given a gift, as the progress check has it)
   if(sv.traits){const t=traitsClean(sv.traits);if(t.ids.length||t.day>=0)return false}
+  if(typeof giftedClean==="function"&&giftedClean(sv.gifted).length)return false;
   if(sv.aspire&&typeof aspireClean==="function"&&Object.keys(aspireClean(sv.aspire).claimed).length)return false;
   const skills=skillsClean(sv.skills);if(Object.keys(SKILL_RATE).some(k=>skills[k]>0))return false;
   return !(sv.wants&&Object.keys(wantsClean(sv.wants).completed).length)&&!homeProgress(sv.home)&&!workClean(sv.work).completed&&(sv.xp||0)===0&&sv.cr===120000&&Array.isArray(sv.owned)&&sv.owned.join()===STARTERS.join()&&e(sv.paint)&&e(sv.rec)&&e(sv.found)&&e(sv.radar)&&e(sv.champ)&&e(sv.mods)&&e(sv.rel)&&!sv.passBonus&&

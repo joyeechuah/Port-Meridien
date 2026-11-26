@@ -250,6 +250,13 @@ test.describe("talking to people", () => {
     expect(r).toEqual({ gift: { v: 1, day: today, ids: [3, 7] }, gifted: [3, 7, 9], broke: false, cr: 100, clean: [none, none, none] });
   });
 
+  test("a save from before everyone given a gift was kept takes its day's list for it, and with any, it isn't a new save", async ({ game }) => {
+    const today = Math.floor(Date.now() / 86400000);
+    await game.open({ save: { v: 3, gift: { v: 1, day: today - 3, ids: [4, 1] } } });
+    const r = await game.eval(() => ({ gifted: __T.save.gifted, fresh: [__T.clFresh({ cr: 120000, owned: __T.STARTERS.slice() }), __T.clFresh({ cr: 120000, owned: __T.STARTERS.slice(), gifted: [1] })] }));
+    expect(r).toEqual({ gifted: [1, 4], fresh: [true, false] });
+  });
+
   test("knocking someone down costs their friendship, they can't be talked to while down, and they show it the next time you meet", async ({ game }) => {
     await inTown(game, { gun: true });
     await meet(game, 0, 6);

@@ -13,7 +13,8 @@ const PEOPLE=[
   ["Nadia","cheerful"],["Elias","joker"],["Mei","chatty"],["Hugo","shy"]
 ].map(([name,trait],id)=>({id,name,trait}));
 const TRAIT_LABEL={cheerful:"Cheerful",grumpy:"Grumpy",joker:"Loves a joke",chatty:"Chatty",shy:"Shy",busy:"Always in a hurry"};
-const personOf=p=>PEOPLE[PEDS.indexOf(p)]||null;
+// (each place in town has its resident for now: js/people.js pedRotate)
+const personOf=p=>PEOPLE[p.pid??PEDS.indexOf(p)]||null;
 
 /* ================================================================ FRIENDSHIP: from -100 to 100, kept in the save */
 // save.rel[id] = {f: friendship, n: conversations had}. Missing means you've never met
