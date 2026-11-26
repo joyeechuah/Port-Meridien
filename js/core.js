@@ -293,7 +293,27 @@ function workClean(w){
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={gift:giftClean(null),gifted:/** @type {number[]} */ ([]),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
+const POSTCARD_REWARD=12000, POSTCARD_RADIUS=2.5;
+const POSTCARDS=[
+  {id:"summit",title:"The Ridge Line",place:"Crown Ridge Summit",x:-229.7,z:-164.5},
+  {id:"sentinel",title:"Rock at Dusk",place:"Sentinel Rock Lookout",x:-740.3,z:650.3},
+  {id:"switchback",title:"One More Bend",place:"The Hairpin",x:-115.2,z:-355.9},
+  {id:"north-cape",title:"North Wind",place:"North Cape",x:221.4,z:-911.2},
+  {id:"south-cape",title:"Southern Light",place:"South Cape",x:28.7,z:795.7},
+  {id:"east-cape",title:"First Light",place:"East Cape",x:998.7,z:175.9},
+  {id:"west-cape",title:"Last Light",place:"West Cape",x:-851.0,z:250.3},
+  {id:"eastbank",title:"Postmarked Eastbank",place:"Eastbank",x:461.8,z:-511.4},
+  {id:"cedar",title:"The Cedar Road",place:"Cedar Heights",x:-506.7,z:456.2},
+  {id:"common",title:"Common Ground",place:"North Common",x:-95.1,z:-677.5},
+  {id:"cove",title:"Cove in Blue",place:"East Cove",x:603.1,z:-390.2},
+  {id:"north-point",title:"The Long Way Home",place:"North Point",x:-23.6,z:-829.3}
+];
+function postcardsClean(raw){
+  if(!Array.isArray(raw))return [];
+  const ids=new Set(raw.slice(0,64));
+  return POSTCARDS.filter(card=>ids.has(card.id)).map(card=>card.id);
+}
+const save={postcards:/** @type {string[]} */ ([]),gift:giftClean(null),gifted:/** @type {number[]} */ ([]),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
 // the needs as a save holds them: version 1, each a whole number from 0 to 100. Anything but a plain object of this
 // version starts again from the starting values; a missing or broken number is put back to its own starting value,
@@ -361,6 +381,7 @@ try{
    for(const k of Object.keys(r)){const v=r[k];if(!/^(1[0-5]|[0-9])$/.test(k)||!v||typeof v!=="object")continue;
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
+  save.postcards=postcardsClean(save.postcards);
   save.gift=giftClean(save.gift);save.gifted=giftedClean(save.gifted);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
   save.needs=needsClean(save.needs);save.work=workClean(save.work);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won

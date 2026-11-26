@@ -91,6 +91,41 @@ function passportGPS(L){
 }
 $("pPass").onclick=passportOpen;$("mapPass").onclick=passportOpen;$("pzClose").onclick=passportClose;
 
+// Postcard collection. The last card and the album bonus enter the same save.
+function postcardPickup(){
+  const album=save.postcards;
+  if(state!=="DRIVE"||!FOOT.on||BOAT.on||tabIdle||document.hidden||album.length===POSTCARDS.length)return false;
+  const card=POSTCARDS.find(c=>(FOOT.x-c.x)**2+(FOOT.z-c.z)**2<=POSTCARD_RADIUS**2&&!album.includes(c.id));
+  if(!card)return false;
+  album.push(card.id);
+  const full=album.length===POSTCARDS.length;
+  if(full){save.cr+=POSTCARD_REWARD;updateMoney()}
+  persist();
+  toast(full?"POSTCARD SET COMPLETE":"POSTCARD FOUND",card.title+" · "+album.length+"/"+POSTCARDS.length+
+    (full?" · +"+fmtCr(POSTCARD_REWARD)+" CR":""),"gold");
+  return true;
+}
+let postcardPage=0;
+function renderPostcards(){
+  const list=$("cardList");list.replaceChildren();
+  for(const card of POSTCARDS.slice(postcardPage*4,postcardPage*4+4)){
+    const row=document.createElement("li");
+    row.textContent=save.postcards.includes(card.id)?card.title+" · "+card.place:"Undiscovered · "+card.place;
+    list.appendChild(row);
+  }
+  const n=save.postcards.length;
+  $("cardCount").textContent=n+" / "+POSTCARDS.length+" · "+fmtCr(POSTCARD_REWARD)+" CR "+(n===POSTCARDS.length?"awarded":"for the set");
+  $("cardPage").textContent="Page "+(postcardPage+1)+" of "+Math.ceil(POSTCARDS.length/4);
+}
+function collectionsOpen(){
+  if(state!=="PAUSE")return;
+  postcardPage=0;renderPostcards();
+  $("pause").inert=true;show("collections",true);$("cardClose").focus();
+}
+function collectionsClose(){show("collections",false);$("pause").inert=false;$("pCollections").focus()}
+$("cardNext").onclick=()=>{postcardPage=(postcardPage+1)%Math.ceil(POSTCARDS.length/4);renderPostcards()};
+$("pCollections").onclick=collectionsOpen;$("cardClose").onclick=collectionsClose;
+
 /* ================================================================ CONTRACTS
    Optional, repeatable driving jobs between the island's towns: parcel deliveries, timed courier runs and
    scenic tours. Pickups, drop-offs and tour stops are points on real roads near each town the map names, kept

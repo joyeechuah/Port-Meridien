@@ -293,7 +293,7 @@ body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px +
 .card .row b{font-family:var(--f-num);font-size:16px}
 /* phones and tablets: the page never zooms or pans (a double tap or a pinch used to zoom Safari in, with no way back
    but pinching out); menus and lists that scroll still scroll */
-.card,#pzList,#jbList,#cpList,#mapSide,#cuList{touch-action:pan-y}#dList{touch-action:pan-x pan-y}
+.card,#cardList,#pzList,#jbList,#cpList,#mapSide,#cuList{touch-action:pan-y}#dList{touch-action:pan-x pan-y}
 #zoomed{position:fixed;left:0;top:0;z-index:99;transform-origin:0 0;background:#e2483d;color:#fff;font:inherit;font-weight:700;font-size:13px;letter-spacing:.06em;padding:12px 16px;border:0;border-radius:0 0 8px 0;cursor:pointer}
 /* a zoomed-in page lets the browser's own pinch (and two-finger drag) through everywhere, so pinching out works: with
    it switched off, as it is the rest of the time, an iPad that had zoomed in couldn't be pinched back */
@@ -525,7 +525,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 #pzNote{font-size:12px;color:var(--mute)}
 #pzMsg{font-size:12px;color:var(--acc);min-height:0;margin-top:6px}
 #pzMsg:empty{display:none}
-#pzList{overflow:auto;margin-top:10px;flex:1;min-height:80px}
+#cardList,#pzList{overflow:auto;margin-top:10px;flex:1;min-height:80px}
 .pzr{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
 .pzr>div{flex:1;min-width:0}
 .pzr b{display:block;font-size:13px}
@@ -797,6 +797,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn" id="pSteer">STEERING: NORMAL</button>
   <button class="mbtn hide" id="pTilt">TILT STEERING: OFF</button>
   <button class="mbtn" id="pSide">DRIVE ON: LEFT</button>
+  <button class="mbtn" id="pCollections">COLLECTIONS</button>
   <a class="mbtn" id="pFb" href="https://forms.gle/bPk18BbmhaGLNJtD9" target="_blank" rel="noopener">SEND FEEDBACK &#8599;</a>
 </div></div>
 
@@ -865,6 +866,13 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <div class="clw"><div><h4>THIS DEVICE</h4><ul id="cpkDev"></ul><button class="mbtn" id="cpkKeepDev">KEEP THIS DEVICE'S</button></div>
     <div><h4>GOOGLE ACCOUNT</h4><ul id="cpkAcc"></ul><button class="mbtn" id="cpkKeepAcc">KEEP THE ACCOUNT'S</button></div></div>
   <button class="mbtn" id="cpkLater">DECIDE LATER</button>
+</div></div>
+<div id="collections" class="ov hide"><div class="card pzc" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
+  <h2 id="cardTitle">Postcard collection</h2>
+  <p>Explore the verges near these places on foot.</p><p id="cardCount"></p>
+  <ol id="cardList" tabindex="0" aria-label="Postcards"></ol>
+  <span id="cardPage" aria-live="polite"></span><button id="cardNext" class="mbtn">NEXT PAGE</button>
+  <button id="cardClose" class="mbtn pri">CLOSE</button>
 </div></div>
 <div id="passport" class="ov hide"><div class="card pzc" role="dialog" aria-labelledby="pzTitle">
   <h3>EXPLORE</h3><h2 id="pzTitle">Explorer Passport</h2>
