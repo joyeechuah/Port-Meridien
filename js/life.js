@@ -404,19 +404,21 @@ const needOf=k=>Math.round(NEEDS[k]);
 const needsOfSave=sv=>needsClean(sv&&sv.needs);
 function homeWaitClean(raw){
   const seconds=k=>Number.isFinite(raw?.[k])?clamp(Math.ceil(raw[k]),0,180):0;
-  return {snack:seconds("snack"),play:seconds("play")};
+  const party=seconds("party");
+  return {snack:seconds("snack"),play:seconds("play"),...(party?{party}:{})};
 }
-const homeUntil={snack:0,play:0};
+const homeUntil={snack:0,play:0,party:0};
 function homeWaitLoad(raw){
   const wait=homeWaitClean(raw);save.homeWait=wait;
-  homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;
+  homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;homeUntil.party=NS.t+(wait.party||0);
 }
 homeWaitLoad(save.homeWait);
 const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=NEED_ORDER.map(k=>n[k]).join(",");
+  if(wait.party)return key+"/"+wait.snack+"/"+wait.play+"/"+wait.party;
   return wait.snack||wait.play?key+"/"+wait.snack+"/"+wait.play:key};
 // the save's needs become the ones in play: on loading, and when another device's are newer (js/screens.js)
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
-function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
+function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
 function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&state==="GARAGE"&&NEEDS[k]>was)skillAward("cooking",hasTrait("handy")?10:5);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
@@ -823,3 +825,60 @@ function guestHangOut(){
 }
 $("gGuest").onclick=()=>guestHangOut();
 
+
+// Home parties. Invitations and attendance belong to this visit. Only the remaining wait and earned rewards are saved.
+const PARTY={ids:/** @type {number[]} */ ([]),active:false};
+const PARTY_RSVP={
+  cheerful:[40,"I'd love to see everyone."],joker:[40,"I've got a good story for the party."],
+  chatty:[45,"It'll be good to catch up."],shy:[55,"I feel at home around you."],
+  grumpy:[60,"For you, I'll come."],busy:[65,"I'll make time for this."]
+};
+const PARTY_NO={cheerful:"Maybe after we get to know each other.",joker:"Let's hang out another time.",
+  chatty:"Let's talk a bit more first.",shy:"I'd rather know you better first.",
+  grumpy:"I'm staying in tonight.",busy:"I can't clear my schedule."};
+function partyAtHome(){
+  return typeof homeEditable==="function"&&homeEditable()&&!document.hidden&&!WANTED.lvl&&
+    !(GUEST.who&&!GUEST.done)&&!(typeof clOverlayOpen==="function"&&clOverlayOpen());
+}
+function partyCanHost(){return partyAtHome()&&NS.t>=homeUntil.party}
+function partyInvite(ids){
+  if(!partyCanHost()||PARTY.active||!Array.isArray(ids)||ids.length>3||
+    new Set(ids).size!==ids.length||ids.some(id=>!Number.isInteger(id)||!PEOPLE[id]))return [];
+  const replies=ids.map(id=>{
+    const who=PEOPLE[id],r=rel(id),friend=r.n>0&&r.f>=RIDE_AT,accepted=friend&&r.f>=PARTY_RSVP[who.trait][0];
+    return {id,accepted,reason:accepted?PARTY_RSVP[who.trait][1]:friend?PARTY_NO[who.trait]:"Become Friends first."};
+  });
+  PARTY.ids=replies.filter(r=>r.accepted).map(r=>r.id);
+  return replies;
+}
+function partyStart(){
+  if(!partyCanHost()||PARTY.active)return false;
+  PARTY.ids=PARTY.ids.filter(id=>rel(id).n>0&&rel(id).f>=PARTY_RSVP[PEOPLE[id].trait][0]);
+  if(!PARTY.ids.length)return false;
+  PARTY.active=true;return true;
+}
+function partyScore(){
+  if(!PARTY.ids.length)return 0;
+  const traits=PARTY.ids.map(id=>PEOPLE[id].trait);
+  let mix=0;
+  for(let i=0;i<traits.length;i++)for(let j=0;j<i;j++){
+    const pair=[traits[i],traits[j]].sort().join("/");
+    if(["chatty/cheerful","cheerful/joker","busy/shy"].includes(pair))mix+=6;
+    if(["grumpy/joker","chatty/shy","busy/chatty"].includes(pair))mix-=6;
+  }
+  const comfort=typeof homeComfort==="function"?homeComfort(save.home):0;
+  const charisma=typeof skillLevel==="function"?skillLevel("charisma"):0;
+  return clamp(25+5*traits.length+Math.floor(comfort*.3)+3*charisma+mix,0,100);
+}
+function partyClear(){PARTY.active=false;PARTY.ids=[]}
+function partyEnd(){
+  if(!partyCanHost()||!PARTY.active)return false;
+  const ids=PARTY.ids,score=partyScore(),good=score>=60;
+  partyClear();homeUntil.party=NS.t+180;
+  for(const id of ids){const r=rel(id);relSet(id,r.f+2+Math.floor(score/20),r.n+1)}
+  needsAdd("social",8+4*ids.length);needsAdd("fun",5+Math.floor(score/5));
+  if(typeof skillAward==="function")skillAward("charisma",3*ids.length);
+  if(good)feel("happy","A good party at home");
+  if(typeof persist==="function")persist();
+  return {score,guests:ids.slice(),happy:good};
+}
