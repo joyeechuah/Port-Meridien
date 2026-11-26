@@ -29,6 +29,8 @@ const NAMES = (
   "DIAG VRANGE resetResolutionSample jobTarget jobsClose jobsOpen keys mapToWorld mapZoomAt nearestRoad nearestRoadGlobal openDealer openIntro " +
   "openMap openMapPopup pad passportClose passportOpen pauseOff pauseOn pc persist photoCapture photoEnter " +
   "photoExit photoLook photoLookSet photoReset prNow promptAct renderer resetToRoad routeBetween save scene " +
+  "POSTCARDS POSTCARD_REWARD POSTCARD_RADIUS postcardsClean postcardPickup collectionsOpen collectionsClose " +
+  "POSTCARD_MARKS postcardTick buildPostcards " +
   "contractRank contractPay " +
   "VERGE vergeSites toast toastFit " +
   "personOf pedLook rnd pedRotate " +

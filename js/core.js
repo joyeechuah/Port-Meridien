@@ -293,7 +293,27 @@ function workClean(w){
   const value=(k,max)=>valid&&Number.isFinite(w[k])?clamp(w[k],0,max):0;
   return {v:1,completed:Math.floor(value("completed",9999)),cool:Math.ceil(value("cool",120))};
 }
-const save={gen:0,gift:giftClean(null),gifted:/** @type {number[]} */ ([]),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
+const POSTCARD_REWARD=12000, POSTCARD_RADIUS=2.5;
+const POSTCARDS=[
+  {id:"summit",title:"The Ridge Line",place:"Crown Ridge Summit",x:-229.7,z:-164.5},
+  {id:"sentinel",title:"Rock at Dusk",place:"Sentinel Rock Lookout",x:-740.3,z:650.3},
+  {id:"switchback",title:"One More Bend",place:"The Hairpin",x:-115.2,z:-355.9},
+  {id:"north-cape",title:"North Wind",place:"North Cape",x:221.4,z:-911.2},
+  {id:"south-cape",title:"Southern Light",place:"South Cape",x:28.7,z:795.7},
+  {id:"east-cape",title:"First Light",place:"East Cape",x:998.7,z:175.9},
+  {id:"west-cape",title:"Last Light",place:"West Cape",x:-851.0,z:250.3},
+  {id:"eastbank",title:"Postmarked Eastbank",place:"Eastbank",x:461.8,z:-511.4},
+  {id:"cedar",title:"The Cedar Road",place:"Cedar Heights",x:-506.7,z:456.2},
+  {id:"common",title:"Common Ground",place:"North Common",x:-95.1,z:-677.5},
+  {id:"cove",title:"Cove in Blue",place:"East Cove",x:603.1,z:-390.2},
+  {id:"north-point",title:"The Long Way Home",place:"North Point",x:-23.6,z:-829.3}
+];
+function postcardsClean(raw){
+  if(!Array.isArray(raw))return [];
+  const ids=new Set(raw.slice(0,64));
+  return POSTCARDS.filter(card=>ids.has(card.id)).map(card=>card.id);
+}
+const save={gen:0,postcards:/** @type {string[]} */ ([]),gift:giftClean(null),gifted:/** @type {number[]} */ ([]),traits:traitsClean(null),aspire:{v:1,claimed:{}},wants:wantsClean(null),home:{v:1,wall:"plaster",floor:"oak",items:[]},homeWait:{snack:0,play:0},work:workClean(null),v:2,outfit:"palms",nick:"",cr:120000,xp:0,owned:STARTERS.slice(),cur:"golf",paint:{},rec:{},radar:{},auto:false,assist:true,sound:true,music:true,gfx:0,cam:0,todMode:0,tod:16.6,found:{},passBonus:false,jobs:{},jobActive:null,diff:1,ghost:{},ghostOn:true,steer:1,tilt:false,champ:{},side:"L",armed:false,flash:true,violence:1,mods:{},rel:{},skills:skillsClean(null),photoDay:photoDayClean(null),needs:Object.assign({v:1},NEEDS_START)};
 let loadedV=0;
 // the save as this browser stored it, read as the game starts: until a save is written here, a backup's note of what
 // was stored is compared with it (js/screens.js clBootDisk), before loading has tidied anything in it
@@ -366,6 +386,7 @@ try{
      o[k]={f:Math.round(num(v.f,0,-100,100)),n:Math.round(num(v.n,0,0,9999))}}
    save.rel=o}
   save.gen=Number.isSafeInteger(save.gen)&&save.gen>0?save.gen:0;
+  save.postcards=postcardsClean(save.postcards);
   save.gift=giftClean(save.gift);save.gifted=giftedClean(save.gifted);
   // a save from before everyone given a gift was kept: the day's list it kept is that much of it (Codex's review)
   if(!save.gifted.length&&save.gift.ids.length)save.gifted=save.gift.ids.slice().sort((a,b)=>a-b);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);

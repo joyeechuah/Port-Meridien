@@ -91,6 +91,99 @@ function passportGPS(L){
 }
 $("pPass").onclick=passportOpen;$("mapPass").onclick=passportOpen;$("pzClose").onclick=passportClose;
 
+// The postcards out on the verges: a short post with a card turning on top of it, and a faint beam so the spot can be
+// picked out from the road. A collected card's marker goes; only those within 320 m of the camera are drawn
+const POSTCARD_MARKS=/** @type {Map<string,{G:any,card:any}>} */ (new Map());
+let postcardT=0,postcardCalm=false;
+function postcardFaces(){
+  const tex=draw=>{const c=document.createElement("canvas");c.width=256;c.height=172;draw(c.getContext("2d"));const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t};
+  // the picture side: evening over the sea, with the island's ridge against it
+  const front=tex(x=>{
+    x.fillStyle="#f4ecd8";x.fillRect(0,0,256,172);
+    const sky=x.createLinearGradient(0,10,0,110);sky.addColorStop(0,"#e9875a");sky.addColorStop(.6,"#f4b46e");sky.addColorStop(1,"#f8dca6");
+    x.fillStyle=sky;x.fillRect(10,10,236,104);
+    x.fillStyle="#fff3d2";x.beginPath();x.arc(176,92,20,0,Math.PI*2);x.fill();
+    x.fillStyle="#3c4a55";x.beginPath();x.moveTo(10,114);x.lineTo(10,88);x.lineTo(48,66);x.lineTo(78,80);x.lineTo(112,58);x.lineTo(150,96);x.lineTo(150,114);x.fill();
+    x.fillStyle="#2f6f8f";x.fillRect(10,104,236,58);
+    x.fillStyle="rgba(255,236,190,.55)";for(let i=0;i<6;i++)x.fillRect(150+i*4-i*i,110+i*8,52-i*6+i*i*2,2);
+    x.fillStyle="#f4ecd8";x.font="bold 15px sans-serif";x.fillText("PORT MERIDIEN",20,152)});
+  // the back: a red stamp, a postmark and the lines for an address
+  const back=tex(x=>{
+    x.fillStyle="#f4ecd8";x.fillRect(0,0,256,172);
+    x.fillStyle="#fff";x.fillRect(190,14,52,60);x.fillStyle="#c8372d";x.fillRect(195,19,42,50);
+    x.fillStyle="#f4ecd8";x.font="bold 12px sans-serif";x.fillText("PM",205,50);
+    x.strokeStyle="rgba(60,60,70,.55)";x.lineWidth=2;x.beginPath();x.arc(178,58,22,0,Math.PI*2);x.stroke();
+    x.strokeStyle="#9a9286";x.lineWidth=1.5;for(const y of [100,124,148]){x.beginPath();x.moveTo(140,y);x.lineTo(240,y);x.stroke()}
+    x.beginPath();x.moveTo(128,20);x.lineTo(128,156);x.stroke();
+    x.fillStyle="#6b655c";x.font="13px sans-serif";x.fillText("Wish you",18,48);x.fillText("were here",18,68)});
+  return {front,back};
+}
+function buildPostcards(){
+  for(const m of POSTCARD_MARKS.values())scene.remove(m.G);POSTCARD_MARKS.clear();
+  postcardCalm=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const F=postcardFaces(),cardGeo=new THREE.PlaneGeometry(.56,.38),postGeo=new THREE.BoxGeometry(.07,1.14,.07).translate(0,.57,0);
+  const frontM=new THREE.MeshBasicMaterial({map:F.front}),backM=new THREE.MeshBasicMaterial({map:F.back});
+  const postM=new THREE.MeshLambertMaterial({color:0x7a5a3c});
+  // the beam starts above the card, so it never washes over it, and fades out as it rises
+  const fade=document.createElement("canvas");fade.width=4;fade.height=64;
+  {const x=fade.getContext("2d"),g=x.createLinearGradient(0,0,0,64);g.addColorStop(0,"#000");g.addColorStop(.5,"#1a1a1a");g.addColorStop(1,"#fff");x.fillStyle=g;x.fillRect(0,0,4,64)}
+  const beamM=new THREE.MeshBasicMaterial({color:0xffdc96,map:new THREE.CanvasTexture(fade),transparent:true,opacity:.3,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
+  const beamGeo=new THREE.CylinderGeometry(.2,.2,8,10,1,true).translate(0,1.8+4,0);
+  for(const c of POSTCARDS){
+    const G=new THREE.Group();G.position.set(c.x,footGround(c.x,c.z),c.z);
+    const post=new THREE.Mesh(postGeo,postM);post.castShadow=true;G.add(post);
+    const card=new THREE.Group();card.position.y=1.38;
+    const fr=new THREE.Mesh(cardGeo,frontM),bk=new THREE.Mesh(cardGeo,backM);bk.rotation.y=Math.PI;card.add(fr,bk);G.add(card);
+    G.add(new THREE.Mesh(beamGeo,beamM));
+    G.visible=false;scene.add(G);POSTCARD_MARKS.set(c.id,{G,card});
+  }
+}
+function postcardTick(dt){
+  postcardT+=dt;
+  const got=new Set(save.postcards||[]),cx=camera.position.x,cz=camera.position.z;
+  let i=0;
+  for(const[id,m] of POSTCARD_MARKS){
+    const G=m.G;G.visible=!got.has(id)&&(G.position.x-cx)**2+(G.position.z-cz)**2<320*320;
+    if(G.visible&&!postcardCalm){m.card.rotation.y=postcardT*1.1+i;m.card.position.y=1.38+Math.sin(postcardT*1.8+i)*.04}
+    i++;
+  }
+}
+
+// Postcard collection. The last card and the album bonus enter the same save.
+function postcardPickup(){
+  const album=save.postcards;
+  if(state!=="DRIVE"||!FOOT.on||BOAT.on||tabIdle||document.hidden||album.length===POSTCARDS.length)return false;
+  const card=POSTCARDS.find(c=>(FOOT.x-c.x)**2+(FOOT.z-c.z)**2<=POSTCARD_RADIUS**2&&!album.includes(c.id));
+  if(!card)return false;
+  album.push(card.id);
+  const full=album.length===POSTCARDS.length;
+  if(full){save.cr+=POSTCARD_REWARD;updateMoney()}
+  persist();
+  toast(full?"POSTCARD SET COMPLETE":"POSTCARD FOUND",card.title+" · "+album.length+"/"+POSTCARDS.length+
+    (full?" · +"+fmtCr(POSTCARD_REWARD)+" CR":""),"gold");
+  return true;
+}
+function renderPostcards(){
+  const n=save.postcards.length,N=POSTCARDS.length,pct=Math.round(n/N*100);
+  $("cardCount").textContent=n+" of "+N+" found · "+pct+"%";$("cardBar").style.width=pct+"%";
+  $("cardNote").textContent=n===N?"All twelve found. The set paid "+fmtCr(POSTCARD_REWARD)+" CR.":
+    "Each card stands on a post by the road near the place named. Walk up to it. "+fmtCr(POSTCARD_REWARD)+" CR for all twelve.";
+  const list=$("cardList");list.replaceChildren();
+  for(const card of POSTCARDS){
+    const f=save.postcards.includes(card.id),row=document.createElement("li");row.className="pzr"+(f?" found":"");
+    const t=document.createElement("div"),b=document.createElement("b"),sp=document.createElement("span");
+    b.textContent=f?card.title:"Not found yet";sp.textContent=card.place;t.append(b,sp);row.appendChild(t);
+    list.appendChild(row);
+  }
+}
+function collectionsOpen(){
+  if(state!=="PAUSE")return;
+  renderPostcards();$("cardList").scrollTop=0;
+  $("pause").inert=true;show("collections",true);$("cardClose").focus();
+}
+function collectionsClose(){show("collections",false);$("pause").inert=false;$("pCollections").focus()}
+$("pCollections").onclick=collectionsOpen;$("cardClose").onclick=collectionsClose;
+
 /* ================================================================ CONTRACTS
    Optional, repeatable driving jobs between the island's towns: parcel deliveries, timed courier runs and
    scenic tours. Pickups, drop-offs and tour stops are points on real roads near each town the map names, kept

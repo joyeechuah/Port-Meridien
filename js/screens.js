@@ -912,7 +912,8 @@ addEventListener("keydown",e=>{
     else if(k==="e"||k==="enter"){if(promptAct)promptAct()}
     else if(k==="f"){if(FOOT.on||BOAT.on){if(promptAct)promptAct()}else footExit()}
     else if(k==="r"&&!ev&&!FOOT.on&&!BOAT.on)resetToRoad(true);
-  }else if(!$("passport").classList.contains("hide")){if(k==="escape")passportClose()}
+  }else if(!$("collections").classList.contains("hide")){if(k==="escape")collectionsClose()}
+  else if(!$("passport").classList.contains("hide")){if(k==="escape")passportClose()}
   else if(!$("jobs").classList.contains("hide")){if(k==="escape")jobsClose()}
   else if(!$("play").classList.contains("hide")){if(k==="escape")netClose()}
   else if(!$("cups").classList.contains("hide")){if(k==="escape")cupsClose()}
@@ -1039,6 +1040,7 @@ function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
 // (the save's number, gen, is this device's own: neither progress nor sent to the account)
 const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&k!=="gen"&&!CL_PREFS.includes(k))o[k]=sv[k];
+  delete o.postcards;if(sv.postcards?.length){const cards=postcardsClean(sv.postcards);if(cards.length)o.postcards=cards}
   delete o.traits;if(sv.traits){const t=traitsClean(sv.traits);if(t.ids.length||t.day>=0)o.traits=t}
   delete o.wants;const counts=sv.wants&&wantsClean(sv.wants).completed;if(counts&&Object.keys(counts).length)o.wants=counts;
   // aspiration steps paid count as progress, and none matches a save from before aspirations (js/progress.js)
@@ -1056,6 +1058,7 @@ const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&k!=="g
 const clPayload=sv=>{const o=Object.assign({},sv);delete o.ghost;delete o.gen;return o};
 // a save with nothing earned yet (the starting credits and cars, no records, landmarks, contracts, cups or customisation)
 function clFresh(sv){if(!sv)return true;const e=o=>!o||!Object.keys(o).length;
+  if(sv.postcards?.length&&postcardsClean(sv.postcards).length)return false;
   // (an aspiration step paid is progress, even with the credits spent back to the start: js/progress.js; and so is
   // anyone ever given a gift, as the progress check has it)
   if(sv.traits){const t=traitsClean(sv.traits);if(t.ids.length||t.day>=0)return false}

@@ -8,7 +8,7 @@ test("Tab stays inside a panel opened from the pause menu or the map, and closin
   await game.driveOut();
   const inside = (id) => page.evaluate((id) => !!document.activeElement && !!document.activeElement.closest("#" + id), id);
   const focused = () => page.evaluate(() => document.activeElement && document.activeElement.id);
-  for (const [opener, panel] of [["pPass", "passport"], ["pJobs", "jobs"], ["pCups", "cups"], ["pPlay", "play"], ["pNeeds", "needs"]]) {
+  for (const [opener, panel] of [["pPass", "passport"], ["pCollections", "collections"], ["pJobs", "jobs"], ["pCups", "cups"], ["pPlay", "play"], ["pNeeds", "needs"]]) {
     await game.key("Escape");
     await game.waitState("PAUSE");
     await page.click("#" + opener);

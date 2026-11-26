@@ -524,6 +524,7 @@ function footUpdate(dt){
       if(wantEvent("walk",strideSpeed*dt))persist();
       skillDistance("fitness",strideSpeed*dt*(run&&go>0?2:1));
       FOOT.x=nx;FOOT.z=nz;
+      if(strideSpeed>0&&typeof postcardPickup==="function")postcardPickup();
     }
     if(strideSpeed<.01)FOOT.v=0;
   }else{const c=footClear(FOOT.x,FOOT.z);FOOT.x=c[0];FOOT.z=c[1]}   // a passing car nudges you aside
