@@ -86,7 +86,7 @@ test("restoring the same account's save keeps this device's photos counted today
     const g = { Date: { now: () => today * 86400000 }, CL: { other, meta: {} }, save: { photoDay: mine, ghost: {} }, SAVE_KEY: "k", window: { __cloudNoReload: true },
       localStorage: { setItem: (k, v) => { stored = JSON.parse(v); } }, homeClean: (h) => h, homeRefund: () => 0, clearTimeout() {}, setTimeout() {},
       clOwn() {}, clAt: () => 0, clSaveMeta() {}, clSet() {}, tabIdle: false, clamp: (v, a, b) => Math.min(b, Math.max(a, v)) };
-    vm.runInNewContext(cut("core", "function photoDayClean(", "function skillPhoto(") + cut("screens", "function clApply(", "\n// this device") +
+    vm.runInNewContext(cut("core", "function photoDayClean(", "function skillPhoto(") + cut("core", "const SAVE={", "const paintOf") + cut("screens", "function clApply(", "\n// this device") +
       "\nclApply({rev:1},{cr:1,owned:[],photoDay:" + JSON.stringify(theirs) + "})", g);
     return stored.photoDay;
   };

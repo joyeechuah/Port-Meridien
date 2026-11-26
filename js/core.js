@@ -382,9 +382,9 @@ function persist(){if(tabIdle)return;if(typeof needsCommit==="function")needsCom
 // five minutes only that (each try writes the whole save). If neither goes in, what's stored stays as it was: the last
 // save that went in, never removed to make room. 2: the whole save went in, 1: all but the ghost laps, 0: nothing
 const SAVE={ok:true,liteUntil:0,liteWarned:false};
-function saveWrite(){
-  if(Date.now()>=SAVE.liteUntil)try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));SAVE.liteUntil=0;return 2}catch(e){SAVE.liteUntil=Date.now()+300000}
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},save,{ghost:{}})));return 1}catch(e){}
+function saveWrite(snapshot=save, restoring=false){
+  if(restoring||Date.now()>=SAVE.liteUntil)try{localStorage.setItem(SAVE_KEY,JSON.stringify(snapshot));SAVE.liteUntil=0;return 2}catch(e){SAVE.liteUntil=Date.now()+300000}
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},snapshot,{ghost:{}})));return 1}catch(e){}
   return 0}
 const paintOf=id=>STREET.has(id)?STREET.get(id).paint:save.paint[id]!==undefined?save.paint[id]:carById(id).body;
 

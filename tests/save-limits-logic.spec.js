@@ -43,3 +43,24 @@ test("storage that takes nothing keeps the last save that went in; it says so on
   vm.runInContext("persist()", g);
   expect([vm.runInContext("SAVE.ok", g), JSON.parse(g.store.pm).cr]).toEqual([true, 121500]);
 });
+
+test("account restore retries its own snapshot and advances the revision only after storage accepts it", () => {
+  const screens = fs.readFileSync(require.resolve("../js/screens.js"), "utf8");
+  for (const fits of [false, true]) {
+    const g = game(0);
+    const cloud = { cr: 200, owned: ["golf"] };
+    const restored = { ...cloud, home: {}, ghost: {} };
+    g.room = fits ? JSON.stringify(restored).length : 1;
+    Object.assign(g, { CL: { other: true, meta: { rev: 3 } }, clearTimeout() {}, clOwn() {},
+      homeClean: () => ({}), clAt: () => 0, clSaveMeta() {}, clSet() {},
+      window: { __cloudNoReload: true }, cloud });
+    vm.runInContext(screens.slice(screens.indexOf("function clApply("), screens.indexOf("// this device's save goes")), g);
+    vm.runInContext("clApply({rev:7},cloud)", g);
+    expect(g.tries).toEqual(["full","lite"]);
+    expect(g.CL.meta.rev).toBe(fits ? 7 : 3);
+    expect(JSON.parse(g.store.pm)).toEqual(fits ? restored : { cr: 120000 });
+    expect(g.save.ghost.south.d).toHaveLength(400);
+    if (fits) expect(g.window.__cloudApplied).toEqual(restored);
+    else expect(g.CL.pick.cloud).toEqual(cloud);
+  }
+});

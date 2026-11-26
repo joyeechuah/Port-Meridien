@@ -1198,7 +1198,8 @@ function clApply(doc,cloud){const lost=[],sv=Object.assign({},cloud,{home:homeCl
   if(!CL.other){const a=photoDayClean(save.photoDay),b=photoDayClean(sv.photoDay);if(a.day>b.day||a.day===b.day&&a.count>b.count)sv.photoDay=a}
   CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   // if the browser won't store it, nothing changed: saving and backing up carry on, and the choice stays to try again
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify(sv))}catch(e){CL.applying=false;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}
+  const written=saveWrite(sv,true);if(!written){CL.applying=false;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}
+  if(written===1)sv.ghost={};
   CL.meta.rev=doc.rev||0;CL.meta.rehash=true;clOwn();CL.meta.at=clAt(doc);clSaveMeta();
   clSet("synced","Restoring your progress…");if(window.__cloudNoReload){window.__cloudApplied=sv;return}setTimeout(()=>{if(!tabIdle)location.reload()},400)}
 // this device's save goes to the account, if nobody else wrote there since (otherwise: compare again)
