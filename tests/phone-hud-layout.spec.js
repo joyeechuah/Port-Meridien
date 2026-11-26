@@ -1,8 +1,8 @@
 // On a phone, on foot, with everything showing at once (the wanted stars, the pistol and health bar, the get-in
 // prompt and two messages), nothing covers anything else: the minimap stays clear of the column above it, and the
 // messages, the pads and the buttons along the top stay clear of the prompt. The car's damage pill is hidden on foot
-// (#47: it's about the car, not you). Phones in portrait and landscape, a small phone, a folded foldable and a
-// tablet both ways.
+// (#47: it's about the car, not you). NOT SAVED shows beside the credits too (the browser refusing the save, js/core.js
+// persist). Phones in portrait and landscape, a small phone, a folded foldable and a tablet both ways.
 const { test, expect } = require("./support/game");
 
 const overlap = (a, b) => a && b && a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
@@ -11,6 +11,8 @@ for (const [name, w, h] of [
   ["portrait", 390, 844],
   ["landscape", 844, 390],
   ["small landscape", 740, 360],
+  ["iPhone SE landscape", 667, 375],
+  ["640 landscape", 640, 360],
   ["small phone", 360, 640],
   ["folded foldable", 344, 882],
   ["tablet", 768, 1024],
@@ -34,6 +36,13 @@ for (const [name, w, h] of [
       });
       await page.locator("#chFoot").tap();
       await game.eval(() => {
+        // storage full: the save doesn't go in, and NOT SAVED shows
+        const set = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (k, v) {
+          if (k === __T.SAVE_KEY) throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+          return set.call(this, k, v);
+        };
+        __T.persist();
         __T.hurt(60);
         __T.wantedBlock();
       });
@@ -48,7 +57,8 @@ for (const [name, w, h] of [
         const shownToasts = [...document.querySelectorAll("#toasts>.toast")].filter((t) => getComputedStyle(t).display !== "none"),
           toasts = shownToasts.map((t) => t.getBoundingClientRect());
         return {
-          shown: ["#tl .loc", "#damageHud", "#wanted", "#gunHud", "#mini", "#prompt"].map((s) => !!box(s)),
+          shown: ["#tl .loc", "#damageHud", "#wanted", "#gunHud", "#mini", "#prompt", "#saveHud"].map((s) => !!box(s)),
+          save: box("#saveHud"),
           chips: ["#chMap", "#chPhoto", "#chPause"].map(box).filter(Boolean),
           tl: ["#tl .money", "#damageHud", "#tl .lvl", "#tl .loc", "#wanted", "#gunHud"].map(box).filter(Boolean),
           mini: box("#mini"),
@@ -59,7 +69,11 @@ for (const [name, w, h] of [
         };
       });
       // the place, the stars, the pistol, the minimap and the prompt; not the car's damage pill, on foot
-      expect(r.shown, "everything is on screen").toEqual([true, false, true, true, true, true]);
+      expect(r.shown, "everything is on screen").toEqual([true, false, true, true, true, true, true]);
+      // NOT SAVED, beside the credits: clear of the buttons along the top, the minimap, the prompt and the messages
+      for (const c of r.chips) expect(overlap(c, r.save), "NOT SAVED is under a button along the top").toBe(false);
+      for (const t of r.toasts) expect(overlap(t, r.save), "a message covers NOT SAVED").toBe(false);
+      expect(overlap(r.mini, r.save) || overlap(r.prompt, r.save), "NOT SAVED is under the minimap or the prompt").toBe(false);
       for (const b of r.tl) expect(overlap(b, r.mini), "the minimap covers part of the top-left column").toBe(false);
       for (const t of r.toasts) expect(overlap(t, r.prompt), "a message covers the prompt").toBe(false);
       for (const p of r.pads) expect(overlap(p, r.prompt), "the prompt covers a pad").toBe(false);
@@ -70,5 +84,52 @@ for (const [name, w, h] of [
       expect(r.toasts.length).toBeGreaterThan(0);
       // the newest message is always among those shown (where only one fits, it is that one)
       expect(r.words.join(" ")).toContain("LOSE THE POLICE FIRST");
+    });
+
+    // in the car the buttons along the top are six, and the dial and the pedals are on screen: with the damage pill,
+    // the wanted stars and NOT SAVED, the column on the left (and what sits beside it) stays clear of all of them
+    test(`${name}: in a damaged car, wanted and with NOT SAVED, the column stays clear of the buttons, the dial and the pedals`, async ({ game, page }) => {
+      await game.open({ police: true });
+      await game.waitState("GARAGE");
+      await game.eval(() => document.getElementById("gGun").click());
+      await game.driveOut();
+      await game.eval(() => {
+        const T = __T, set = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (k, v) {
+          if (k === T.SAVE_KEY) throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+          return set.call(this, k, v);
+        };
+        T.persist();
+        T.P.damage = 40;
+        document.getElementById("damageHud").classList.remove("hide");
+        T.WANTED.lvl = 3;
+        T.wantedHud();
+        // and scoring a free-ride streak
+        T.FR.pts = 12345;
+        T.FR.mult = 2.5;
+        T.FR.timer = 3;
+      });
+      await page.waitForTimeout(600);
+      const r = await game.eval(() => {
+        const box = (sel) => {
+          const e = document.querySelector(sel);
+          if (!e || e.classList.contains("hide")) return null;
+          const b = e.getBoundingClientRect();
+          return b.width && b.height && getComputedStyle(e).display !== "none" ? b : null;
+        };
+        return {
+          tl: ["#tl .money", "#saveHud", "#damageHud", "#tl .lvl", "#tl .loc", "#wanted"].map((s) => [s, box(s)]),
+          streak: box("#streak"),
+          beside: ["#tl .money", "#saveHud", "#damageHud", "#tl .lvl", "#tl .loc", "#wanted", "#gunHud", "#speedo", "#mini", "#chMap", "#chCam", "#chFoot", "#chRear", "#chPhoto", "#chPause"].map((s) => [s, box(s)]).filter(([, b]) => b),
+          others: ["#chMap", "#chCam", "#chFoot", "#chRear", "#chPhoto", "#chPause", "#speedo", "#mini", "#bL", "#bR", "#bB", "#bG", "#bH"].map((s) => [s, box(s)]).filter(([, b]) => b),
+        };
+      });
+      expect(r.tl.map(([s, b]) => s + ":" + !!b), "the column's parts are all on screen").toEqual(["#tl .money:true", "#saveHud:true", "#damageHud:true", "#tl .lvl:true", "#tl .loc:true", "#wanted:true"]);
+      const hits = [];
+      for (const [a, x] of r.tl) for (const [b, y] of r.others) if (overlap(x, y)) hits.push(a + " under " + b);
+      expect(hits, "nothing in the column is under a button, the dial, the minimap or a pedal").toEqual([]);
+      // the score: on screen, readable, and over none of it
+      expect(r.streak && r.streak.width, "the score is on screen").toBeGreaterThanOrEqual(100);
+      expect(r.beside.filter(([, b]) => overlap(b, r.streak)).map(([s]) => s), "the score sits over nothing").toEqual([]);
     });
   });
