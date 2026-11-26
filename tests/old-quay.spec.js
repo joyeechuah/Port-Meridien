@@ -154,3 +154,43 @@ test.describe("Old Quay", () => {
     }
   });
 });
+
+// A street lamp stood on the pavement in line with the Auto Gallery's doors: a car turning in from the road to the
+// forecourt (where ENTER AUTO GALLERY is) stopped dead on it, 4.5 m off the road. Now it drives in to the forecourt and
+// stops only at the building.
+test("a car turns in from the road straight to the Auto Gallery's forecourt and its doors", async ({ game }) => {
+  await game.open();
+  await game.driveOut();
+  await game.park();
+  const r = await game.eval(() => {
+    const T = __T,
+      P = T.P,
+      D = T.DEALER,
+      nr = T.nearestRoadGlobal(T.DEALER_MARK.x, T.DEALER_MARK.z, true);
+    for (const t of T.TRAFFIC) {
+      t.e = null;
+      t.lost = false;
+      t.wx = t.wz = 1e6;
+    }
+    P.x = D.x;
+    P.z = nr.z;
+    T.resetToRoad(false);
+    P.x = D.x;
+    P.h = Math.atan2(0, D.z - P.z);
+    P.vx = 0;
+    P.vz = 6;
+    P.r = 0;
+    T.keys.w = true;
+    let reached = false;
+    for (let i = 0; i < 60 * 8; i++) {
+      T.driveUpdate(1 / 60);
+      if (P.z > T.DEALER_MARK.z) reached = true;
+    }
+    T.keys.w = false;
+    return { reached, stoppedAt: +P.z.toFixed(1), front: D.z - 20 };
+  });
+  expect(r.reached).toBe(true);
+  // stopped by the building itself, at its front wall
+  expect(r.stoppedAt).toBeGreaterThan(r.front - 4);
+  expect(r.stoppedAt).toBeLessThan(r.front);
+});

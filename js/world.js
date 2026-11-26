@@ -1053,7 +1053,9 @@ function buildScenery(){
       if(!edgeFree(e,s,6))continue;
       const p=edgePos(e,s),rx=-p.dz,rz=p.dx,sgn=k%2?1:-1,ry=edgeY(e,s);
       if(e.type==="town"){
-        const o=e.half+2.0;const lx=p.x+rx*o*sgn,lz=p.z+rz*o*sgn;lamp(lx,lz,ry+YO+.14,-rx*sgn,-rz*sgn,8.5);
+        // (none in the Auto Gallery's way in: one stood in line with its entrance, and a car turning in from the road
+        // stopped dead on it)
+        const o=e.half+2.0;const lx=p.x+rx*o*sgn,lz=p.z+rz*o*sgn;if(!galleryWayIn(lx,lz))lamp(lx,lz,ry+YO+.14,-rx*sgn,-rz*sgn,8.5);
         const qx=p.x-rx*o*sgn,qz=p.z-rz*o*sgn;if(k%2===0)palm(qx,qz,ry+YO+.14,.9);
       }else if(e.type==="highway"){
         for(const sg of [-1,1]){const o=e.half+1.4,lx=p.x+rx*o*sg,lz=p.z+rz*o*sg;lamp(lx,lz,ry,-rx*sg,-rz*sg)}
@@ -1227,6 +1229,8 @@ function buildHouse(){
 
 /* ================================================================ DEALERSHIP (outside) + SHOWROOM (hidden below the island) */
 const DEALER_MARK={x:722,z:54};
+// the strip between the road and the Gallery's forecourt, in line with its doors, that a car turns in across
+const galleryWayIn=(x,z)=>Math.abs(x-DEALER.x)<10&&z>DEALER.z-46&&z<DEALER.z-36;
 const SHOW=new V3(0,-300,0);
 let podium;
 function buildDealer(){
@@ -1254,7 +1258,11 @@ function buildDealer(){
   const add=(g,m,x,yy,z)=>{const q=new THREE.Mesh(g,m);q.position.set(x,yy,z);q.castShadow=true;q.receiveShadow=true;scene.add(q);return q};
   add(walls,wallM,DEALER.x,y+5.5,DEALER.z);
   add(new THREE.BoxGeometry(34,7.5,.4),new THREE.MeshPhongMaterial({color:0x1b252d,shininess:160,specular:0xbfd3e0}),DEALER.x,y+4,DEALER.z-20.1);
-  add(new THREE.BoxGeometry(46,.16,16),new THREE.MeshLambertMaterial({color:0xc9c5bb}),DEALER.x,y+.2,DEALER.z-28);
+  // the forecourt: paving (it was so pale it read as white in the sun), with display bays painted either side of the
+  // way in to the doors
+  add(new THREE.BoxGeometry(46,.16,16),new THREE.MeshLambertMaterial({color:0x9c988f}),DEALER.x,y+.2,DEALER.z-28);
+  const bayM=new THREE.MeshLambertMaterial({color:0xe9e6df});
+  for(const dx of[-21,-16,-11,-6,6,11,16,21])add(new THREE.BoxGeometry(.14,.02,6),bayM,DEALER.x+dx,y+.29,DEALER.z-23.4);
   const c=document.createElement("canvas");c.width=512;c.height=96;const x=c.getContext("2d");
   x.fillStyle="#111";x.fillRect(0,0,512,96);x.fillStyle="#fff";x.font="700 54px Arial";x.textAlign="center";x.textBaseline="middle";x.fillText("AUTO GALLERY",256,50);
   const sign=new THREE.Mesh(new THREE.PlaneGeometry(18,3.4),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)}));
