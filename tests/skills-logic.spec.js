@@ -164,8 +164,9 @@ test("fractional gains cross moods independently and disappear on reload without
 test("Needs shows the effect beside the mood, including the Lonely exception",()=>{
   const {g,run,$}=game();
   Object.assign(g,{NEED_ORDER:[],needsTip:()=>""});g.save.wants={active:[],day:-1};
-  run(part("life","function needsRender(","const needsLabel="));
-  for(const [mood,label] of Object.entries({Content:"Skills grow 15% faster",Okay:"Skills grow at their usual rate",
+  run(part("life","function needsRender(","const needsLabel=")+part("life","function moodEffect(","// the one suggestion"));
+  for(const [mood,label] of Object.entries({Happy:"Skills grow 25% faster",Confident:"Driving grows 50% faster",
+    Inspired:"Photography grows 50% faster",Energised:"Fitness grows 50% faster",Content:"Skills grow 15% faster",Okay:"Skills grow at their usual rate",
     Tired:"Skills grow 15% slower",Hungry:"Skills grow 15% slower",Bored:"Skills grow 15% slower",
     Tense:"Skills grow 15% slower",Lonely:"Charisma grows 50% faster · other skills grow 15% slower"})){
     g.needsMood=()=>mood;run("needsRender()");

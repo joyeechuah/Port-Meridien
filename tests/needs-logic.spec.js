@@ -31,8 +31,9 @@ function game(state = "GARAGE") {
   const ctx = vm.createContext(globals);
   const api = vm.runInContext(code.join("\n"), ctx);
   vm.runInContext("emote=()=>{};talkShow=()=>{}", ctx);
-  return { ...api, ...globals };
+  return { ...api, ...globals, __ctx: ctx };
 }
+const vmRun = (g, code) => vm.runInContext(code, g.__ctx);
 
 test("cleaning rejects invalid containers and defaults, rounds and clamps fields independently", () => {
   const g = game();
@@ -133,4 +134,66 @@ test("a hidden tab in DRIVE does not advance needs or reward cooldowns", () => {
   g.needsTick(1 / 30);
   expect(g.NS.t).toBe(0);
   expect(g.NEEDS.energy).toBe(80);
+});
+
+test("a feeling is the mood for its few minutes of play, after the police and a low need; the latest replaces it", () => {
+  const g = game(),
+    toasts = [];
+  g.__ctx.toast = (t, m) => toasts.push(t + " | " + m);
+  g.needsLoad({ v: 1, energy: 50, hunger: 50, fun: 50, social: 50 });
+  g.NS.t = 100;
+  expect(g.needsMood()).toBe("Okay");
+  vmRun(g, 'feel("confident","You won the race")');
+  expect(g.needsMood()).toBe("Confident");
+  expect(toasts).toEqual([
+    "FEELING CONFIDENT | You won the race · Driving grows 50% faster",
+  ]);
+  expect(g.needsTip()).toMatch(/race/);
+  // the police, then a low need, come first; the feeling is still there afterwards
+  g.WANTED.lvl = 1;
+  expect(g.needsMood()).toBe("Tense");
+  g.WANTED.lvl = 0;
+  g.NEEDS.hunger = 20;
+  expect(g.needsMood()).toBe("Hungry");
+  g.NEEDS.hunger = 50;
+  expect(g.needsMood()).toBe("Confident");
+  // the same feeling again only renews it (no second message); another one replaces it
+  g.NS.t = 300;
+  vmRun(g, 'feel("confident","A gold time")');
+  expect(toasts).toHaveLength(1);
+  g.NS.t = 539;
+  expect(g.needsMood()).toBe("Confident");
+  g.NS.t = 540;
+  expect(g.needsMood()).toBe("Okay");
+  vmRun(g, 'feel("inspired","You found North Cape")');
+  vmRun(g, 'feel("happy","Ana came over")');
+  expect(g.needsMood()).toBe("Happy");
+  g.NS.t += 240;
+  expect(g.needsMood()).toBe("Okay");
+  expect(vmRun(g, 'feel("nope","x")')).toBe(false);
+});
+
+test("each feeling's skill effect: 50% for its own skill, Happy 25% for every skill", () => {
+  const g = game(),
+    pct = (m, k) =>
+      vmRun(
+        g,
+        "moodPercent(" + JSON.stringify(m) + "," + JSON.stringify(k) + ")",
+      );
+  for (const [mood, own] of [
+    ["Confident", "driving"],
+    ["Inspired", "photography"],
+    ["Energised", "fitness"],
+  ])
+    for (const k of [
+      "driving",
+      "cooking",
+      "charisma",
+      "fitness",
+      "photography",
+      "handiness",
+    ])
+      expect(pct(mood, k)).toBe(k === own ? 150 : 100);
+  for (const k of ["driving", "charisma"]) expect(pct("Happy", k)).toBe(125);
+  expect(pct("Content", "driving")).toBe(115);
 });
