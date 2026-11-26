@@ -172,6 +172,40 @@ test.describe("a short screen", () => {
   });
 });
 
+test.describe("a very short screen", () => {
+  test.use({ viewport: { width: 900, height: 360 } });
+  test("a controller's stick reaches the Passport's last place on a very short screen", async ({
+    game,
+    page,
+  }) => {
+    await page.addInitScript(FAKE_PAD);
+    await game.open();
+    await game.driveOut();
+    await game.park();
+    await game.eval(() => __T.pauseOn());
+    await game.waitState("PAUSE");
+    await page.click("#pPass");
+    await expect(page.locator("#passport")).toBeVisible();
+    const last = () =>
+      page.evaluate(() => {
+        const L = document.getElementById("pzList"),
+          row = L.lastElementChild.getBoundingClientRect(),
+          card = document
+            .querySelector("#passport .card")
+            .getBoundingClientRect();
+        return (
+          row.bottom <=
+          Math.min(L.getBoundingClientRect().bottom, card.bottom, innerHeight) +
+            1
+        );
+      });
+    expect(await last()).toBe(false);
+    await game.eval(() => (window.__pad.axes[3] = 1));
+    await expect.poll(last, { timeout: 15000 }).toBe(true);
+    await game.eval(() => (window.__pad.axes[3] = 0));
+  });
+});
+
 const box = (page, sel) =>
   page
     .locator(sel)

@@ -269,6 +269,53 @@ test.describe("garage pinch starting on a button", () => {
   });
 });
 
+test.describe("Customise pinch starting on its buttons", () => {
+  test.use({ viewport: { width: 412, height: 800 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+
+  // Customise is a panel of its own over the garage view: a pinch whose first finger landed on one of its buttons only
+  // turned the view (Codex's review)
+  test("with Customise open, a first finger on its button and a second on the view zooms and presses nothing", async ({ game, page }) => {
+    await game.open();
+    await game.waitState("GARAGE");
+    await page.locator("#gCust").tap();
+    await expect(page.locator("#cust")).toBeVisible();
+    const cdp = await page.context().newCDPSession(page);
+    // a button in Customise, and the nearest point straight above it that's the view itself
+    const spot = await page.evaluate(() => {
+      const b = [...document.querySelectorAll("#cust button")].find((x) => {
+        const r = x.getBoundingClientRect();
+        return r.width > 20 && r.height > 20 && r.top > 0 && r.bottom < innerHeight && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === x;
+      });
+      if (!b) return null;
+      const r = b.getBoundingClientRect(),
+        x = r.left + r.width / 2,
+        y = r.top + r.height / 2;
+      for (let up = 60; up < y - 20; up += 10) if (document.elementFromPoint(x, y - up)?.id === "c") return { x, y, free: y - up, id: b.id || b.textContent };
+      return null;
+    });
+    expect(spot, "a Customise button with the view above it").not.toBeNull();
+    const now = () => game.eval(() => ({ zoom: +__T.GO.zoom.toFixed(2), held: __T.GO.ptr.size, cust: !document.getElementById("cust").classList.contains("hide"), paint: JSON.stringify(__T.save.paint) }));
+    const a = await now();
+    const two = (dy) => [
+      { id: 1, x: spot.x, y: spot.y },
+      { id: 2, x: spot.x, y: spot.free - dy },
+    ];
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [two(0)[0]] });
+    await page.waitForTimeout(40);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: two(0) });
+    for (let i = 1; i <= 10; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: two(i * 15) });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [two(150)[0]] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForTimeout(350);
+    const b = await now();
+    expect(b.zoom, "zoomed from " + spot.id).toBeLessThan(a.zoom);
+    expect([b.held, b.cust, b.paint]).toEqual([0, true, a.paint]);
+  });
+});
+
 test.describe("brake and reverse button", () => {
   test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
 
