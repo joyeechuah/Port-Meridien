@@ -132,7 +132,7 @@ function frame(ts){
   // photo mode stops the scenery's clocks too (sea, foam, boats, grass, fish, clouds); they carry on from the same
   // point afterwards. Showing and hiding by distance still follows the photo camera
   const wdt=state==="PHOTO"?0:dt;if(state!=="PHOTO")skyClock+=raw;
-  applyDayNight();updateLampLights();if(VTL.size)updateVegetation(wdt);if(water)updateSea(wdt);
+  applyDayNight();updateLampLights();if(VTL.size)updateVegetation(wdt);if(water)updateSea(wdt);if(POSTCARD_MARKS.size)postcardTick(wdt);
   fishT+=wdt;
   for(const f of fishes){const ph=fishT*.5+f.ph;f.g.position.copy(gW(12+Math.sin(ph)*7.5,f.zc,f.yc+Math.sin(fishT*.9+f.ph*1.7)*.5));f.g.rotation.y=f.yaw+(Math.cos(ph)>0?0:Math.PI)}
   if(aquaLight)aquaLight.intensity=1.2+Math.sin(fishT*2)*.2;
@@ -173,7 +173,7 @@ const STEPS=[
   ["Stocking the dealership",buildDealer],
   ["Building the harbour",buildHarbour],
   ["Waking the town",()=>{buildPeds();initGun();initKits()}],
-  ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildJobs()}],
+  ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildPostcards();buildJobs()}],
   ["Filling the roads",()=>{initTraffic();initCops();buildMapImage()}],
   ["Parking your cars",()=>{parkAll(null);carLights()}],
   // The first time a surface is drawn, its picture is sent to the graphics card and its program is built. Left

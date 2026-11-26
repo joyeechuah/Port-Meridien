@@ -8,9 +8,9 @@ function section(f,from,to){
 function game(){
   const nodes={},writes=[];
   const g={save:{cr:5,postcards:[]},FOOT:{on:true,x:0,z:0},BOAT:{on:false},state:"DRIVE",tabIdle:false,
-    document:{hidden:false,createElement:()=>({})},toast(){},updateMoney(){},fmtCr:String,
+    document:{hidden:false,createElement:()=>({children:[],append(...n){this.children.push(...n)},appendChild(n){this.children.push(n)}})},toast(){},updateMoney(){},fmtCr:String,
     persist:()=>writes.push(JSON.parse(JSON.stringify(g.save))),
-    $:id=>nodes[id]??={children:[],replaceChildren(){this.children=[]},appendChild(n){this.children.push(n)},focus(){g.focus=id}},
+    $:id=>nodes[id]??={children:[],style:{},replaceChildren(){this.children=[]},appendChild(n){this.children.push(n)},focus(){g.focus=id}},
     show:(id,v)=>{g.$(id).visible=v}};
   vm.createContext(g);
   const run=s=>vm.runInContext(s,g);
@@ -61,10 +61,13 @@ test("legacy, malformed and reordered albums have canonical cloud progress",()=>
   expect(run('clProg({})!==clProg({postcards:["summit"]})')).toBe(true);
   expect(run('clFresh({postcards:["summit"]})')).toBe(false);
 });
-test("Collections opens from Pause, pages through the 12 clues and returns focus",()=>{
+test("Postcards opens from Pause, lists the 12 places and returns focus",()=>{
   const {g,run}=game();g.state="PAUSE";g.save.postcards=["summit"];run("collectionsOpen()");
   expect(g.$("pause").inert).toBe(true);expect(g.focus).toBe("cardClose");
-  const lines=[];for(let i=0;i<3;i++){lines.push(...g.$("cardList").children.map(n=>n.textContent));g.$("cardNext").onclick()}
-  expect(new Set(lines).size).toBe(12);expect(lines[0]).toContain("The Ridge Line");expect(lines[1]).toContain("Undiscovered");
+  const text=n=>n.textContent??n.children.map(text).join(" · ");
+  const lines=g.$("cardList").children.map(text);
+  expect(lines).toHaveLength(12);expect(new Set(lines.map(l=>l.split(" · ")[1])).size).toBe(12);
+  expect(lines[0]).toBe("The Ridge Line · Crown Ridge Summit");expect(lines[1]).toBe("Not found yet · Sentinel Rock Lookout");
+  expect(g.$("cardCount").textContent).toBe("1 of 12 found · 8%");expect(g.$("cardBar").style.width).toBe("8%");
   run("collectionsClose()");expect(g.focus).toBe("pCollections");expect(g.$("pause").inert).toBe(false);
 });

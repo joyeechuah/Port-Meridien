@@ -519,10 +519,20 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 /* explorer passport */
 #passport{z-index:62}
 .pzc{width:min(520px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column}
-#pzCount{font-size:20px;font-weight:800;letter-spacing:.02em}
+#pzCount,#cardCount{font-size:20px;font-weight:800;letter-spacing:.02em}
 .pzbar{height:4px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden;margin:8px 0}
 .pzbar i{display:block;height:100%;width:0;background:var(--acc)}
-#pzNote{font-size:12px;color:var(--mute)}
+#pzNote,#cardNote{font-size:12px;color:var(--mute)}
+#cardList{list-style:none;padding:0;margin-bottom:0}
+@media (max-height:520px){
+  /* a landscape phone: a shorter heading and the cards in two columns, so at least four show at once */
+  #collections .card{padding:14px 20px}
+  #collections h3{display:none}
+  #collections h2{font-size:22px;margin:0 0 2px}
+  #cardCount{font-size:16px}
+  #cardList{display:grid;grid-template-columns:1fr 1fr;column-gap:16px;align-content:start;margin-top:6px}
+  #cardClose{margin-top:8px}
+}
 #pzMsg{font-size:12px;color:var(--acc);min-height:0;margin-top:6px}
 #pzMsg:empty{display:none}
 #cardList,#pzList{overflow:auto;margin-top:10px;flex:1;min-height:80px}
@@ -778,6 +788,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn" id="pNeeds">NEEDS · OKAY</button>
   <button class="mbtn" id="pSkills">SKILLS</button>
   <button class="mbtn" id="pPass">EXPLORER PASSPORT</button>
+  <button class="mbtn" id="pCollections">POSTCARDS</button>
   <button class="mbtn" id="pJobs">CONTRACTS</button>
   <button class="mbtn" id="pCups">CHAMPIONSHIPS</button>
   <button class="mbtn" id="pPlay">PLAY TOGETHER</button>
@@ -797,7 +808,6 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn" id="pSteer">STEERING: NORMAL</button>
   <button class="mbtn hide" id="pTilt">TILT STEERING: OFF</button>
   <button class="mbtn" id="pSide">DRIVE ON: LEFT</button>
-  <button class="mbtn" id="pCollections">COLLECTIONS</button>
   <a class="mbtn" id="pFb" href="https://forms.gle/bPk18BbmhaGLNJtD9" target="_blank" rel="noopener">SEND FEEDBACK &#8599;</a>
 </div></div>
 
@@ -868,10 +878,9 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="mbtn" id="cpkLater">DECIDE LATER</button>
 </div></div>
 <div id="collections" class="ov hide"><div class="card pzc" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
-  <h2 id="cardTitle">Postcard collection</h2>
-  <p>Explore the verges near these places on foot.</p><p id="cardCount"></p>
+  <h3>EXPLORE</h3><h2 id="cardTitle">Postcards</h2>
+  <div id="cardCount" class="num"></div><div class="pzbar"><i id="cardBar"></i></div><div id="cardNote"></div>
   <ol id="cardList" tabindex="0" aria-label="Postcards"></ol>
-  <span id="cardPage" aria-live="polite"></span><button id="cardNext" class="mbtn">NEXT PAGE</button>
   <button id="cardClose" class="mbtn pri">CLOSE</button>
 </div></div>
 <div id="passport" class="ov hide"><div class="card pzc" role="dialog" aria-labelledby="pzTitle">
