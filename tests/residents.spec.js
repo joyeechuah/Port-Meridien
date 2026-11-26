@@ -51,3 +51,23 @@ test("a friend riding with you stays who they are when you leave town; the other
   expect(r.after.others.some((id, i) => id !== r.others[i])).toBe(true);
   expect(r.after.others).not.toContain(r.who);
 });
+
+test("someone you knocked down still shows it when they come round again", async ({ game }) => {
+  await game.open();
+  await game.driveOut();
+  const r = await game.eval(() => {
+    const T = __T;
+    T.P.x = 600; T.P.z = 0; T.P.vx = T.P.vz = 0; T.driveUpdate(1 / 60);
+    const who = T.personOf(T.PEDS[0]).id;
+    T.PEDS[0].mad = true;
+    // away and back until they're out again
+    let back = null, n = 0;
+    do {
+      T.P.x = -600; T.P.z = 0; T.driveUpdate(1 / 60);
+      T.P.x = 600; T.P.z = 0; T.driveUpdate(1 / 60);
+      back = T.PEDS.find((p) => p.pid === who);
+    } while (!back && n++ < 6);
+    return { back: !!back, mad: back && back.mad, others: T.PEDS.filter((p) => p.pid !== who && p.mad).length };
+  });
+  expect(r).toEqual({ back: true, mad: true, others: 0 });
+});
