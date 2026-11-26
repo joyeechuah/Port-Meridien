@@ -49,6 +49,7 @@ At a T-junction you have to turn one way or the other, so it slows for the turn.
 | Return the car to the road outside an event | `R` | — | — |
 | Fire (on foot or in free driving) | `G` | FIRE | Right shoulder |
 | Pause | `Esc` or `P` | PAUSE | Menu / Start |
+| Scroll a list in a menu screen (Postcards, Passport) | Mouse wheel | Drag | Either stick |
 
 On smaller screens, **Map Key** opens the legend and Explorer Passport. Open the map and select **ME** to centre it on your current position. The arrow follows your position and heading while driving, walking or sailing. GPS routes follow the road network. On touchscreens, you can hold RUN or HANDBRAKE while tapping FIRE with another finger.
 
