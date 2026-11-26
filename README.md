@@ -50,6 +50,7 @@ At a T-junction you have to turn one way or the other, so it slows for the turn.
 | Fire (on foot or in free driving) | `G` | FIRE | Right shoulder |
 | Pause | `Esc` or `P` | PAUSE | Menu / Start |
 | Scroll a list in a menu screen (Postcards, Passport) | Mouse wheel | Drag | Either stick |
+| In the garage: HANG OUT with a guest, or the party's button | Click it | Tap it | `Y` |
 
 On smaller screens, **Map Key** opens the legend and Explorer Passport. Open the map and select **ME** to centre it on your current position. The arrow follows your position and heading while driving, walking or sailing. GPS routes follow the road network. On touchscreens, you can hold RUN or HANDBRAKE while tapping FIRE with another finger.
 
@@ -67,10 +68,10 @@ Energy, hunger, fun and social each run from 0 to 100 and fall slowly while you 
 
 | Need | What puts it back |
 | --- | --- |
-| Energy | **REST** in your garage (+40), or sit on a bench by the fountain in Old Quay's civic square (+3 every 5 seconds, up to +15) |
+| Energy | **REST** in your garage (+40, or +60 with a bed, which also leaves you Energised), or sit on a bench by the fountain in Old Quay's civic square (+3 every 5 seconds, up to +15) |
 | Hunger | A free meal at the Market Kitchen, the yellow and white stall in Old Quay's market (+35) |
-| Fun | Finishing a race or time trial (+15), and driving at 80 km/h or more (or 3 m/s on the boat) |
-| Social | A friendly word with someone in Old Quay (+8 a conversation) |
+| Fun | Finishing a race or time trial (+15), driving at 80 km/h or more (or 3 m/s on the boat), and a friend over or a party at home |
+| Social | A friendly word with someone in Old Quay (+8 a conversation), a friend over (+30) or a party at home |
 
 The map shows the Market Kitchen and the benches. Nothing can be done about your needs while the police are after you.
 
@@ -101,7 +102,7 @@ You can walk or drive into the market, the square, the garden and the lanes.
 
 ### People
 
-Up to ten people (six on a phone) walk the pavements round the six blocks. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. Drive at one and they step in towards the houses, or hurry off the crossing; run into someone slowly and they stagger and stand a while; faster than about 20 km/h you knock them down. Either is a crime if a patrol sees it. They're only there while you're near the town.
+Up to ten people (six on a phone) walk the pavements round the six blocks. Sixteen live there: each time you leave Old Quay, the ones out make way for the next in turn, so you meet everyone over a few visits. They cross the streets on the zebra crossings, and wait while a car is on the stripes, close by, or heading for the crossing; after 10 seconds of waiting they give up and walk on. Traffic stops for someone crossing. Drive at one and they step in towards the houses, or hurry off the crossing; run into someone slowly and they stagger and stand a while; faster than about 20 km/h you knock them down. Either is a crime if a patrol sees it. They're only there while you're near the town.
 
 Out in the country, a few people walk the verges beside the country roads: four at a time on a phone, eight on a computer. They appear out of sight, between 120 and 300 m from you, and step further off the road when a car comes. Running into one is a crime if a patrol sees it, and the pistol treats them like anyone on foot. They don't have names or friendships: those are Old Quay's people.
 
@@ -208,6 +209,7 @@ Run one Playwright instance at a time: the test server uses port 4173 and reads 
 | [docs/OLD_QUAY_PLAN.md](docs/OLD_QUAY_PLAN.md) | The Old Quay district plan and what it had to keep working |
 | [docs/PIER_ROAD_CONNECTION_PLAN.md](docs/PIER_ROAD_CONNECTION_PLAN.md) | How the harbour lane joins the roads |
 | [docs/PEDESTRIAN_DESIGN.md](docs/PEDESTRIAN_DESIGN.md) | The full design for people in the city |
+| [docs/LIFE_DESIGN.md](docs/LIFE_DESIGN.md) | The plan for the life side: Old Quay's people, friendships, needs and home. Each part built has its own file: [gifts](docs/GIFTS.md), [friends over](docs/FRIENDS_OVER.md), [parties](docs/PARTIES.md), [moods and feelings](docs/MOODS.md), [skills](docs/SKILLS.md), [careers](docs/CAREERS.md), [aspirations](docs/ASPIRATIONS.md) |
 | [docs/CITY_DESIGN.md](docs/CITY_DESIGN.md) | The design for the separate city world |
 | [docs/DISTRIBUTION_REVIEW.md](docs/DISTRIBUTION_REVIEW.md) | Stores, age ratings and selling |
 | [docs/CAR_TRADEMARK_SEARCH_WORKSHEET.md](docs/CAR_TRADEMARK_SEARCH_WORKSHEET.md) | Trademark checks for the 24 car names (none done yet) |
