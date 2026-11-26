@@ -20,7 +20,7 @@ In the pause menu, select **GRAPHICS** to cycle through the three modes.
 
 | Mode | What it does |
 | --- | --- |
-| AUTO | Tries a lower resolution when frames stay slow. If the typical frame time barely changes, it restores the previous resolution. |
+| AUTO | Tries a lower resolution when frames stay slow. If the typical frame time barely changes, it restores the previous resolution. The garage and the Auto Gallery stay at full sharpness. |
 | SHARP | Keeps the game at its highest supported resolution for this display. |
 | SMOOTH | Caps rendering at one game pixel per CSS pixel to reduce the graphics workload on high-density screens. |
 

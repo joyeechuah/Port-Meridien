@@ -35,7 +35,17 @@ let prevTs=0,fishT=0,doorOpen=1;
 // again, step back up. Steps are small and spaced out so the picture never pumps.
 // A level that turned out too slow right after stepping up to it is not retried for 30 s, so a phone on the
 // edge doesn't flip back and forth.
-const RES={frames:[],elapsed:0,baseline:0,previous:0,retry:0,raiseWait:0,sinceRaise:Infinity};
+const RES={frames:[],elapsed:0,baseline:0,previous:0,retry:0,raiseWait:0,sinceRaise:Infinity,held:false,drive:0};
+// The garage and the dealer's showroom are stills to look at closely, not a road to react on: there AUTO holds the
+// picture at full sharpness (a heavy room on a phone used to run its frames slow enough to step the picture down to
+// three quarters, which looked blurred). Back out, the picture returns to where driving had it and adapts again
+function resStill(on){
+  if(on===RES.held)return;RES.held=on;
+  if(on){RES.drive=prNow;if(RES.baseline)RES.drive=RES.previous}
+  const next=on?PR_MAX:Math.min(PR_MAX,Math.max(PR_MIN,RES.drive||PR_MAX));
+  resetResolutionSample();
+  if(next!==prNow){prNow=next;renderer.setPixelRatio(next);renderer.setSize(W,H,false)}
+}
 function resetResolutionSample(){
   RES.frames.length=0;RES.elapsed=0;RES.baseline=0;RES.retry=0;RES.raiseWait=0;RES.sinceRaise=Infinity;
 }
@@ -126,7 +136,7 @@ function frame(ts){
   requestAnimationFrame(frame);
   if(tabIdle){prevTs=ts;return}
   pollPad();
-  const raw=(ts-prevTs)/1000||.016,dt=Math.min(.05,raw);prevTs=ts;if(state==="WARDROBE"&&fittingScene){drawFitting(dt);return}adaptRes(raw);const pt0=perfStart();
+  const raw=(ts-prevTs)/1000||.016,dt=Math.min(.05,raw);prevTs=ts;if(state==="WARDROBE"&&fittingScene){drawFitting(dt);return}resStill(state==="GARAGE"||state==="DEALER");if(!RES.held)adaptRes(raw);const pt0=perfStart();
   // automatic time: an hour every 30 s by day, and the night passes about twice as fast
   if(save.todMode===0&&(state==="DRIVE"||state==="GARAGE"||state==="EXIT"))save.tod=(save.tod+dt/30*(1+1.4*night))%24;
   // photo mode stops the scenery's clocks too (sea, foam, boats, grass, fish, clouds); they carry on from the same
