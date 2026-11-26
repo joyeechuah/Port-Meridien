@@ -118,12 +118,13 @@ function giftMenu(open){
   const bs=tkButtons(),gift=bs.indexOf($("tkGift")),i=open?0:gift>=0?gift:bs.length-1;
   talkSel(i);bs[i]?.focus({preventScroll:true});
 }
-function giftGiven(id){const g=save.gift;return g.day===Math.floor(Date.now()/86400000)&&g.ids.includes(id)}
+// (a day recorded ahead of the clock, put back while playing, still counts as today: the latest day is kept)
+function giftGiven(id){const g=save.gift;return g.day>=Math.floor(Date.now()/86400000)&&g.ids.includes(id)}
 function talkGift(id){
   const item=GIFTS.find(g=>g.id===id);if(!item||tabIdle)return false;
   const who=TALK.person,p=TALK.p;if(!who||!p||TALK.busy>0||TALK.end>0||giftGiven(who.id)||save.cr<item.price)return false;
   const r=rel(who.id),today=Math.floor(Date.now()/86400000);
-  if(save.gift.day!==today)save.gift={v:1,day:today,ids:[]};
+  if(save.gift.day<today)save.gift={v:1,day:today,ids:[]};
   save.gift.ids.push(who.id);save.cr-=item.price;updateMoney();
   const [favourite,disliked]=GIFT_PREFS[who.trait],weight=id===favourite?1.5:id===disliked ? .4 : 1;
   const d=Math.round(10*weight*(1-Math.max(0,r.f)/125)*skillFactor("charisma"));

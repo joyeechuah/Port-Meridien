@@ -131,4 +131,3 @@ test("with no seat and every usual spot taken, a guest stands on the nearest fre
   expect(r.free).toBe(true);
   expect(Math.hypot(r.c.x - 20, r.c.z - 3)).toBe(1);
 });
-

@@ -1107,7 +1107,8 @@ function clLoadMeta(){let m=null;try{m=JSON.parse(localStorage.getItem(CLOUD_KEY
   // owner: the id of the account this device's progress last went to or came from. It stays after signing out, so
   // another account signing in here is asked before that progress goes to it. Only the id: no name or email of a
   // signed-out account is kept on the device (older saves stored the name; it's dropped here)
-  const o=Object.assign({uid:null,name:"",email:"",rev:0,prog:"",full:"",needs:"",at:0,rehash:false,owner:null,ownerName:""},m&&typeof m==="object"?m:{});
+  // disk: the progress this browser held as the last backup went up (clDisk)
+  const o=Object.assign({uid:null,name:"",email:"",rev:0,prog:"",disk:"",full:"",needs:"",at:0,rehash:false,owner:null,ownerName:""},m&&typeof m==="object"?m:{});
   if(o.uid&&!o.owner)o.owner=o.uid;
   // Migrate even when the remembered session has expired or Firebase is offline.
   if(o.name||o.email||o.ownerName){
@@ -1127,7 +1128,7 @@ function clSet(st,msg){CL.st=st;CL.msg=msg||"";clRender();saveMark()}
 function clBoot(){
   CL.ad=clAdapter();
   // straight after a restore from the account: the save as this game reads it is the version now in step
-  if(CL.meta.rehash){CL.meta.rehash=false;CL.meta.prog=clProg(save);CL.meta.full=clHash(clCanon(clPayload(save)));CL.meta.needs=needsKey(save);clSaveMeta()}
+  if(CL.meta.rehash){CL.meta.rehash=false;CL.meta.prog=CL.meta.disk=clProg(save);CL.meta.full=clHash(clCanon(clPayload(save)));CL.meta.needs=needsKey(save);clSaveMeta()}
   if(CL.meta.uid&&CL.ad)clConnect(false);else clRender();
   addEventListener("online",()=>{if(CL.user&&(CL.st==="offline"||CL.st==="pending"))clSync()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&CL.user)clSync()});
@@ -1178,8 +1179,12 @@ function clReconcile(doc){
     if(other?day.day!==save.photoDay.day||day.count!==save.photoDay.count:day.day>save.photoDay.day||day.day===save.photoDay.day&&day.count>save.photoDay.count){save.photoDay=day;persist()}
     clWork(cloud);clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}
   if(clFresh(save))return clApply(doc,cloud);                                      // a new device: bring the account's progress here
-  if(CL.meta.rev===rev&&CL.meta.prog)return clUpload(rev);                          // only this device moved on since it last synced
-  if(CL.meta.rev&&CL.meta.prog===L)return clApply(doc,cloud);                        // only the account moved on (another device)
+  // this device's save is as it was when it last synced: what went up then, or the older save this browser still held
+  // because it wouldn't store that one (js/core.js persist). Then the account's copy is the newer, even at the same
+  // revision: sending this device's up would undo progress that's on no device's storage
+  const still=!!CL.meta.prog&&(CL.meta.prog===L||CL.meta.disk===L);
+  if(CL.meta.rev===rev&&CL.meta.prog&&!still)return clUpload(rev);                  // only this device moved on since it last synced
+  if(CL.meta.rev&&still)return clApply(doc,cloud);                                   // only the account moved on (another device, or this one's own backup)
   CL.pick={doc,cloud};clSet("conflict","This device and your account have different progress. Choose which to keep.");clPickShow()}
 // With the same completed shifts, the cooldown can only have counted down on either device.
 function clWork(cloud){
@@ -1209,20 +1214,25 @@ function clApply(doc,cloud){const lost=[],sv=Object.assign({},cloud,{home:homeCl
   if(save.gift||cloud.gift)sv.gift=giftSync(save.gift,cloud.gift,CL.other);
   CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   // if the browser won't store it, nothing changed: saving and backing up carry on, and the choice stays to try again
-  const written=saveWrite(sv,true);if(!written){CL.applying=false;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}
+  // (and nothing from this device goes up in the meantime without comparing again: its older save would replace the
+  // account's at the same revision)
+  const written=saveWrite(sv,true);if(!written){CL.applying=false;CL.meta.rev=-1;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}
   if(written===1)sv.ghost={};
   CL.meta.rev=doc.rev||0;CL.meta.rehash=true;clOwn();CL.meta.at=clAt(doc);clSaveMeta();
   clSet("synced","Restoring your progress…");if(window.__cloudNoReload){window.__cloudApplied=sv;return}setTimeout(()=>{if(!tabIdle)location.reload()},400)}
 // this device's save goes to the account, if nobody else wrote there since (otherwise: compare again)
 function clUpload(rev,onlyIfChanged){if(tabIdle||CL.applying||CL.signingOut)return Promise.resolve();
   const user=CL.user;
-  const pay=clPayload(save),full=clHash(clCanon(pay)),prog=clProg(save);
+  const pay=clPayload(save),full=clHash(clCanon(pay)),prog=clProg(save),disk=clDisk();
   if(onlyIfChanged&&full===CL.meta.full){clSet("synced");return Promise.resolve()}
   CL.busy=true;CL.lastPut=Date.now();clRender();
   return CL.ad.put(user.uid,{save:JSON.stringify(pay),v:save.v||2,summary:clSummary(save)},rev).then(r=>clForUser(user,()=>{CL.busy=false;
     if(!r.ok){CL.meta.rev=-1;return clReconcile(r.doc)}
-    CL.meta.rev=r.rev;CL.meta.prog=prog;CL.meta.full=full;CL.meta.needs=needsKey(pay);CL.meta.at=Date.now();clOwn();clSaveMeta();clSet("synced");
+    CL.meta.rev=r.rev;CL.meta.prog=prog;CL.meta.disk=disk;CL.meta.full=full;CL.meta.needs=needsKey(pay);CL.meta.at=Date.now();clOwn();clSaveMeta();clSet("synced");
     if(clHash(clCanon(clPayload(save)))!==full)clChanged()})).catch(e=>clForUser(user,()=>{CL.busy=false;clSet(clOff(e)?"offline":"pending",clErr(e))}))}
+// the progress of the save this browser holds, as a backup starts: this session's, or an older one when the browser
+// wouldn't store a newer (clReconcile compares a reloaded save with it)
+function clDisk(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||"null");return s&&typeof s==="object"&&!Array.isArray(s)?clProg(s):""}catch(e){return ""}}
 // a backup after the progress changed (a few seconds after, on leaving the page, when back online, and BACK UP NOW)
 function clSync(){clearTimeout(CL.timer);CL.timer=0;if(!CL.user||CL.busy||CL.applying||CL.signingOut||tabIdle||CL.st==="conflict"||CL.st==="connecting")return Promise.resolve();
   // If the new account could not be read, retry the comparison before writing another player's local progress.
@@ -1239,7 +1249,7 @@ function clSignOut(){if(!CL.ad||CL.signingOut||CL.applying)return;
     // An already submitted first backup may succeed even if its reply arrives after sign-out.
     const owner=CL.meta.owner||(CL.busy&&CL.user?CL.user.uid:null);
     clearTimeout(CL.timer);CL.timer=0;CL.user=null;CL.pick=null;CL.busy=false;CL.other=false;CL.signingOut=null;
-    CL.meta={uid:null,name:"",email:"",rev:0,prog:"",full:"",needs:"",at:0,rehash:false,owner:owner||null,ownerName:""};
+    CL.meta={uid:null,name:"",email:"",rev:0,prog:"",disk:"",full:"",needs:"",at:0,rehash:false,owner:owner||null,ownerName:""};
     clSaveMeta();clSet("guest");toast("SIGNED OUT","Your progress stays on this device; it isn't backed up now");
   },()=>{
     CL.signingOut=null;clSet(CL.st,"Couldn't sign out. Try again.");clChanged();

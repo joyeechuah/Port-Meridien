@@ -57,7 +57,8 @@ test("account restore retries its own snapshot and advances the revision only af
     vm.runInContext(screens.slice(screens.indexOf("function clApply("), screens.indexOf("// this device's save goes")), g);
     vm.runInContext("clApply({rev:7},cloud)", g);
     expect(g.tries).toEqual(["full","lite"]);
-    expect(g.CL.meta.rev).toBe(fits ? 7 : 3);
+    // (not stored: the revision is spoilt, so this device's older save can't go up at the account's revision)
+    expect(g.CL.meta.rev).toBe(fits ? 7 : -1);
     expect(JSON.parse(g.store.pm)).toEqual(fits ? restored : { cr: 120000 });
     expect(g.save.ghost.south.d).toHaveLength(400);
     if (fits) expect(g.window.__cloudApplied).toEqual(restored);

@@ -55,6 +55,19 @@ test("controller, keyboard, cancel and unaffordable choices", () => {
   run('talkKey("9");talkKey("4");talkKey("escape")'); expect(ctx.writes).toBe(0);
   run('talkKey("9");talkKey("3")'); expect([ctx.writes,ctx.save.cr]).toEqual([1,20]);
 });
+test("a clock put back while playing doesn't reopen today's gifts: the latest day is kept", () => {
+  const { ctx, run } = game("grumpy");
+  ctx.Date = { now: () => 50 * 86400000 };
+  expect(run('talkGift("coffee")')).toBe(true);
+  ctx.TALK.busy = 0; ctx.Date = { now: () => 49 * 86400000 };
+  expect(run('[giftGiven(1), talkGift("book")]')).toEqual([true, false]);
+  // someone else can still have one, kept on the later day
+  ctx.TALK.person = { trait: "shy", id: 2, name: "Sam" };
+  expect(run('talkGift("flowers")')).toBe(true);
+  expect(ctx.save.gift).toEqual({ v: 1, day: 50, ids: [1, 2] });
+  ctx.Date = { now: () => 50 * 86400000 }; ctx.TALK.busy = 0;
+  expect(run('[giftGiven(1), giftGiven(2), talkGift("gadget")]')).toEqual([true, true, false]);
+});
 test("today's recipients follow the account on restore or equal-progress sync", () => {
   const core=fs.readFileSync(require.resolve("../js/core.js"),"utf8");
   const day=Math.floor(Date.now()/86400000), rec=(d,ids)=>({v:1,day:d,ids});

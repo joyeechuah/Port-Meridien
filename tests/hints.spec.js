@@ -95,4 +95,3 @@ test("a hint isn't used up in a hidden tab, and NEW AT HOME waits while Customis
   await game.eval(() => __T.hintHome());
   await expect.poll(() => shown(game), { timeout: 4000 }).toContain("NEW AT HOME");
 });
-
