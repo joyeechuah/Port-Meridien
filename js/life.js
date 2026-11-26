@@ -402,15 +402,24 @@ const NS={t:0,restAt:0,mealAt:0,low:null,armed:{},due:{},fast:0,mode:"",social:{
 const needOf=k=>Math.round(NEEDS[k]);
 // the needs from a save (missing: the starting values), and the save's needs as a short key, for comparing two saves
 const needsOfSave=sv=>needsClean(sv&&sv.needs);
+// (partyAt: when the last party was settled, in seconds since 1970, so two devices can tell the same party's wait,
+// counting down on both, from a newer party's: Codex's review of #127)
 function homeWaitClean(raw){
   const seconds=k=>Number.isFinite(raw?.[k])?clamp(Math.ceil(raw[k]),0,180):0;
-  const party=seconds("party");
-  return {snack:seconds("snack"),play:seconds("play"),...(party?{party}:{})};
+  const party=seconds("party"),at=Number.isSafeInteger(raw?.partyAt)&&raw.partyAt>0?raw.partyAt:0;
+  return {snack:seconds("snack"),play:seconds("play"),...(party?{party}:{}),...(at?{partyAt:at}:{})};
 }
-const homeUntil={snack:0,play:0,party:0};
+const homeUntil={snack:0,play:0,party:0,partyAt:0};
 function homeWaitLoad(raw){
   const wait=homeWaitClean(raw);save.homeWait=wait;
-  homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;homeUntil.party=NS.t+(wait.party||0);
+  homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;homeUntil.party=NS.t+(wait.party||0);homeUntil.partyAt=wait.partyAt||0;
+}
+// another device's party wait: the same party's, the shorter of the two (both count down; the longer would come back
+// up from the other device, again and again); a newer party's, theirs; an older one's, this device's own
+function partyWaitMerge(raw){
+  const there=homeWaitClean(raw),at=there.partyAt||0,left=Math.max(0,homeUntil.party-NS.t);
+  const wait=at>homeUntil.partyAt?(there.party||0):at===homeUntil.partyAt?Math.min(left,there.party||0):left;
+  homeUntil.party=NS.t+wait;homeUntil.partyAt=Math.max(at,homeUntil.partyAt);
 }
 homeWaitLoad(save.homeWait);
 const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=NEED_ORDER.map(k=>n[k]).join(",");
@@ -418,7 +427,7 @@ const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=
   return wait.snack||wait.play?key+"/"+wait.snack+"/"+wait.play:key};
 // the save's needs become the ones in play: on loading, and when another device's are newer (js/screens.js)
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
-function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
+function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t,partyAt:homeUntil.partyAt});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
 function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&state==="GARAGE"&&NEEDS[k]>was)skillAward("cooking",hasTrait("handy")?10:5);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
@@ -439,7 +448,9 @@ const FEEL={id:/** @type {string|null} */ (null),why:"",until:0};
 function feel(id,why){
   const F=FEELINGS[id];if(!F)return false;
   const was=feeling();FEEL.id=id;FEEL.why=why;FEEL.until=NS.t+F.secs;
-  if(was!==id&&typeof toast==="function")toast("FEELING "+F.mood.toUpperCase(),why+" · "+moodEffect(F.mood),"gold");
+  // (held back by the police or a low need, the message says it comes after: it used to promise the bonus at once)
+  const now=needsMood();
+  if(was!==id&&typeof toast==="function")toast("FEELING "+F.mood.toUpperCase(),why+" · "+moodEffect(F.mood)+(now===F.mood?"":" once you're no longer "+now.toLowerCase()),"gold");
   return true;
 }
 function feeling(){if(FEEL.id&&NS.t>=FEEL.until)FEEL.id=null;return FEEL.id}
@@ -778,11 +789,11 @@ function guestSpot(taken=[]){
     tries.push([r.x+Math.floor(r.w/2),r.z-1],[r.x-1,r.z],[r.x+r.w,r.z],[r.x+Math.floor(r.w/2),r.z+r.d])}
   tries.push([20,3],[14,3],[26,3],[10,6],[30,6]);
   for(const[x,z]of tries)if(free(x,z))return{x,z};
-  // all of those taken: the free cell nearest the middle of the railing, and only with none free at all, inside the
-  // furniture there
+  // all of those taken: the free cell nearest the middle of the railing; with none free at all, nowhere (null: the guest
+  // isn't shown until there's room, which used to put two guests in the same spot inside the furniture)
   let best=null,far=Infinity;
   for(let z=0;z<HOME_ROWS;z++)for(let x=0;x<HOME_COLS;x++){const d=Math.hypot(x-20,z-3);if(d<far&&free(x,z)){far=d;best={x,z}}}
-  return best||{x:20,z:3};
+  return best;
 }
 // at home (the garage, designing included) the guest stands there, facing the room's railing; elsewhere they're out of
 // sight, and once you've hung out they've gone home
@@ -804,7 +815,7 @@ function guestPlace(M,h,seat,taken){
     const r=homeRect(seat.id,seat.x,seat.z,seat.r),th=gYaw-seat.r*Math.PI/2,p=gW(HOME_ORIGIN.x+(r.x+r.w/2)*HOME_CELL,HOME_ORIGIN.z+(r.z+r.d/2)*HOME_CELL,HOME_ORIGIN.y);
     p.x-=Math.sin(th)*.14;p.z-=Math.cos(th)*.14;p.y+=GUEST_SEAT[seat.id]-.92*h;
     G.position.copy(p);G.rotation.set(0,th+Math.PI,0);for(const l of M.legs)l.rotation.x=-1.05;for(const a of M.arms)a.rotation.x=-.5;
-  }else{const c=guestSpot(taken),d=gW(0,-1,0).sub(gW(0,0,0));taken.push(c);
+  }else{const c=guestSpot(taken),d=gW(0,-1,0).sub(gW(0,0,0));if(!c){G.visible=false;return}taken.push(c);
     G.position.copy(gW(HOME_ORIGIN.x+(c.x+.5)*HOME_CELL,HOME_ORIGIN.z+(c.z+.5)*HOME_CELL,HOME_ORIGIN.y));G.rotation.set(0,Math.atan2(d.x,d.z),0);
     for(const l of M.legs)l.rotation.x=0;for(const a of M.arms)a.rotation.x=0}
   G.visible=true;
@@ -877,10 +888,12 @@ function partyScore(){
   return clamp(25+5*traits.length+Math.floor(comfort*.3)+3*charisma+mix,0,100);
 }
 function partyClear(){PARTY.active=false;PARTY.ids=[]}
+// (ending one needs only that you're home: a wait arriving from another device mid-party left SEE THEM OFF doing
+// nothing, as starting's gate includes the wait)
 function partyEnd(){
-  if(!partyCanHost()||!PARTY.active)return false;
+  if(!partyAtHome()||!PARTY.active)return false;
   const ids=PARTY.ids,score=partyScore(),good=score>=60;
-  partyClear();homeUntil.party=NS.t+180;
+  partyClear();homeUntil.party=NS.t+180;homeUntil.partyAt=Math.max(homeUntil.partyAt+1,Math.floor(Date.now()/1000));
   for(const id of ids){const r=rel(id);relSet(id,r.f+2+Math.floor(score/20),r.n+1)}
   needsAdd("social",8+4*ids.length);needsAdd("fun",5+Math.floor(score/5));
   if(typeof skillAward==="function")skillAward("charisma",3*ids.length);

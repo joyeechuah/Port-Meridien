@@ -660,7 +660,8 @@ function hint(id){
 // home's: a moment after the garage opens, unless something else is on screen, Customise and Design Home included
 // (then the next time)
 function hintHome(){setTimeout(()=>{const g=$("gui").classList;
-  if(state==="GARAGE"&&!document.querySelector(".ov:not(.hide)")&&!g.contains("cust-on")&&!g.contains("designing"))hint("home")},1500)}
+  // (nor during a party: it showed over the guests' arrival, and was used up)
+  if(state==="GARAGE"&&!document.querySelector(".ov:not(.hide)")&&!g.contains("cust-on")&&!g.contains("designing")&&!(typeof PARTY!=="undefined"&&PARTY.active))hint("home")},1500)}
 let repairConfirm=false,repairReturnPause=false;
 const damagePct=()=>Math.ceil(Math.max(0,P.damage||0));
 const repairPrice=()=>Math.round((1000+20*damagePct())*skillFactor("handiness")*(hasTrait("gearhead")?.9:1));
@@ -1233,8 +1234,13 @@ function clWork(cloud){
 // One whole set or the other, never the higher of each; a save from before needs has the starting values
 function clNeeds(cloud){
   needsCommit();   // bench and speed rewards can be newer than the last local checkpoint
+  // the party's wait first, whichever needs are kept (js/life.js partyWaitMerge), and kept through them
+  const before=needsKey(save);if(typeof partyWaitMerge==="function"){partyWaitMerge(cloud.homeWait);needsCommit()}
+  const party=homeUntil.party-NS.t,partyAt=homeUntil.partyAt;
   const here=needsKey(save),there=needsKey(cloud);
-  if(here!==there&&(!CL.meta.needs||CL.meta.needs===here)){needsLoad(needsOfSave(cloud));homeWaitLoad(cloud.homeWait);persist();if(state==="GARAGE")restSync()}
+  if(here!==there&&(!CL.meta.needs||CL.meta.needs===before)){needsLoad(needsOfSave(cloud));homeWaitLoad(cloud.homeWait);homeUntil.party=NS.t+party;homeUntil.partyAt=partyAt;needsCommit();persist();if(state==="GARAGE")restSync()}
+  else if(here!==before)persist();
+  if(state==="GARAGE"&&typeof partyButton==="function"&&save.rel)partyButton();
   if(needsKey(save)===there)CL.meta.needs=there}
 // the account's save becomes this device's (its ghost laps stay), and the game starts again from it
 // From here until the page reloads, this tab neither saves nor backs up: the progress still in memory would otherwise

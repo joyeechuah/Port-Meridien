@@ -419,7 +419,8 @@ function photoCapture(){
       const live=prNow,raise=PR_MAX>live;let c;
       if(raise){renderer.setPixelRatio(PR_MAX);renderer.setSize(W,H,false)}
       try{
-        applyDayNight();updateLampLights();photoFrame(0);syncRenderView();renderer.render(scene,camera);
+        // (the postcard markers shown from this camera, not the last frame's: Codex's review)
+        applyDayNight();updateLampLights();photoFrame(0);if(typeof postcardTick==="function"&&POSTCARD_MARKS.size)postcardTick(0);syncRenderView();renderer.render(scene,camera);
         const src=renderer.domElement;c=document.createElement("canvas");c.width=src.width;c.height=src.height;
         const x=c.getContext("2d");if(!x)throw new Error("no 2D canvas");x.drawImage(src,0,0);
       }finally{if(raise){renderer.setPixelRatio(live);renderer.setSize(W,H,false);renderer.render(scene,camera)}}
