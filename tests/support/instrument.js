@@ -44,6 +44,9 @@ const NAMES = (
   "VERGE vergeSites toast toastFit " +
   "personOf pedLook rnd pedRotate " +
   "talkGift giftGiven giftClean " +
+  "birthdayOf " +
+  "isBirthday " +
+  "birthdayLine " +
   "GIFTS GIFT_PREFS giftMenu giftSync giftedClean " +
   "TRAITS traitsClean traitsApply hasTrait traitLoss " +
   "NET netAt netState netTick fbLoad FB_LOADS " +

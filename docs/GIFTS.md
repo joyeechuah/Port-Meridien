@@ -21,3 +21,9 @@ During a conversation, **Give a gift** (9) opens the choices, and the line above
 A favourite gets a heart and a reply in the person's own manner. Something they don't care for is taken politely, with a shrug. Anything else gets a smile and a thank you.
 
 Favourite gifts start at 15 friendship points, neutral gifts at 10 and disliked gifts at 4. Existing friendship and the Charisma perk scale the gain. Giving a present awards 3 base Charisma XP. It counts as a conversation line and can supply the usual social gain once. It counts for the gift want, a first meeting and crossing 15 friendship for Reach Friendly. Everyone who has ever had a gift from you counts towards the Generous aspiration (see ASPIRATIONS.md). Who has had a gift today is saved on the device and travels with the cloud save. Two devices of the same account share it, so a person can't be given a second gift on the other one. It isn't progress, so saves that differ only there don't ask which to keep.
+
+## Resident birthdays
+
+One of the 16 residents has a birthday each UTC day. The resident mentions it when you start talking. Gifts double the usual rounded friendship gain before the normal friendship cap. The daily limit, prices, Charisma XP and Generous progress follow the usual rules. A favourite still makes you Happy.
+
+`birthdayOf(id)` returns the resident's fixed slot (0–15), or `null` for an invalid ID. `isBirthday(id, day)` compares that slot with the UTC epoch day modulo 16. `birthdayLine(id, day)` returns the spoken line on that day and an empty string otherwise. Both take today's UTC day by default. Birthdays are derived and add no save data.
