@@ -471,10 +471,16 @@ function hudStack(){
   const tl=$("tl").getBoundingClientRect(),mw=$("minWrap").getBoundingClientRect();if(!tl.height||!mw.height)return;
   // The district clock stretches to the width of the damage label in this column.
   r.style.setProperty("--hud-left-clear",Math.ceil(tl.right+6)+"px");
+  // and how far right what sits beside it at the free-ride score's height reaches (the stars, the pistol, a friend
+  // aboard: landscape phones), for the score to keep clear of
+  let side=tl.right;for(const id of ["wanted","gunHud","ride"]){const e=$(id);if(e&&getComputedStyle(e).position==="absolute"&&!e.classList.contains("hide")){const b=e.getBoundingClientRect();if(b.width)side=Math.max(side,b.right)}}
+  r.style.setProperty("--hud-side-right",Math.ceil(side+8)+"px");
   r.style.setProperty("--tlx",Math.max(0,Math.ceil(tl.bottom+6-mw.top))+"px");toastFit();
 }
-if(window.ResizeObserver)new ResizeObserver(hudStack).observe($("tl"));addEventListener("resize",hudStack);
-function layoutHUD(){const small=isTouch||W<700,short=isTouch&&H<=400;SPS=small?(short?104:128):220;MMS=small?(short?100:118):184;spD=fitCanvas(spc,SPS);mmD=fitCanvas(mm,MMS)}
+// (each part too: the ones beside the column don't change the column's size when they come and go)
+if(window.ResizeObserver){const ro=new ResizeObserver(hudStack);ro.observe($("tl"));for(const e of $("tl").children)ro.observe(e)}addEventListener("resize",hudStack);
+function layoutHUD(){const small=isTouch||W<700,short=isTouch&&H<=400;SPS=small?(short?104:128):220;MMS=small?(short?100:118):184;spD=fitCanvas(spc,SPS);mmD=fitCanvas(mm,MMS);
+  document.documentElement.style.setProperty("--speedo-w",SPS+"px")}
 const RATIOS=[0,.2,.36,.52,.68,.84,1.05];
 function gearInfo(kph,top,rev){
   if(rev)return{g:"R",n:1,rpm:clamp(kph/40,.12,.9)};

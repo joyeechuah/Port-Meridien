@@ -90,6 +90,8 @@ for (const [name, w, h] of [
     // the wanted stars and NOT SAVED, the column on the left (and what sits beside it) stays clear of all of them
     test(`${name}: in a damaged car, wanted and with NOT SAVED, the column stays clear of the buttons, the dial and the pedals`, async ({ game, page }) => {
       await game.open({ police: true });
+      await game.waitState("GARAGE");
+      await game.eval(() => document.getElementById("gGun").click());
       await game.driveOut();
       await game.eval(() => {
         const T = __T, set = Storage.prototype.setItem;
@@ -102,8 +104,12 @@ for (const [name, w, h] of [
         document.getElementById("damageHud").classList.remove("hide");
         T.WANTED.lvl = 3;
         T.wantedHud();
+        // and scoring a free-ride streak
+        T.FR.pts = 12345;
+        T.FR.mult = 2.5;
+        T.FR.timer = 3;
       });
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(600);
       const r = await game.eval(() => {
         const box = (sel) => {
           const e = document.querySelector(sel);
@@ -113,6 +119,8 @@ for (const [name, w, h] of [
         };
         return {
           tl: ["#tl .money", "#saveHud", "#damageHud", "#tl .lvl", "#tl .loc", "#wanted"].map((s) => [s, box(s)]),
+          streak: box("#streak"),
+          beside: ["#tl .money", "#saveHud", "#damageHud", "#tl .lvl", "#tl .loc", "#wanted", "#gunHud", "#speedo", "#mini", "#chMap", "#chCam", "#chFoot", "#chRear", "#chPhoto", "#chPause"].map((s) => [s, box(s)]).filter(([, b]) => b),
           others: ["#chMap", "#chCam", "#chFoot", "#chRear", "#chPhoto", "#chPause", "#speedo", "#mini", "#bL", "#bR", "#bB", "#bG", "#bH"].map((s) => [s, box(s)]).filter(([, b]) => b),
         };
       });
@@ -120,5 +128,8 @@ for (const [name, w, h] of [
       const hits = [];
       for (const [a, x] of r.tl) for (const [b, y] of r.others) if (overlap(x, y)) hits.push(a + " under " + b);
       expect(hits, "nothing in the column is under a button, the dial, the minimap or a pedal").toEqual([]);
+      // the score: on screen, readable, and over none of it
+      expect(r.streak && r.streak.width, "the score is on screen").toBeGreaterThanOrEqual(100);
+      expect(r.beside.filter(([, b]) => overlap(b, r.streak)).map(([s]) => s), "the score sits over nothing").toEqual([]);
     });
   });

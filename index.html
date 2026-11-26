@@ -366,10 +366,19 @@ body.touch #toasts{top:calc(196px + var(--st))}
 /* and where a car's six buttons reach the money even so (under 670 px), under the buttons, left of the dial */
 @media (max-height:520px) and (min-width:561px) and (max-width:669px){
   body.touch:not(.outsideCar) #tl>#saveHud{top:36px;left:calc(100vw - 230px - var(--sl) - var(--sr))}
+  /* and the free-ride score, there too, goes under it */
+  body.touch:not(.outsideCar) #hud:has(#saveHud:not(.hide)) #streak{top:calc(72px + var(--st))}
 }
 body.touch #prompt{bottom:calc(150px + var(--sb))}
 body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
-@media (max-width:980px){#evhud{top:calc(60px + var(--st))}#streak{top:calc(60px + var(--st))}}
+/* under the buttons along the top wherever those reach the middle (a car's six run past it below 1200 px) */
+@media (max-width:1200px){#evhud{top:calc(60px + var(--st))}#streak{top:calc(60px + var(--st))}}
+/* a landscape phone: the free-ride score beside the dial, clear of the stars and the pistol beside the money (it sat
+   over them in the middle), and narrower if it has to be (js/play.js hudStack) */
+@media (max-height:520px) and (min-width:561px){body.touch #streak{left:auto;transform:none;min-width:0;
+  right:calc(22px + var(--speedo-w,104px) + var(--sr));max-width:max(120px,calc(100vw - var(--hud-side-right,0px) - var(--speedo-w,104px) - 30px - var(--sr)))}
+  body.touch #streak .lab{font-size:10px;letter-spacing:.25em}body.touch #streak .pts{font-size:24px}body.touch #streak .pts span{font-size:16px;margin-left:6px}
+  body.touch #streak .bar{width:120px}}
 @media (max-width:700px){
   .cname .md{font-size:24px} #gbar,#dBar{padding-top:50px;gap:12px}
   .stats{min-width:0;max-width:none;flex-basis:100%}
@@ -393,7 +402,8 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   #hud #tdPill{top:calc(318px + var(--st) + var(--tlx,0px))}
   /* the free-ride score sits in the column under the speedometer (where the race panel goes in a race; the two never
      show together), so it no longer slides down onto the car when the damage pill and the stars push the minimap down */
-  #streak{top:calc(192px + var(--st));left:auto;right:calc(14px + var(--sr));transform:none;text-align:right}
+  #streak{top:calc(192px + var(--st));left:auto;right:calc(14px + var(--sr));transform:none;text-align:right;
+    max-width:calc(100vw - var(--hud-left-clear,0px) - 14px - var(--sr))}
   #streak .bar{width:128px;margin:5px 0 0 auto}
   /* the race panel (position, time, checkpoint) goes in a small column under the speedometer, so it no longer
      sits over the road just ahead of the car */
