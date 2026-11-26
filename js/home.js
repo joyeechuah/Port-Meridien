@@ -35,7 +35,8 @@ const HOME_ITEMS=[
   homeItem("palm","Potted palm","decor",320,2,2,1.5,5),
   homeItem("lamp","Floor lamp","decor",200,1,1,1.6,3),
   homeItem("vase","Stoneware vase","decor",120,1,1,.6,2),
-  homeItem("screen","Folding screen","decor",480,3,1,1.7,4)
+  homeItem("screen","Folding screen","decor",480,3,1,1.7,4),
+  homeItem("postcard-board","Postcard board","decor",440,2,1,1.45,3)
 ];
 const homeById=new Map(HOME_ITEMS.map(item=>[item.id,item]));
 function homeRect(id,x,z,r){
@@ -83,7 +84,18 @@ function homeClean(raw,lost=null){
 const homeRefund=lost=>lost.reduce((sum,id)=>sum+homeById.get(id).price,0);
 {const lost=[];save.home=homeClean(save.home,lost);save.cr+=homeRefund(lost)}
 function homeHas(plan,effect){return plan.items.some(p=>homeById.get(p.id).effect===effect)}
-function homeComfort(plan){return Math.min(100,plan.items.reduce((sum,p)=>sum+homeById.get(p.id).comfort,0))}
+// Use the same validation and order as the album, even when cards were picked up out of order.
+function postcardBoardCards(){return typeof postcardsClean==="function"?postcardsClean(save.postcards):[]}
+function homeItemUnlocked(id){return id!=="postcard-board"||postcardBoardCards().length>0}
+function homeComfort(plan){
+  let total=0,boards=0;
+  for(const p of plan.items){
+    total+=homeById.get(p.id).comfort;
+    if(p.id==="postcard-board")boards++;
+  }
+  if(boards)total+=boards*Math.min(8,postcardBoardCards().length);
+  return Math.min(100,total);
+}
 function homeProgress(raw){
   const plan=homeClean(raw);
   if(!plan.items.length&&plan.wall===HOME_WALLS[0]&&plan.floor===HOME_FLOORS[0])return null;
@@ -94,7 +106,7 @@ function homeProgress(raw){
 const homeEditable=()=>state==="GARAGE"&&!tabIdle&&!(CL&&CL.applying);
 function homePlace(id,x,z,r=0){
   const p=save.home,item=homeById.get(id);
-  if(!homeEditable()||!item||save.cr<item.price||p.items.length>=HOME_CAP||!homeFits(p,id,x,z,r))return false;
+  if(!homeEditable()||!item||!homeItemUnlocked(id)||save.cr<item.price||p.items.length>=HOME_CAP||!homeFits(p,id,x,z,r))return false;
   p.items.push({id,x,z,r});save.cr-=item.price;wantEvent("place");homeChanged();return true;
 }
 function homeMove(index,x,z,r=undefined){

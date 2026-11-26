@@ -23,10 +23,10 @@ function game(stored={}){
     section(screens,"function clNeeds(","// the account")].join("\n"),ctx);
   return {ctx,$,writes,run:code=>vm.runInContext(code,ctx)};
 }
-test("24 catalogue entries describe six groups, positive prices, geometry, comfort and actions",()=>{
+test("25 catalogue entries describe six groups, positive prices, geometry, comfort and actions",()=>{
   const {run}=game(),items=run("HOME_ITEMS");
-  expect(items).toHaveLength(24);
-  expect(new Set(items.map(i=>i.id)).size).toBe(24);
+  expect(items).toHaveLength(25);
+  expect(new Set(items.map(i=>i.id)).size).toBe(25);
   expect(new Set(items.map(i=>i.group)).size).toBe(6);
   for(const i of items){
     expect(i.name.length).toBeGreaterThan(0);
@@ -34,6 +34,35 @@ test("24 catalogue entries describe six groups, positive prices, geometry, comfo
     expect(i.height).toBeGreaterThan(0);expect(i.comfort).toBeGreaterThanOrEqual(0);
     expect([null,"rest","snack","play"]).toContain(i.effect);
   }
+});
+test("the postcard board unlocks on the first valid card and derives capped comfort from album order",()=>{
+  const {run,writes}=game({postcards:["unknown"]});
+  expect(run('homeItemUnlocked("postcard-board")')).toBe(false);
+  expect(run('homePlace("postcard-board",5,4)')).toBe(false);
+  expect(writes).toHaveLength(0);
+  run('save.postcards=["cove"]');
+  expect(run('homeItemUnlocked("postcard-board") && homePlace("postcard-board",5,4,1)')).toBe(true);
+  expect(writes[0]).toMatchObject({cr:9560,home:{items:[{id:"postcard-board",x:5,z:4,r:1}]}});
+  expect(run("homeComfort(save.home)")).toBe(4);
+  run('save.postcards=["cove","summit","cove","unknown"]');
+  expect(run("postcardBoardCards()")).toEqual(["summit","cove"]);
+  expect(run("homeComfort(save.home)")).toBe(5);
+  run("save.postcards=POSTCARDS.map(card=>card.id)");
+  expect(run("homeComfort(save.home)")).toBe(11);
+  expect(writes).toHaveLength(1);
+});
+test("the postcard board round-trips as an ordinary placed item and counts in layout progress",()=>{
+  const first=game({postcards:["summit"]});
+  first.run('homePlace("postcard-board",5,4);save.home.items[0].cards=["fake"];save.home.items[0].comfort=100;save.home=homeClean(save.home)');
+  const payload=first.run("clPayload(save)");
+  const reloaded=game(JSON.parse(JSON.stringify(payload)));
+  expect(payload.home.items).toEqual([{id:"postcard-board",x:5,z:4,r:0}]);
+  expect(payload.postcards).toEqual(["summit"]);
+  expect(Object.keys(payload).sort()).toEqual(Object.keys(game({postcards:["summit"]}).run("clPayload(save)")).sort());
+  expect(reloaded.run("homeComfort(save.home)")).toBe(4);
+  expect(reloaded.run("clProg(save)")).toBe(first.run("clProg(save)"));
+  expect(reloaded.run("clProg({...save,home:undefined})")).not.toBe(reloaded.run("clProg(save)"));
+  expect(game({home:payload.home}).run("[save.home.items.length,homeComfort(save.home)]")).toEqual([1,3]);
 });
 test("half-metre grid reserves the railing and top landing, including rotated footprints",()=>{
   const {run}=game();
