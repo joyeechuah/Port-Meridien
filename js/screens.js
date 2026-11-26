@@ -960,7 +960,10 @@ function goPinchStart(){
 const goDown=e=>{if(state!=="GARAGE")return;try{cv.setPointerCapture(e.pointerId)}catch(_){}GO.ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});if(GO.ptr.size===1)GO.moved=0;
   // the first finger landed on a button and this one on the view: that finger is the pinch's other half, and the view
   // takes it over (capture), so the button isn't pressed when it lifts
-  const b=GO.btn;if(GO.ptr.size===1&&b&&b.id!==e.pointerId){GO.btn=null;try{cv.setPointerCapture(b.id)}catch(_){}GO.ptr.set(b.id,{x:b.x,y:b.y});GO.moved=7}
+  // (only once the view holds it: a pointer that has already gone can't be captured, and counting it anyway left a
+  // finger that wasn't there, so one real finger zoomed as if it were two; Codex's review)
+  const b=GO.btn;if(GO.ptr.size===1&&b&&b.id!==e.pointerId){GO.btn=null;let held=true;try{cv.setPointerCapture(b.id)}catch(_){held=false}
+    if(held){GO.ptr.set(b.id,{x:b.x,y:b.y});GO.moved=7}}
   if(GO.ptr.size===1)GO.last={id:e.pointerId,x:e.clientX,y:e.clientY};else if(!GO.pinch)goPinchStart()};
 cv.addEventListener("pointerdown",goDown);
 // The car's name and figures cover the bottom of the screen (two fifths of a phone held upright). A finger that lands
@@ -968,9 +971,11 @@ cv.addEventListener("pointerdown",goDown);
 // usually down there, and the view then only turned, so a phone could zoom in but not back out. It never counts as
 // a tap on a car behind the bar. With a finger already on the view, a second one anywhere on the garage screen
 // (a button included) is the other half of a pinch, and doesn't press what it landed on
-$("gui").addEventListener("pointerdown",e=>{const btn=e.target.closest("button,a,input");
-  // a first finger on a button presses it, unless a second lands on the view while it's down (goDown)
-  if(!GO.ptr.size&&btn&&e.pointerType==="touch"&&state==="GARAGE")GO.btn={id:e.pointerId,x:e.clientX,y:e.clientY};
+// a first finger on a button presses it, unless a second lands on the view while it's down (goDown): on the garage
+// screen, and on Customise, a panel of its own over the view (a pinch from one of its buttons only turned the view)
+const goBtnDown=e=>{if(!GO.ptr.size&&e.target.closest("button,a,input")&&e.pointerType==="touch"&&state==="GARAGE")GO.btn={id:e.pointerId,x:e.clientX,y:e.clientY}};
+$("cust").addEventListener("pointerdown",goBtnDown);
+$("gui").addEventListener("pointerdown",e=>{const btn=e.target.closest("button,a,input");goBtnDown(e);
   if(GO.ptr.size?e.pointerType!=="touch":btn||!e.target.closest("#gbar"))return;
   goDown(e);GO.moved=Math.max(GO.moved,7)});
 cv.addEventListener("pointermove",e=>{if(state!=="GARAGE"||!GO.ptr.has(e.pointerId))return;const p=GO.ptr.get(e.pointerId);GO.moved+=Math.abs(e.clientX-p.x)+Math.abs(e.clientY-p.y);p.x=e.clientX;p.y=e.clientY;
@@ -984,7 +989,8 @@ const goUp=e=>{if(!GO.ptr.delete(e.pointerId))return;
 ["pointerup","pointercancel","lostpointercapture"].forEach(t=>cv.addEventListener(t,goUp));
 // where that first finger on a button is now, and when it lifts
 addEventListener("pointermove",e=>{if(GO.btn&&GO.btn.id===e.pointerId){GO.btn.x=e.clientX;GO.btn.y=e.clientY}},true);
-["pointerup","pointercancel"].forEach(t=>addEventListener(t,e=>{if(GO.btn&&GO.btn.id===/** @type {PointerEvent} */ (e).pointerId)GO.btn=null},true));
+["pointerup","pointercancel","lostpointercapture"].forEach(t=>addEventListener(t,e=>{if(GO.btn&&GO.btn.id===/** @type {PointerEvent} */ (e).pointerId)GO.btn=null},true));
+addEventListener("blur",()=>{GO.btn=null});
 cv.addEventListener("wheel",e=>{if(state!=="GARAGE")return;e.preventDefault();GO.zoom=clamp(GO.zoom*Math.exp(e.deltaY*.0012),GO_Z[0],GO_Z[1]);GO.user=true},{passive:false});
 $("c").addEventListener("click",e=>{if(state!=="GARAGE"||cuOpen()||GO.moved>6)return;const i=hitSlot(e.clientX,e.clientY);if(i<0)return;if(i===gSel)goDrive();else gPick(i)});
 $("c").addEventListener("pointermove",e=>{if(state!=="GARAGE"||e.pointerType!=="mouse"||cuOpen())return;$("c").style.cursor=hitSlot(e.clientX,e.clientY)>=0?"pointer":"default"});

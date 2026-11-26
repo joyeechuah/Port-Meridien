@@ -779,8 +779,12 @@ function padMenu(hit){
 function padScroll(g){
   const sub=PAUSE_SUBS.map(([id])=>$(id)).find(e=>!e.classList.contains("hide"));if(!sub)return;
   const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8,y=dz(g.axes[3]||0)||dz(g.axes[1]||0);if(!y)return;
-  const list=/** @type {HTMLElement[]} */([...sub.querySelectorAll("ol,ul,div")]).find(el=>el.scrollHeight>el.clientHeight+1&&/auto|scroll/.test(getComputedStyle(el).overflowY));
-  if(list)list.scrollTop+=y*14;
+  // the innermost first (a list inside a card that scrolls too), and what's left of the move, once it's at its end, to
+  // the one round it: the card used to take it all, and its list never moved (Codex's review)
+  const els=/** @type {HTMLElement[]} */([...sub.querySelectorAll("ol,ul,div")]).filter(el=>el.scrollHeight>el.clientHeight+1&&/auto|scroll/.test(getComputedStyle(el).overflowY));
+  els.sort((a,b)=>a.contains&&a.contains(b)?1:b.contains&&b.contains(a)?-1:0);
+  let d=y*14;
+  for(const el of els){const was=el.scrollTop;el.scrollTop=was+d;d-=el.scrollTop-was;if(Math.abs(d)<1)break}
 }
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
