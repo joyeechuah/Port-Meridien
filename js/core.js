@@ -352,7 +352,7 @@ try{
   save.v=3;
   if(!OUTFITS.some(o=>o.id===save.outfit))save.outfit=OUTFITS[0].id;
   // the name friends see when playing together (js/net.js): letters, digits, spaces and . ' _ -, at most 12
-  save.nick=typeof save.nick==="string"?save.nick.replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim().slice(0,12):"";
+  save.nick=typeof save.nick==="string"?save.nick.normalize("NFC").replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim().slice(0,12):"";
   save.cr=num(save.cr,120000,0,1e12);save.xp=num(save.xp,0,0,1e12);
   save.todMode=Math.round(num(save.todMode,0,0,4));save.tod=num(save.tod,16.6,0,23.99);
   save.paint=dict(save.paint,c=>Number.isInteger(c)&&c>=0&&c<=0xffffff);
