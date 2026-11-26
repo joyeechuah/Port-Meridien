@@ -1,6 +1,6 @@
 # Gifts in Old Quay
 
-During a conversation, **Give a gift** (9) opens the choices. Opening the menu costs nothing. Select with a number key, a tap, or the D-pad and A. Back, Escape or controller B returns to the conversation. A person accepts one present per UTC day. An unaffordable choice is disabled.
+During a conversation, **Give a gift** (9) opens the choices, and the line above asks what you'll give. Opening the menu costs nothing. Select with a number key, a tap, or the D-pad and A. Back, Escape or controller B returns to the conversation. A person accepts one present per UTC day. An unaffordable choice is disabled.
 
 | Key | Gift | Price |
 |---|---|---:|
@@ -18,4 +18,6 @@ During a conversation, **Give a gift** (9) opens the choices. Opening the menu c
 | Shy | Flowers | Coffee |
 | Busy | Coffee | Flowers |
 
-Favourite gifts start at 15 friendship points, neutral gifts at 10 and disliked gifts at 4. Existing friendship and the Charisma perk scale the gain. Giving a present awards 3 base Charisma XP. It counts as a conversation line and can supply the usual social gain once. It counts for the gift want, a first meeting and crossing 15 friendship for Reach Friendly. The game's existing daily gift record is saved locally and backed up with the account.
+A favourite gets a heart and a reply in the person's own manner. Something they don't care for is taken politely, with a shrug. Anything else gets a smile and a thank you.
+
+Favourite gifts start at 15 friendship points, neutral gifts at 10 and disliked gifts at 4. Existing friendship and the Charisma perk scale the gain. Giving a present awards 3 base Charisma XP. It counts as a conversation line and can supply the usual social gain once. It counts for the gift want, a first meeting and crossing 15 friendship for Reach Friendly. Who has had a gift today is saved on the device and travels with the cloud save. Two devices of the same account share it, so a person can't be given a second gift on the other one. It isn't progress, so saves that differ only there don't ask which to keep.

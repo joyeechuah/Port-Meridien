@@ -644,14 +644,22 @@ const HINT_KEY=SAVE_KEY+"-hints",HINT_TEXT={
   you:["YOU","SKILLS has your skills, traits and aspirations; NEEDS, your wants and mood."],
   friends:["FRIENDS",isTouch?"Ask a friend along for a ride, or over to your place.":"Ask a friend along for a ride (7), or over to your place (8)."],
   kitchen:["KITCHEN CAREER","Shifts and Cooking take you from Dishwasher to Head chef, with better pay at each rank."]};
-const HINTS=(()=>{try{const h=JSON.parse(localStorage.getItem(HINT_KEY)||"{}");return h&&typeof h==="object"&&!Array.isArray(h)?h:{}}catch(e){return {}}})();
+// the flags as stored now (another tab may have learnt one since this one loaded)
+function hintsStored(){try{const h=JSON.parse(localStorage.getItem(HINT_KEY)||"{}");return h&&typeof h==="object"&&!Array.isArray(h)?h:{}}catch(e){return {}}}
+const HINTS=hintsStored();
+// never used up unseen, in a hidden tab; and merged with what's stored first, so one learnt in another tab is neither
+// shown again here nor wiped out by this tab's older copy
 function hint(id){
-  if(window.__noHints||tabIdle||HINTS[id]||!HINT_TEXT[id])return false;
+  if(window.__noHints||tabIdle||document.hidden||!HINT_TEXT[id])return false;
+  const stored=hintsStored();for(const k of Object.keys(HINT_TEXT))if(stored[k])HINTS[k]=1;
+  if(HINTS[id])return false;
   HINTS[id]=1;try{localStorage.setItem(HINT_KEY,JSON.stringify(HINTS))}catch(e){}
   toast(HINT_TEXT[id][0],HINT_TEXT[id][1]);return true;
 }
-// home's: a moment after the garage opens, unless something else is on screen (then the next time)
-function hintHome(){setTimeout(()=>{if(state==="GARAGE"&&!document.querySelector(".ov:not(.hide)"))hint("home")},1500)}
+// home's: a moment after the garage opens, unless something else is on screen, Customise and Design Home included
+// (then the next time)
+function hintHome(){setTimeout(()=>{const g=$("gui").classList;
+  if(state==="GARAGE"&&!document.querySelector(".ov:not(.hide)")&&!g.contains("cust-on")&&!g.contains("designing"))hint("home")},1500)}
 let repairConfirm=false,repairReturnPause=false;
 const damagePct=()=>Math.ceil(Math.max(0,P.damage||0));
 const repairPrice=()=>Math.round((1000+20*damagePct())*skillFactor("handiness")*(hasTrait("gearhead")?.9:1));
@@ -1162,9 +1170,10 @@ function clReconcile(doc){
   if(L===C||(CL.meta.rev===rev&&CL.meta.prog===L)){const other=CL.other;CL.meta.rev=rev;CL.meta.prog=L;CL.meta.at=clAt(doc)||CL.meta.at;clOwn();save.photoDay=photoDayClean(save.photoDay);
     // wants taken from the account give way at once if they can't be done (a head chef's promotion want), before saving
     if(L===C&&cloud.wants&&wantsSync(cloud.wants)){wantsTidy();persist()}
+    // today's gifts: everyone who's had one on either device of the same account (js/core.js giftSync)
+    if(save.gift||cloud.gift){const g=giftSync(save.gift,cloud.gift,other);if(JSON.stringify(g)!==JSON.stringify(save.gift)){save.gift=g;persist()}}
     // the day's photos: the higher count for the same account; when this device's save was another account's, this
     // account's own count (the other's five used went over to an account that had used none)
-    if(save.gift||cloud.gift){const g=giftSync(save.gift,cloud.gift,other);if(JSON.stringify(g)!==JSON.stringify(save.gift)){save.gift=g;persist()}}
     const day=photoDayClean(cloud.photoDay);
     if(other?day.day!==save.photoDay.day||day.count!==save.photoDay.count:day.day>save.photoDay.day||day.day===save.photoDay.day&&day.count>save.photoDay.count){save.photoDay=day;persist()}
     clWork(cloud);clNeeds(cloud);clSaveMeta();return clUpload(rev,true)}

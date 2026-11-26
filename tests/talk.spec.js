@@ -225,7 +225,8 @@ test.describe("talking to people", () => {
     // company, +8 (less what the clock has taken since)
     expect(after.social).toBeCloseTo(58, 1);
     expect(after).toMatchObject({ off: true, text: "Gift given today", want: false, gift: { v: 1, day: today, ids: [i] } });
-    expect(after.line).toContain("Flowers");
+    // someone shy's favourite, in their own words
+    expect(after.line).toContain("loves the flowers");
     // a second one today does nothing
     await steps(game, 60);
     await game.key("9");

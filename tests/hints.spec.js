@@ -63,3 +63,36 @@ test("off in the tests unless a test asks for them", async ({ game }) => {
   await new Promise((r) => setTimeout(r, 1800));
   expect(await shown(game)).not.toContain("YOU");
 });
+
+test("a hint learnt in another tab isn't shown again here, nor wiped out by this tab's older copy", async ({ game }) => {
+  await game.open({ hints: true });
+  const r = await game.eval(() => {
+    const T = __T;
+    // another tab of the game has since shown the kitchen's
+    localStorage.setItem(T.HINT_KEY, JSON.stringify({ kitchen: 1 }));
+    return { kitchen: T.hint("kitchen"), you: T.hint("you"), stored: JSON.parse(localStorage.getItem(T.HINT_KEY)) };
+  });
+  expect(r).toEqual({ kitchen: false, you: true, stored: { kitchen: 1, you: 1 } });
+});
+
+test("a hint isn't used up in a hidden tab, and NEW AT HOME waits while Customise or Design Home is open", async ({ game, page }) => {
+  await game.open({ hints: true });
+  const hidden = await game.eval(() => {
+    const T = __T;
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+    const r = T.hint("you");
+    delete document.hidden;
+    return { r, stored: localStorage.getItem(T.HINT_KEY) };
+  });
+  expect(hidden.r).toBe(false);
+  expect(JSON.parse(hidden.stored || "{}").you).toBeUndefined();
+  for (const panel of ["cust-on", "designing"]) {
+    await game.eval((panel) => { document.getElementById("gui").classList.add(panel); __T.hintHome(); }, panel);
+    await page.waitForTimeout(1700);
+    expect(await game.eval((panel) => { document.getElementById("gui").classList.remove(panel); return __T.HINTS.home; }, panel)).toBeUndefined();
+  }
+  // and once nothing is open, it comes
+  await game.eval(() => __T.hintHome());
+  await expect.poll(() => shown(game), { timeout: 4000 }).toContain("NEW AT HOME");
+});
+

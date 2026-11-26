@@ -12,13 +12,14 @@ function game(trait) {
       focus() { ctx.focus = id; }, click() { ctx.clicked = id; } };
   }
   const box = btn("tkActs");
+  btn("tkLine").textContent = "Jo is glad to see you.";
   box.children = [btn("tkGift"), btn("bye"), ...["flowers","coffee","book","gadget","back"].map(id => btn("tk-" + id,id))];
   const ctx = { $: id => buttons[id], TALK: { p: {}, person: { trait, id: 1, name: "Jo" }, busy: 0, n: 0, end: 0 },
     tabIdle: false, save: { cr: 500, gift: { day: -1, ids: [] } }, Date, xp: 0, writes: 0, wants: [],
     r: { f: 13, n: 2 }, rel: () => ctx.r, relSet: (_, f, n) => { ctx.r = { f,n }; },
     skillFactor: () => 1, skillAward: (_, xp) => { ctx.xp += xp; }, updateMoney() {}, NS: { t: 1, social: {} },
     needsAdd() {}, emote() {}, RIDE_AT: 40, wantEvent: k => ctx.wants.push(k),
-    talkShow() {}, persist: () => ctx.writes++, talkClose() {} };
+    talkShow: (line) => { ctx.line = line; }, persist: () => ctx.writes++, talkClose() {} };
   vm.createContext(ctx);
   vm.runInContext(block("const GIFTS=", "// Spoken lines") + block("function talkKey(", "// knocking someone"), ctx);
   return {ctx, run: s => vm.runInContext(s,ctx)};
@@ -31,6 +32,8 @@ for (const [trait,fav,disliked] of [["cheerful","flowers","gadget"],["grumpy","c
       expect(run('talkGift("' + id + '")')).toBe(true);
       expect(ctx.r.f).toBe(13 + Math.round((id===fav ? 15 : id===disliked ? 4 : 10)*(1-13/125)));
       expect([ctx.save.cr,ctx.xp,ctx.writes,ctx.wants]).toEqual([500-price,3,1,["gift","friendly"]]);
+      // in their own words for a favourite and for one they don't care for; anything else, a polite thank you
+      expect(ctx.line).toMatch(id===fav ? /^Jo loves the / : id===disliked ? /^Jo takes the .* politely\. / : /^Jo likes the .*kind of you/);
       ctx.TALK.busy=0;
       expect(run('talkGift("coffee")')).toBe(false);
       expect(ctx.writes).toBe(1);
@@ -43,9 +46,12 @@ test("controller, keyboard, cancel and unaffordable choices", () => {
   const { ctx,run } = game("joker");
   ctx.save.cr=200;
   run('talkKey("9")'); expect(ctx.focus).toBe("tk-coffee");
+  // the line above asks, and Back puts back what was there
+  expect(ctx.$("tkLine").textContent).toBe("What will you give Jo?");
   expect(run('tkButtons().map(b=>b.id)')).toEqual(["tk-coffee","tk-book","tk-back"]);
   run("talkPad(i=>i===15);talkPad(i=>i===0)"); expect(ctx.clicked).toBe("tk-book");
   run("talkPad(i=>i===1)"); expect(ctx.focus).toBe("tkGift");
+  expect(ctx.$("tkLine").textContent).toBe("Jo is glad to see you.");
   run('talkKey("9");talkKey("4");talkKey("escape")'); expect(ctx.writes).toBe(0);
   run('talkKey("9");talkKey("3")'); expect([ctx.writes,ctx.save.cr]).toEqual([1,20]);
 });
