@@ -19,6 +19,14 @@ Each reply includes its reason. Responses are deterministic. Sending the same in
 - `partyScore()` previews the current group's score. It returns zero for an empty group.
 - `partyEnd()` settles an active party at home and returns `{score,guests,happy}`. An invalid or repeated end returns false. Leaving the garage or reloading cancels without an award. The existing HANG OUT action remains available for a single private visit.
 
+## In the game
+
+**THROW A PARTY** in the garage takes the place HANG OUT has for a single guest (the two never show together), once you have a Friend. It opens a panel listing your Friends with their personality and how close you are. Choose up to three and **SEND INVITATIONS**: each answers with their reason. If anyone is coming, **START THE PARTY** (with the score so far) takes SEND's place; choosing again brings SEND back. When nobody can come, the panel says so.
+
+The guests take your seats, comfiest first (a sofa, then a reading chair, a window bench, a stool), one each. The rest stand by the railing, a metre clear of each other and of the seats in use. Moving or selling furniture seats them again. The button then reads **SEE THEM OFF · PARTY** and the score; pressing it ends the party, with a message giving the score and who you got closer to. While the next one waits, it reads **PARTY · AGAIN IN** and the minutes left.
+
+With a controller, Y presses HANG OUT or the party's button; in the panel the D-pad and A choose, and B closes it. Escape closes it too.
+
 ## Score and rewards
 
 Start at 25. Add 5 per guest, one point per 3⅓ home comfort (rounded down in total), and 3 per Charisma level. Each pair counts once. Cheerful with Chatty, Cheerful with Joker, or Busy with Shy adds 6. Grumpy with Joker, Chatty with Shy, or Busy with Chatty subtracts 6. Other pairs score zero. Clamp the total to 0–100.

@@ -21,6 +21,7 @@ const { ROOT, readPage, scriptFiles } = require("./source");
 // that no longer exists fails only the tests that use it, with "<name> is not defined"
 const NAMES = (
   "PARTY " +
+  "PARTY_M PARTY_SEL partySync partyOpen partyPanelClose partyFriends homeUntil " +
   "partyInvite " +
   "partyStart " +
   "partyScore " +

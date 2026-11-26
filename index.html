@@ -110,7 +110,8 @@ body.touch #lhint{display:none}
 #gSnack,#gPlay{position:absolute;right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gSnack:hover:not(:disabled),#gPlay:hover:not(:disabled){border-color:#fff}#gSnack:disabled,#gPlay:disabled{opacity:.55;cursor:default}
 #gSnack{top:calc(224px + var(--st))}#gPlay{top:calc(264px + var(--st))}
-#gGuest{position:absolute;top:calc(304px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;border-color:var(--acc);color:var(--acc)}
+#gGuest,#gParty{position:absolute;top:calc(304px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;border-color:var(--acc);color:var(--acc)}
+#gParty:disabled{opacity:.55;cursor:default;border-color:var(--line);color:var(--ink)}
 #gRest{position:absolute;top:calc(184px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gRest:hover:not(:disabled){border-color:#fff}#gRest:disabled{opacity:.55;cursor:default}#gGun[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}#gCloud.warn{border-color:var(--acc);color:var(--acc)}
 .clp{font-size:13px;line-height:1.5;color:var(--mute);margin:10px 0 0}.clp b{color:var(--ink)}
@@ -260,7 +261,7 @@ body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px +
 @media (max-width:560px){#gSave{position:absolute;top:calc(100% + 6px);right:0;margin:0}#gui:has(#gSave:not(.hide)) #garageOptions .pill{margin-top:30px}
   /* seven pills down the right (HANG OUT, with a friend over, the seventh) fit above the car arrows: 34 px apart */
   #gCloud{top:calc(98px + var(--st))}#gGun{top:calc(132px + var(--st))}#gRest{top:calc(166px + var(--st))}
-  #gSnack{top:calc(200px + var(--st))}#gPlay{top:calc(234px + var(--st))}#gGuest{top:calc(268px + var(--st))}}
+  #gSnack{top:calc(200px + var(--st))}#gPlay{top:calc(234px + var(--st))}#gGuest,#gParty{top:calc(268px + var(--st))}}
 .saveWarn{background:rgba(10,22,31,.88);color:#ff8f82;border:1px solid #e2483d}.saveWarn.acct{color:#f2b33d;border-color:rgba(242,179,61,.55)}
 #damageHud.high{color:#f2b33d}
 #damageHud.critical{color:#ff8f82;border-color:#e2483d}
@@ -524,6 +525,19 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 .pzbar i{display:block;height:100%;width:0;background:var(--acc)}
 #pzNote,#cardNote{font-size:12px;color:var(--mute)}
 #cardList{list-style:none;padding:0;margin-bottom:0}
+.pyc{width:min(520px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column;overflow:auto}
+.pyb{flex:none}
+.pyn{font-size:12px;color:var(--mute);margin:2px 0 6px}
+#pyList{display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow:auto;flex:0 1 auto;min-height:60px;touch-action:pan-y}
+.pyp{margin:0;padding:8px 10px;text-align:left;letter-spacing:0;text-transform:none}
+.pyp b{display:block;font-size:13px}.pyp span{display:block;font-size:11px;color:var(--mute);font-weight:500;margin-top:2px}
+.pyp[aria-pressed="true"]{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}.pyp:disabled{opacity:.45}
+#pyReplies{list-style:none;padding:0;margin:8px 0 0;font-size:12px;line-height:1.45}#pyReplies:empty{display:none}
+#pyReplies .yes{color:var(--acc)}#pyReplies .no{color:var(--mute)}
+@media (max-height:520px){.pyc{width:min(640px,100%);padding:12px 20px}.pyc h3,.pyc .pyi{display:none}.pyc h2{font-size:22px;margin:0 0 2px}
+  #pyList{grid-template-columns:1fr 1fr 1fr}.pyp{padding:6px 10px}#pyReplies{margin-top:6px;line-height:1.35}
+  /* the buttons side by side, so the friends and the replies keep the room */
+  .pyb{display:flex;gap:10px}.pyb .mbtn{flex:1;margin-top:8px;padding:10px 8px}}
 @media (max-height:520px){
   /* a landscape phone: a shorter heading and the cards in two columns, so at least four show at once */
   #collections .card{padding:14px 20px}
@@ -684,6 +698,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
     <button id="gSnack" class="pill hide">SNACK</button>
     <button id="gPlay" class="pill hide">PLAY</button>
     <button id="gGuest" class="pill hide">HANG OUT</button>
+    <button id="gParty" class="pill hide">THROW A PARTY</button>
     <button id="gRest" class="pill">REST · ENERGY 80</button>
   </div>
   <div id="hd" class="hide" role="region" aria-label="Design your home">
@@ -883,6 +898,15 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <div id="cardCount" class="num"></div><div class="pzbar"><i id="cardBar"></i></div><div id="cardNote"></div>
   <ol id="cardList" tabindex="0" aria-label="Postcards"></ol>
   <button id="cardClose" class="mbtn pri">CLOSE</button>
+</div></div>
+<div id="party" class="ov hide"><div class="card pyc" role="dialog" aria-modal="true" aria-labelledby="pyTitle">
+  <h3>HOME</h3><h2 id="pyTitle">Throw a party</h2>
+  <p class="pyn pyi">Ask up to three Friends over. Some need to be closer friends than others before they'll come.</p>
+  <div id="pyCount" class="pyn"></div>
+  <div id="pyList" role="group" aria-label="Friends to ask"></div>
+  <ul id="pyReplies" aria-live="polite"></ul>
+  <div class="pyb"><button id="pyInvite" class="mbtn pri">SEND INVITATIONS</button><button id="pyStart" class="mbtn pri hide">START THE PARTY</button>
+  <button id="pyClose" class="mbtn">CLOSE</button></div>
 </div></div>
 <div id="passport" class="ov hide"><div class="card pzc" role="dialog" aria-labelledby="pzTitle">
   <h3>EXPLORE</h3><h2 id="pzTitle">Explorer Passport</h2>

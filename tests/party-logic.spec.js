@@ -8,7 +8,7 @@ function home(){
     gains:{},needsAdd:(k,v)=>g.gains[k]=(g.gains[k]||0)+v,feel:(id)=>g.emotion=id,skillAward:(k,n)=>g.xp=n,persist:()=>g.writes++,writes:0};
   const run=s=>vm.runInContext(s,g);vm.createContext(g);
   run(part("life","const PEOPLE=","const TRAIT_LABEL")+part("life","const rel=id","function relLabel")+
-    part("life","function homeWaitClean","const needsKey=")+part("life","const PARTY="));
+    part("life","function homeWaitClean","const needsKey=")+part("life","const PARTY=","/* ---------- the party at home: its button"));
   for(let i=0;i<16;i++)g.save.rel[i]={n:1,f:75};
   return {g,run};
 }

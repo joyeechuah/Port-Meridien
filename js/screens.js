@@ -896,6 +896,7 @@ addEventListener("keydown",e=>{
     return;
   }
   if(cuOpen()){if(k==="escape"&&!e.repeat)custClose(false);return}
+  if(typeof partyOpen==="function"&&partyOpen()){if(k==="escape"&&!e.repeat)partyPanelClose();return}
   // Space is the handbrake while driving, focused button or not (a stray Tab mustn't turn it into a map or pause
   // key mid-race; Enter presses a Tab-focused button there). Anywhere else Space presses the focused button, as on
   // any page, and isn't recorded as a held handbrake
