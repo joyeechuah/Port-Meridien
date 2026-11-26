@@ -1003,7 +1003,9 @@ $("c").addEventListener("pointermove",e=>{if(state!=="GARAGE"||e.pointerType!=="
    more and says so, with a button to play there instead (it reloads, taking the latest save). */
 const TAB_ID=Math.random().toString(36).slice(2),TAB_KEY="port-meridien-tab";
 const tabCh=typeof BroadcastChannel==="function"?new BroadcastChannel("port-meridien-tabs"):null;
+// (a stopped tab also leaves a room it's in or joining: it kept its place, and a four-player room had one less; Codex's audit)
 function tabStop(){if(tabIdle)return;tabIdle=true;if(state==="DRIVE")pauseOn();clearInput();audioOn(false);
+  if(typeof NET!=="undefined"&&(NET.tx||NET.room)&&typeof netLeave==="function")netLeave();
   if(AC){try{const p=AC.suspend();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
   show("tabIdle",true);try{$("tiHere").focus({preventScroll:true})}catch(e){}}
 // by BroadcastChannel; a browser without it gets a note in storage instead (the save stays the only key otherwise)

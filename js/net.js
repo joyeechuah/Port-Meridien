@@ -21,7 +21,8 @@ const netReady=()=>netLocal()||!!(FIREBASE_CONFIG.databaseURL&&FIREBASE_CONFIG.a
 function netNewCode(){const a=new Uint32Array(4);crypto.getRandomValues(a);return [...a].map(v=>NET_LETTERS[v%NET_LETTERS.length]).join("")}
 const netCodeOf=s=>String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4);
 // a name: letters, digits, spaces and a few marks, at most 12 characters; blank is "Player"
-const netName=s=>String(s||"").replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim().slice(0,12);
+// (in one Unicode form, NFC: a pasted "Inês" spelt as e plus a combining accent lost its accent and read "Ines")
+const netName=s=>String(s||"").normalize("NFC").replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim().slice(0,12);
 const netMyName=()=>netName(save.nick)||"Player";
 
 /* ---------- the two ways to reach the others ---------- */
@@ -89,19 +90,23 @@ function netRelay(){
   return{
     connect(){return Promise.resolve(uid)},
     open(code,create,on){
-      url="/__play/"+code;const here=new Set();
+      // here: the players answering; ahead: others still joining with me, so two of them can't both take the last place
+      // (whoever has the lower id goes first; Codex's audit)
+      url="/__play/"+code;const here=new Set(),ahead=new Set();let wait=true;
       return new Promise((res,rej)=>{es=new EventSource(url);es.onopen=()=>res();es.onerror=()=>{if(es.readyState!==1)rej(new Error("no relay at "+url))}})
         .then(()=>{
           es.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(x){return}if(!m||m.uid===uid)return;
-            if(m.k==="who"){if(last)post({k:"st",uid,d:last})}
-            else if(m.k==="st"){here.add(m.uid);on.state(m.uid,m.d)}
-            else if(m.k==="bye")on.leave(m.uid)};
+            if(m.k==="who"){if(last)post({k:"st",uid,d:last});else if(wait){if(m.uid<uid)ahead.add(m.uid);post({k:"pend",uid})}}
+            else if(m.k==="pend"){if(wait&&m.uid<uid)ahead.add(m.uid)}
+            else if(m.k==="st"){here.add(m.uid);ahead.delete(m.uid);on.state(m.uid,m.d)}
+            // (someone leaving while I look no longer counts as being here: the last host leaving made an empty room joinable)
+            else if(m.k==="bye"){here.delete(m.uid);ahead.delete(m.uid);on.leave(m.uid)}};
           post({k:"who",uid});return new Promise(r=>setTimeout(r,400))})
         .then(()=>{
           if(create&&here.size)throw new Error("taken");
           if(!create&&!here.size)throw new Error("There's no room with that code. Check it with your friend.");
-          if(here.size>=NET.MAX)throw new Error("That room is full: four players already.")})
-        .catch(e=>{if(es){es.close();es=null}throw e})},
+          if(here.size+(create?0:ahead.size)>=NET.MAX)throw new Error("That room is full: four players already.");wait=false})
+        .catch(e=>{wait=false;if(es){post({k:"bye",uid});es.close();es=null}throw e})},
     put(d){last=d;if(es)post({k:"st",uid,d})},
     close(){if(es){post({k:"bye",uid});es.close()}es=null}
   };

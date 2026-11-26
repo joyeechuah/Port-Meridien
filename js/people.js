@@ -1300,8 +1300,8 @@ function buildHarbour(){
   // the outboard: its cowling over the transom and its leg down into the water
   bp(new THREE.BoxGeometry(.5,.62,.55),metal,0,.86,-3.42);bp(new THREE.BoxGeometry(.52,.12,.57),navy,0,1.18,-3.42);
   bp(new THREE.BoxGeometry(.16,.9,.22),metal,0,.15,-3.5);
-  // port and starboard lights at the bow
-  bp(new THREE.BoxGeometry(.08,.06,.14),red,-.55,.66,1.95);bp(new THREE.BoxGeometry(.08,.06,.14),green,.55,.66,1.95);
+  // port and starboard lights at the bow: the bow is +z, so port (red) is +x and starboard (green) is -x
+  bp(new THREE.BoxGeometry(.08,.06,.14),red,.55,.66,1.95);bp(new THREE.BoxGeometry(.08,.06,.14),green,-.55,.66,1.95);
   const wk=new THREE.BufferGeometry();wk.setAttribute("position",new THREE.Float32BufferAttribute([0,0,-2.6, 3.4,0,-24, -3.4,0,-24],3));wk.computeVertexNormals();
   wk.setAttribute("uv",new THREE.Float32BufferAttribute([.5,1, 1,0, 0,0],2));
   // strongest at the stern, gone by the far end (a flat wedge read as a beam of light on a phone)
