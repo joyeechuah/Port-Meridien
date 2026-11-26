@@ -574,7 +574,7 @@ function initCops(){
 }
 // a car out of service: off the road and out of sight until it is called on
 // (repaired while out of service: one shot to a stop comes back whole the next time it is called)
-function copStandDown(t){t.chase=false;t.offDuty=false;t.e=null;t.lost=true;t.c.G.visible=false;t.wx=t.wz=1e6;t.v=0;t.damage=t.damageT=0;t.stopT=0;showDamageSmoke(t.c,0)}
+function copStandDown(t){t.chase=false;t.free=false;t.offDuty=false;t.e=null;t.lost=true;t.c.G.visible=false;t.wx=t.wz=1e6;t.v=0;t.damage=t.damageT=0;t.stopT=0;showDamageSmoke(t.c,0)}
 const copSees=(x,z)=>TRAFFIC.some(t=>t.cop&&t.e&&Math.hypot(t.wx-x,t.wz-z)<COP_V.see);
 const wantedBlock=()=>toast("LOSE THE POLICE FIRST","They're still after you: get out of their reach for a while","bad");
 const CRIME={crash:["Crashed into a car in front of the police",1],ped:["Ran into someone in front of the police",1],take:["Took a car in front of the police",1],
@@ -616,7 +616,7 @@ function copPlace(t,dmin,dmax){
     const e=pickEdge(),s=Math.random()*e.len,p=edgePos(e,s),dx=p.x-me.x,dz=p.z-me.z,d=Math.hypot(dx,dz);
     if(d<dmin||d>dmax||(dx*cf.x+dz*cf.z)/d>.2)continue;
     if(TRAFFIC.some(o=>o!==t&&o.e&&Math.abs(o.wx-p.x)<14&&Math.abs(o.wz-p.z)<14))continue;
-    t.e=e;t.s=s;t.dir=Math.random()<.5?1:-1;t.lost=false;t.lane=0;setLane(t);t.v=8;t.offCur=t.off;
+    t.e=e;t.s=s;t.dir=Math.random()<.5?1:-1;t.lost=false;t.free=false;t.lane=0;setLane(t);t.v=8;t.offCur=t.off;
     const ux=p.dx*t.dir,uz=p.dz*t.dir;t.wx=p.x-uz*t.off;t.wz=p.z+ux*t.off;t.yaw=Math.atan2(ux,uz);return true;
   }
   return false;
@@ -640,10 +640,64 @@ function copPick(t,node){
     if(c<bc){bc=c;best=a}}
   return best;
 }
+// Off the road. A chasing car that has you in sight, within 160 m, leaves the road when you drive more than 12 m from
+// any, and comes straight for you over open ground: round trees, rocks and walls, never into the sea, and slower than
+// on the road. It pulls up a few metres short of you. With you back on a road, or out of its sight, it makes for the
+// nearest road and carries on along the roads. (They used to keep to the roads whatever you did, so a car off the
+// road shook them off.) On foot, as before, an officer gets out and comes for you
+const COP_OFF={leave:12,back:8,reach:160,top:20,acc:5,turn:1.5,probe:7,stop:7};
+function copOffRoad(){if(FOOT.on||BOAT.on)return false;const me=copMe();return !nearestRoad(me.x,me.z,COP_OFF.leave)}
+// the sea (or a pool deep enough to drown a car), or something solid a car's width from (x,z)
+function copBlocked(x,z){
+  if(groundH(x,z)<-.4)return true;let hit=false;
+  obstaclesNear(x,z,3,o=>{if(hit)return;
+    if(o.c)hit=Math.hypot(x-o.x,z-o.z)<o.r+1.3;
+    else{const dx=x-o.x,dz=z-o.z,lx=dx*o.cs-dz*o.sn,lz=dx*o.sn+dz*o.cs;hit=Math.abs(lx)<o.hx+1.2&&Math.abs(lz)<o.hz+1.2}});
+  return hit;
+}
+// back onto the road nearest it, facing the way it was going
+function copRejoin(t){
+  t.free=false;const nr=nearestRoad(t.wx,t.wz,40)||nearestRoadGlobal(t.wx,t.wz,false);if(!nr)return;
+  t.e=nr.e;t.s=nr.s;const q=edgePos(t.e,t.s);t.dir=Math.sin(t.yaw)*q.dx+Math.cos(t.yaw)*q.dz>=0?1:-1;t.lane=0;setLane(t);t.offCur=t.off;
+}
+function copFreeDrive(t,dt){
+  tickDamage(t,dt);t.hitT-=dt;
+  const me=copMe(),chasing=copOffRoad()&&WANTED.seen;let tx=me.x,tz=me.z,short=COP_OFF.stop;
+  if(!chasing){const nr=nearestRoad(t.wx,t.wz,COP_OFF.back);if(nr){copRejoin(t);return copPose(t,dt)}
+    const g=nearestRoadGlobal(t.wx,t.wz,false);if(!g){copRejoin(t);return copPose(t,dt)}tx=g.x;tz=g.z;short=0}
+  const d=Math.hypot(tx-t.wx,tz-t.wz),want=Math.atan2(tx-t.wx,tz-t.wz);
+  // the way ahead blocked: the nearest open heading, keeping to the side it last turned to
+  const open=h=>!copBlocked(t.wx+Math.sin(h)*3,t.wz+Math.cos(h)*3)&&!copBlocked(t.wx+Math.sin(h)*COP_OFF.probe,t.wz+Math.cos(h)*COP_OFF.probe);
+  let head=null;const side=t.freeSide||1;
+  for(const k of[0,.4,.8,1.2,1.7,2.2])for(const sg of k?[side,-side]:[1]){const h=want+k*sg;if(head===null&&open(h)){head=h;if(k)t.freeSide=sg}}
+  let target=head===null?0:Math.min(COP_OFF.top*damagePower(t),Math.sqrt(2*6*Math.max(0,d-short)));
+  // boxed in (a wall's corner, trees): back up a little, then try the other side
+  if(head===null){t.freeBack=(t.freeBack||0)+dt;if(t.freeBack<1.5)target=-4;else{t.freeSide=-side;t.freeBack=0}}else t.freeBack=0;
+  if(head!==null){const dh=wrapA(head-t.yaw),rate=COP_OFF.turn*Math.min(1,.35+t.v/8);t.yaw+=clamp(dh,-rate*dt,rate*dt);if(Math.abs(dh)>1.2)target=Math.min(target,6)}
+  t.v+=clamp(target-t.v,-COP_V.brake*dt,COP_OFF.acc*dt);
+  const nx=t.wx+Math.sin(t.yaw)*t.v*dt,nz=t.wz+Math.cos(t.yaw)*t.v*dt;
+  if(t.v>.05&&copBlocked(nx,nz)){t.v=0;t.freeStuck=(t.freeStuck||0)+dt}else{t.wx=nx;t.wz=nz;t.freeStuck=Math.max(0,(t.freeStuck||0)-dt)}
+  // no way through for a while and you're further than an officer would run: back to the roads
+  if(t.freeStuck>5&&d>OFF_V.reach){copRejoin(t);return copPose(t,dt)}
+  copFreePose(t,dt);
+}
+function copFreePose(t,dt){
+  const me=copMe(),d=Math.hypot(t.wx-me.x,t.wz-me.z);t.c.G.visible=d<560;
+  if(t.c.G.visible){const fx=Math.sin(t.yaw)*1.3,fz=Math.cos(t.yaw)*1.3,yF=surfH(t.wx+fx,t.wz+fz),yB=surfH(t.wx-fx,t.wz-fz);
+    t.c.G.position.set(t.wx,(yF+yB)/2,t.wz);t.c.G.rotation.set(-Math.atan((yF-yB)/2.6),t.yaw,0,"YXZ");showDamageSmoke(t.c,t.damage||0,dt)}
+}
+// a car stood down where it was off the road (wrecked, or the chase over): it rolls to a stop there, and once well out
+// of sight it's gone, as any stood down
+function copFreeIdle(t,dt){
+  t.v=Math.max(0,t.v-COP_V.brake*dt);t.wx+=Math.sin(t.yaw)*t.v*dt;t.wz+=Math.cos(t.yaw)*t.v*dt;copFreePose(t,dt);
+  const me=copMe();if(Math.hypot(t.wx-me.x,t.wz-me.z)>400&&!t.c.G.visible){copStandDown(t)}
+}
 // a chasing police car: along the roads at up to about 110 km/h, round the slower traffic, straight at you once it is
 // on your road, and it stops beside you
 function copDrive(t,dt){
-  if(!COPNAV||OFFICER.car===t){t.v=Math.max(0,t.v-COP_V.brake*dt);return copPose(t,dt)}
+  if(!COPNAV||OFFICER.car===t){t.v=Math.max(0,t.v-COP_V.brake*dt);return t.free?copFreePose(t,dt):copPose(t,dt)}
+  if(t.free)return copFreeDrive(t,dt);
+  if(WANTED.seen&&copOffRoad()&&Math.hypot(t.wx-copMe().x,t.wz-copMe().z)<COP_OFF.reach){t.free=true;t.freeStuck=0;return copFreeDrive(t,dt)}
   tickDamage(t,dt);t.hitT-=dt;
   const N=COPNAV,end=t.dir>0?t.e.b:t.e.a,back=t.dir>0?t.e.a:t.e.b,dEnd=t.dir>0?t.e.len-t.s:t.s;
   const top=Math.min(COP_V.top,RT[t.e.type].spd*2.1)*damagePower(t);let target=top,offT=t.off;
@@ -806,7 +860,7 @@ const copLoseT=()=>6+3*WANTED.lvl;
 function copClear(){
   const W=WANTED;W.lvl=0;W.evadeT=0;W.caughtT=0;W.seen=true;COPNAV=null;
   // patrol cars go back to patrolling where they are; the others drive off and are stood down once out of sight
-  for(const t of TRAFFIC)if(t.cop&&t.chase){t.chase=false;if(t.e){t.lane=0;setLane(t);t.v=Math.min(t.v,t.base);t.offDuty=!t.patrol}}
+  for(const t of TRAFFIC)if(t.cop&&t.chase){t.chase=false;if(t.free)copRejoin(t);if(t.e){t.lane=0;setLane(t);t.v=Math.min(t.v,t.base);t.offDuty=!t.patrol}}
   if(OFFICER.on){OFFICER.back=true;if(OFFICER.car)OFFICER.car.stopT=1e6}
   wantedHud();
 }
