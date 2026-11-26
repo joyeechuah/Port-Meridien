@@ -1293,6 +1293,7 @@ function updateTraffic(dt){
     // (a police car beyond the two patrols waits off the road until it is called: copDispatch places it)
     if(!t.e){if(bubble&&t.lost&&(!t.cop||t.patrol))t.lost=!spawnTraffic(t,220,560,true);continue}
     if(t.chase){copDrive(t,dt);continue}
+    if(t.free){copFreeIdle(t,dt);continue}   // a police car stood down off the road (js/people.js)
     tickDamage(t,dt);
     let target=t.base*damagePower(t);
     if(t.stopT>0){t.stopT-=dt;target=0}

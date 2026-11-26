@@ -761,3 +761,89 @@ test.describe("police", () => {
     expect(r.kph).toBeLessThan(1);
   });
 });
+
+// Off the road in a car: a chasing police car leaves the road and comes over open ground for you (it used to keep to
+// the roads, so a car off the road shook them off), pulls up a few metres short and you're caught if you stay put.
+// Back on the road, it rejoins the roads.
+test.describe("police off the road", () => {
+  // your car, still, on open ground 40 m from the setup's road, with a police car 60 m along that road
+  const offRoadCar = (game) =>
+    game.eval(() => {
+      const T = __T,
+        P = T.P,
+        { e, s } = window.__road;
+      for (const ds of [0, 30, -30, 60, -60])
+        for (const sd of [1, -1]) {
+          const q = T.edgePos(e, s + ds),
+            x = q.x - q.dz * sd * 40,
+            z = q.z + q.dx * sd * 40;
+          if (T.nearestRoad(x, z, 20) || T.copBlocked(x, z) || T.groundH(x, z) < 1) continue;
+          // open ground all the way from the road (no wall along it in between)
+          let clear = true;
+          for (let k = 6; k < 40 && clear; k += 2) if (T.copBlocked(q.x - q.dz * sd * k, q.z + q.dx * sd * k)) clear = false;
+          if (!clear) continue;
+          P.x = x;
+          P.z = z;
+          P.vx = P.vz = 0;
+          P.h = Math.atan2(q.dx, q.dz);
+          T.driveUpdate(1 / 60);
+          return { x, z };
+        }
+      return null;
+    });
+  test("a chasing car leaves the road and comes for you over open ground; you're caught if you stay put", async ({ game }) => {
+    await setup(game);
+    const spot = await offRoadCar(game);
+    expect(spot, "open ground off the road").not.toBeNull();
+    await placeCop(game, 0, 60);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        cop = T.TRAFFIC.find((t) => t.cop && t.e),
+        cr0 = T.save.cr;
+      cop.stopT = 0;
+      T.crime("crash", P.x, P.z);
+      let n = 0,
+        offRoad = false,
+        minD = 1e9;
+      while (T.WANTED.lvl && n++ < 60 * 40) {
+        T.driveUpdate(1 / 60);
+        if (cop.free && !T.nearestRoad(cop.wx, cop.wz, 8)) offRoad = true;
+        minD = Math.min(minD, Math.hypot(cop.wx - P.x, cop.wz - P.z));
+      }
+      return { offRoad, minD: +minD.toFixed(1), lvl: T.WANTED.lvl, fine: cr0 - T.save.cr, officer: T.OFFICER.on, sea: T.copBlocked(0, 3000) };
+    });
+    expect(r.offRoad).toBe(true);
+    expect(r.minD).toBeLessThan(10);
+    expect(r).toMatchObject({ lvl: 0, fine: 500, sea: true });
+    expect(await toasts(game)).toContain("CAUGHT");
+  });
+  test("back on the road, a car that left it rejoins the roads", async ({ game }) => {
+    await setup(game);
+    const spot = await offRoadCar(game);
+    expect(spot).not.toBeNull();
+    await placeCop(game, 0, 60);
+    const r = await game.eval(() => {
+      const T = __T,
+        P = T.P,
+        cop = T.TRAFFIC.find((t) => t.cop && t.e),
+        { e, s } = window.__road;
+      cop.stopT = 0;
+      T.crime("crash", P.x, P.z);
+      let n = 0;
+      while (!cop.free && n++ < 60 * 10) T.driveUpdate(1 / 60);
+      const left = cop.free;
+      // a few seconds over the ground, then you're back on the road and drive off along it
+      for (let i = 0; i < 60 * 2; i++) T.driveUpdate(1 / 60);
+      const q = T.edgePos(e, s + 200);
+      P.x = q.x;
+      P.z = q.z;
+      T.resetToRoad(false);
+      P.vx = P.vz = 0;
+      n = 0;
+      while (cop.free && n++ < 60 * 20) T.driveUpdate(1 / 60);
+      return { left, rejoined: !cop.free, onRoad: !!T.nearestRoad(cop.wx, cop.wz, 10), chasing: cop.chase };
+    });
+    expect(r).toEqual({ left: true, rejoined: true, onRoad: true, chasing: true });
+  });
+});

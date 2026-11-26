@@ -120,7 +120,7 @@ Two patrol cars drive with the traffic: white, with a blue band and a light bar,
 
 Each further crime adds a star, up to five. Nothing counts during a race or a test drive.
 
-While you're wanted, police cars chase you along the roads, more of them the more stars you have, with lights and sirens. Stop and let one pull up beside you, and you're **caught**: a fine of 500 CR a star, and the stars are gone. Off the road, an officer gets out and comes for you on foot. You can outrun them, but not for ever.
+While you're wanted, police cars chase you along the roads, more of them the more stars you have, with lights and sirens. Stop and let one pull up beside you, and you're **caught**: a fine of 500 CR a star, and the stars are gone. Drive off the road and they come after you over open ground, round trees, rocks and walls (never into the sea), and back onto the roads when you are. On foot off the road, an officer gets out and comes for you on foot. You can outrun them, but not for ever.
 
 Get out of their reach and stay out of it long enough (the stars blink meanwhile) and they **lose you**. The boat is out of their reach.
 

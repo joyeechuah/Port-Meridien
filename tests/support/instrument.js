@@ -20,6 +20,7 @@ const { ROOT, readPage, scriptFiles } = require("./source");
 // internal names the tests read; each is exposed as a getter, so the value is always the live one, and a name
 // that no longer exists fails only the tests that use it, with "<name> is not defined"
 const NAMES = (
+  "copBlocked COP_OFF " +
   "PARTY " +
   "PARTY_M PARTY_SEL partySync partyOpen partyPanelClose partyFriends homeUntil " +
   "partyInvite " +
