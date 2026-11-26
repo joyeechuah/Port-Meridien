@@ -121,15 +121,18 @@ function postcardFaces(){
 function buildPostcards(){
   for(const m of POSTCARD_MARKS.values())scene.remove(m.G);POSTCARD_MARKS.clear();
   postcardCalm=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const F=postcardFaces(),cardGeo=new THREE.PlaneGeometry(.42,.28),postGeo=new THREE.BoxGeometry(.07,1.05,.07).translate(0,.525,0);
+  const F=postcardFaces(),cardGeo=new THREE.PlaneGeometry(.56,.38),postGeo=new THREE.BoxGeometry(.07,1.14,.07).translate(0,.57,0);
   const frontM=new THREE.MeshBasicMaterial({map:F.front}),backM=new THREE.MeshBasicMaterial({map:F.back});
   const postM=new THREE.MeshLambertMaterial({color:0x7a5a3c});
-  const beamM=new THREE.MeshBasicMaterial({color:0xffe9b8,transparent:true,opacity:.16,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
-  const beamGeo=new THREE.CylinderGeometry(.32,.32,9,10,1,true).translate(0,4.5,0);
+  // the beam starts above the card, so it never washes over it, and fades out as it rises
+  const fade=document.createElement("canvas");fade.width=4;fade.height=64;
+  {const x=fade.getContext("2d"),g=x.createLinearGradient(0,0,0,64);g.addColorStop(0,"#000");g.addColorStop(.5,"#1a1a1a");g.addColorStop(1,"#fff");x.fillStyle=g;x.fillRect(0,0,4,64)}
+  const beamM=new THREE.MeshBasicMaterial({color:0xffdc96,map:new THREE.CanvasTexture(fade),transparent:true,opacity:.3,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
+  const beamGeo=new THREE.CylinderGeometry(.2,.2,8,10,1,true).translate(0,1.8+4,0);
   for(const c of POSTCARDS){
     const G=new THREE.Group();G.position.set(c.x,footGround(c.x,c.z),c.z);
     const post=new THREE.Mesh(postGeo,postM);post.castShadow=true;G.add(post);
-    const card=new THREE.Group();card.position.y=1.32;
+    const card=new THREE.Group();card.position.y=1.38;
     const fr=new THREE.Mesh(cardGeo,frontM),bk=new THREE.Mesh(cardGeo,backM);bk.rotation.y=Math.PI;card.add(fr,bk);G.add(card);
     G.add(new THREE.Mesh(beamGeo,beamM));
     G.visible=false;scene.add(G);POSTCARD_MARKS.set(c.id,{G,card});
@@ -141,7 +144,7 @@ function postcardTick(dt){
   let i=0;
   for(const[id,m] of POSTCARD_MARKS){
     const G=m.G;G.visible=!got.has(id)&&(G.position.x-cx)**2+(G.position.z-cz)**2<320*320;
-    if(G.visible&&!postcardCalm){m.card.rotation.y=postcardT*1.1+i;m.card.position.y=1.32+Math.sin(postcardT*1.8+i)*.04}
+    if(G.visible&&!postcardCalm){m.card.rotation.y=postcardT*1.1+i;m.card.position.y=1.38+Math.sin(postcardT*1.8+i)*.04}
     i++;
   }
 }

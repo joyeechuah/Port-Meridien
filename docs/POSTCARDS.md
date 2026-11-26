@@ -6,7 +6,7 @@ Walk or run within 2.5 metres of a card to collect it. Driving, sailing, standin
 
 ## Marker placements
 
-The catalogue in js/core.js provides stable IDs and world coordinates for Claude's markers. These sites sit about 1.3 m beyond the road edge on the side facing the island interior. The pickup radius reaches back to the road shoulder. Each marker (js/progress.js `buildPostcards`) is a short post at footGround(x,z) with a card turning on top and a faint 9 m beam; it is hidden once save.postcards contains its ID, and only markers within 320 m of the camera are drawn. Markers have no collider.
+The catalogue in js/core.js provides stable IDs and world coordinates for Claude's markers. These sites sit about 1.3 m beyond the road edge on the side facing the island interior. The pickup radius reaches back to the road shoulder. Each marker (js/progress.js `buildPostcards`) is a short post at footGround(x,z) with a card turning on top and a faint beam rising from above it; it is hidden once save.postcards contains its ID, and only markers within 320 m of the camera are drawn. Markers have no collider.
 
 | ID | Postcard | Place | World x | World z |
 |---|---|---|---:|---:|
