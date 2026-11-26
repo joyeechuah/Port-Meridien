@@ -1299,7 +1299,8 @@ function clRow(sv,at,other){const m=clSummary(sv),li=t=>"<li>"+t+"</li>",p=clPeo
 // person they differ on and where you stand with them, since the rest of the two cards can be the same
 function clPeople(sv,other){
   const r=sv.rel&&typeof sv.rel==="object"?sv.rel:{},o=other&&other.rel&&typeof other.rel==="object"?other.rel:{},vs=Object.values(r);
-  const met=vs.filter(v=>v&&v.n>0).length,fr=vs.filter(v=>v&&v.f>=35).length;
+  // (a friend at the game's own Friend line, js/life.js RIDE_AT: 35 counted the Friendly too)
+  const met=vs.filter(v=>v&&v.n>0).length,fr=vs.filter(v=>v&&v.n>0&&v.f>=(typeof RIDE_AT==="number"?RIDE_AT:40)).length;
   const id=other?PEOPLE.findIndex((x,i)=>(r[i]?.f??0)!==(o[i]?.f??0)||(r[i]?.n??0)!==(o[i]?.n??0)):-1;
   if(!met&&id<0)return"";
   return met+(met===1?" person":" people")+" met · "+fr+" friend"+(fr===1?"":"s")+(id>=0?" · "+PEOPLE[id].name+": "+relLabel(r[id]):"");

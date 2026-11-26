@@ -148,9 +148,14 @@ function wantsSync(remoteRaw){
   return false;
 }
 // (no promotion to want once you're the kitchen's head chef)
+// (a want that can't be done any more is never drawn, and one already on the list gives way: someone new to meet once
+// all sixteen are met, a landmark once the passport is complete, a skill level once every skill is at 10; Codex's audit)
 const wantOpen=id=>{
   if(id==="promote")return typeof workRank!=="function"||workRank()<WORK_RANKS.length-1;
   if(id==="contractPromotion")return typeof contractRank!=="function"||contractRank()<CONTRACT_RANKS.length-1;
+  if(id==="meet")return typeof PEOPLE==="undefined"||PEOPLE.some(p=>!(save.rel&&save.rel[p.id]&&save.rel[p.id].n>0));
+  if(id==="landmark")return typeof foundCount!=="function"||typeof LANDMARKS==="undefined"||!LANDMARKS.length||foundCount()<LANDMARKS.length;
+  if(id==="level")return typeof skillLevel!=="function"||!save.skills||Object.keys(save.skills).filter(k=>k!=="v").some(k=>skillLevel(k)<10);
   return true;
 };
 function wantDraw(exclude){
