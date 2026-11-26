@@ -386,8 +386,8 @@ function lifeUpdate(dt){
     // someone whose birthday it is shows a cake when you're near (now and then)
     else if(who&&!TALK.p&&p.m.G.visible&&p.st!=="down"&&isBirthday(who.id)&&LIFE.t-(p.caked??-99)>30&&Math.hypot(p.x-me.x,p.z-me.z)<14){
       p.caked=LIFE.t;emote(p,"cake",3)}
-    // a friend passing you on foot waves
-    else if(who&&FOOT.on&&!TALK.p&&p.m.G.visible&&p.st!=="down"&&(save.rel[who.id]?.f??0)>=35&&LIFE.t-(p.waved??-99)>40&&Math.hypot(p.x-FOOT.x,p.z-FOOT.z)<7){
+    // a friend passing you on foot waves (once a birthday cake has had its time: the wave replaced it a frame later)
+    else if(who&&FOOT.on&&!TALK.p&&p.m.G.visible&&p.st!=="down"&&!(p.emo&&p.emo.sp.visible&&p.emo.kind==="cake")&&(save.rel[who.id]?.f??0)>=35&&LIFE.t-(p.waved??-99)>40&&Math.hypot(p.x-FOOT.x,p.z-FOOT.z)<7){
       p.waved=LIFE.t;emote(p,"wave",2)}
     emoteTick(p,dt);
   }
