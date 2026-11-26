@@ -1038,6 +1038,20 @@ function pedModel(k,h,look){
     const a=new THREE.Mesh(L.arm,PED_MAT);a.position.set(s*.181,1.407,0);a.rotation.z=s*.105;G.add(a);arms.push(a)}
   G.scale.setScalar(h);G.visible=false;scene.add(G);return{G,legs,arms,face:{m:fm,tex:L.face,t:1+Math.random()*5,shut:false}};
 }
+// Who's about in Old Quay: there are fewer places for people (6 on a phone, 10 on a computer) than the sixteen who live
+// there, so each time you leave, everyone but a friend with you makes way for the next in turn, and all sixteen come
+// round (on a phone only the first six could ever be met: Codex's review of #114). Each looks and stands as always
+let pedTurn=0;
+function pedRotate(){
+  if(typeof PEOPLE==="undefined"||PEDS.length>=PEOPLE.length)return;
+  if(!pedTurn)pedTurn=PEDS.length;
+  const here=new Set(PEDS.filter(p=>p===RIDE.p||p===TALK.p).map(p=>p.pid));
+  for(const p of PEDS){if(p===RIDE.p||p===TALK.p)continue;
+    let id=pedTurn%PEOPLE.length;while(here.has(id))id=++pedTurn%PEOPLE.length;
+    pedTurn++;here.add(id);if(id===p.pid)continue;
+    scene.remove(p.m.G);p.m.face.m.dispose();
+    p.m=pedModel(id,.94+rnd(id,38)*.12);p.pid=id;p.mad=false;p.hitAt=undefined}
+}
 function buildPeds(){
   const xs=[560,620,690,760],o=PED_V.line,B=/** @type {any[]} */ ([]);
   const node=(x,z)=>{const n={x,z,adj:[]};PED_NODES.push(n);return n};
@@ -1063,7 +1077,7 @@ function buildPeds(){
   for(let i=0;i<PED_V.cap;i++){
     const e=walks[Math.floor(rnd(i,31)*walks.length)],fwd=rnd(i,32)<.5;
     PEDS.push({e,from:fwd?e.a:e.b,s:rnd(i,33)*e.len,v:0,st:"walk",t:0,off:(rnd(i,34)-.5)*1.1,o:0,ph:rnd(i,35)*TAU,h:0,x:0,z:0,y:0,
-      seed:1+Math.floor(rnd(i,36)*1e6),pace:.85+rnd(i,37)*.35,m:pedModel(i,.94+rnd(i,38)*.12)});
+      seed:1+Math.floor(rnd(i,36)*1e6),pace:.85+rnd(i,37)*.35,pid:i,m:pedModel(i,.94+rnd(i,38)*.12)});
   }
   buildVergeWalkers();
 }
@@ -1150,7 +1164,7 @@ function pedUpdate(dt){
   vergeTick(dt);
   if(!PEDS.length)return;
   const me=BOAT.on?BOAT:FOOT.on?FOOT:P,on=Math.hypot(me.x-660,me.z-36)<PED_V.near;
-  if(on!==pedOn){pedOn=on;if(!on)for(const p of PEDS)if(p!==RIDE.p){p.m.G.visible=false;if(p.pool)p.pool.visible=false;if(p.st==="down"&&p.out)pedRespawn(p,me)}}
+  if(on!==pedOn){pedOn=on;if(!on){for(const p of PEDS)if(p!==RIDE.p){p.m.G.visible=false;if(p.pool)p.pool.visible=false;if(p.st==="down"&&p.out)pedRespawn(p,me)}if(typeof pedRotate==="function")pedRotate()}}
   if(!on)return;
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of PEDS){

@@ -387,7 +387,9 @@ try{
    save.rel=o}
   save.gen=Number.isSafeInteger(save.gen)&&save.gen>0?save.gen:0;
   save.postcards=postcardsClean(save.postcards);
-  save.gift=giftClean(save.gift);save.gifted=giftedClean(save.gifted);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
+  save.gift=giftClean(save.gift);save.gifted=giftedClean(save.gifted);
+  // a save from before everyone given a gift was kept: the day's list it kept is that much of it (Codex's review)
+  if(!save.gifted.length&&save.gift.ids.length)save.gifted=save.gift.ids.slice().sort((a,b)=>a-b);save.traits=traitsClean(save.traits);save.wants=wantsClean(save.wants);save.skills=skillsClean(save.skills);save.photoDay=photoDayClean(save.photoDay);
   save.needs=needsClean(save.needs);save.work=workClean(save.work);
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};
