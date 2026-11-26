@@ -71,13 +71,23 @@ function hvParts(id,W,D,H){
     case"vase":cy(.12,.36,0,0,0,0x5d8aa8);cy(.07,.08,0,.36,0,0x5d8aa8);
       for(const[x,z,c]of[[-.05,0,0xae4666],[.05,.03,0xd8b23a],[0,-.05,0xcc687c]]){b(.012,.22,.012,x,.42,z,0x4f7a3a);b(.06,.06,.06,x,.62,z,c)}break;
     case"screen":for(const[x,z,ry]of[[-.48,.06,.35],[0,-.04,-.35],[.48,.06,.35]]){b(.5,H-.04,.03,x,.02,z,LINEN,ry);b(.52,.04,.05,x,H-.04,z,DARK,ry)}break;
+    // a cork board on two posts, with the postcards found pinned on its front, four to a row in the album's order
+    case"postcard-board":{for(const sx of[-1,1])b(.06,H,.06,sx*(W/2-.05),0,.04,DARK);
+      b(W-.04,.74,.06,0,H-.84,.04,DARK);b(W-.12,.66,.03,0,H-.8,.02,0x8a5c34);
+      const found=typeof postcardBoardCards==="function"?postcardBoardCards():[],ids=POSTCARDS.map(c=>c.id);
+      const PIC=[0xe98a5a,0x5d8aa8,0x7a9a5a,0xd8b23a,0xb8452f,0x7a5a8a,0x3d6b78,0xcc687c,0x8a6440,0x4f8a44,0x2f6f8f,0xa8553f];
+      for(const id of found){const k=found.indexOf(id),col=k%4,row=Math.floor(k/4),x=-.33+col*.22,y=H-.28-row*.2;
+        b(.18,.13,.012,x,y,.002,0xf4ecd8,(k%3-1)*.04);b(.16,.07,.006,x,y+.045,-.006,PIC[ids.indexOf(id)%PIC.length],(k%3-1)*.04)}
+      break}
     default:b(W,H,D,0,0,0,WOOD);
   }
   return P;
 }
 function hvGeo(id){
-  if(!HV.geo.has(id)){const it=homeById.get(id);HV.geo.set(id,merge(hvParts(id,it.w*HOME_CELL,it.d*HOME_CELL,it.height)))}
-  return HV.geo.get(id);
+  // (the board looks different with each card found: one shape for each album)
+  const key=id==="postcard-board"&&typeof postcardBoardCards==="function"?id+":"+postcardBoardCards().join(","):id;
+  if(!HV.geo.has(key)){const it=homeById.get(id);HV.geo.set(key,merge(hvParts(id,it.w*HOME_CELL,it.d*HOME_CELL,it.height)))}
+  return HV.geo.get(key);
 }
 // the room's own finishes: a floor laid over the mezzanine's slab, and the back wall's paint behind it
 function hvRoom(){
@@ -227,8 +237,11 @@ function hvPanelDraw(){
   }
   for(const it of HOME_ITEMS){if(it.group!==HV.group)continue;
     const b=document.createElement("button"),fx=it.effect==="rest"?"Better rest":it.effect==="snack"?"SNACK at home":it.effect==="play"?"PLAY at home":"";
-    b.className="hdc"+(HV.sel===it.id?" on":"")+(save.cr<it.price?" dim":"");b.dataset.k="i:"+it.id;b.setAttribute("aria-pressed",String(HV.sel===it.id));
-    b.innerHTML="<b></b><span></span><em></em>";b.children[0].textContent=it.name;b.children[1].textContent=fmtCr(it.price)+" CR";b.children[2].textContent=fx||"Comfort +"+it.comfort;
+    // the postcard board: only once you've found a card, and its comfort grows with the album (js/home.js)
+    const locked=typeof homeItemUnlocked==="function"&&!homeItemUnlocked(it.id),cards=it.id==="postcard-board"?postcardBoardCards().length:0;
+    b.className="hdc"+(HV.sel===it.id?" on":"")+(save.cr<it.price||locked?" dim":"");b.dataset.k="i:"+it.id;b.setAttribute("aria-pressed",String(HV.sel===it.id));b.disabled=locked;
+    b.innerHTML="<b></b><span></span><em></em>";b.children[0].textContent=it.name;b.children[1].textContent=fmtCr(it.price)+" CR";
+    b.children[2].textContent=locked?"Find a postcard first":it.id==="postcard-board"?"Comfort +"+(it.comfort+Math.min(8,cards))+" with your "+cards+" card"+(cards===1?"":"s"):fx||"Comfort +"+it.comfort;
     b.onclick=()=>{HV.sel=HV.sel===it.id?null:it.id;HV.pick=-1;HV.r=0;HV.tap=null;hvPanel();hvMarks();
       hvMsg(HV.sel?(isTouch?"Tap the floor to place it":"Click the floor to place it")+" · TURN or R to turn":"")};l.appendChild(b)}
 }

@@ -22,3 +22,9 @@ The catalogue in js/core.js provides stable IDs and world coordinates for Claude
 | common | Common Ground | North Common | -95.1 | -677.5 |
 | cove | Cove in Blue | East Cove | 603.1 | -390.2 |
 | north-point | The Long Way Home | North Point | -23.6 | -829.3 |
+
+## Postcard board at home
+
+The Postcard board costs 440 CR in Decor and takes two by one grid cells. The first found card unlocks purchases. Each placed board gives 3 base comfort plus 1 per distinct collected card, with up to 8 bonus comfort. The room still caps at 100 comfort.
+
+Use `homeItemUnlocked("postcard-board")` for the shop and `postcardBoardCards()` for the found IDs in album order. The layout stores the ordinary placement. The existing album supplies the cards and the comfort bonus after a reload or account restore.

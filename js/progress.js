@@ -166,6 +166,8 @@ function postcardPickup(){
   toast(full?"POSTCARD SET COMPLETE":"POSTCARD FOUND",card.title+" · "+album.length+"/"+POSTCARDS.length+
     (full?" · +"+fmtCr(POSTCARD_REWARD)+" CR":""),"gold");
   if(typeof feel==="function")feel("inspired","A postcard: "+card.title);
+  // a board at home shows the new card
+  if(typeof homeBuild==="function"&&save.home.items.some(p=>p.id==="postcard-board"))homeBuild();
   return true;
 }
 function renderPostcards(){
