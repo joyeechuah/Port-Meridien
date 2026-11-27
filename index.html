@@ -112,7 +112,10 @@ body.touch #lhint{display:none}
 #gSnack{top:calc(224px + var(--st))}#gPlay{top:calc(264px + var(--st))}
 #gGuest,#gParty{position:absolute;top:calc(304px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;border-color:var(--acc);color:var(--acc)}
 #gParty:disabled{opacity:.55;cursor:default;border-color:var(--line);color:var(--ink)}
-#gRest{position:absolute;top:calc(184px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
+#sleepNotice{position:fixed;z-index:95;top:50%;left:50%;transform:translate(-50%,-50%);max-width:85vw;width:max-content;padding:10px 16px;background:var(--panel);color:var(--ink);border-radius:8px;pointer-events:none;text-align:center}
+#sleepNotice:empty{display:none}
+#gBedActions{position:absolute;display:flex;align-items:center;gap:6px;top:calc(184px + var(--st));right:calc(22px + var(--sr))}
+#gSleep,#gRest{pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gRest:hover:not(:disabled){border-color:#fff}#gRest:disabled{opacity:.55;cursor:default}#gGun[aria-pressed="true"]{border-color:var(--acc);color:var(--acc)}#gCloud.warn{border-color:var(--acc);color:var(--acc)}
 .clp{font-size:13px;line-height:1.5;color:var(--mute);margin:10px 0 0}.clp b{color:var(--ink)}
 #clStat{font-size:12px;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:6px}#clStat.bad{border-color:var(--acc);color:var(--acc)}
@@ -261,7 +264,7 @@ body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px +
 /* a narrow phone has no room beside the credits: there it goes under them, and the pills below move down to make room */
 @media (max-width:560px){#gSave{position:absolute;top:calc(100% + 6px);right:0;margin:0}#gui:has(#gSave:not(.hide)) #garageOptions .pill{margin-top:30px}
   /* seven pills down the right (HANG OUT, with a friend over, the seventh) fit above the car arrows: 34 px apart */
-  #gCloud{top:calc(98px + var(--st))}#gGun{top:calc(132px + var(--st))}#gRest{top:calc(166px + var(--st))}
+  #gCloud{top:calc(98px + var(--st))}#gGun{top:calc(132px + var(--st))}#gBedActions{top:calc(166px + var(--st))}
   #gSnack{top:calc(200px + var(--st))}#gPlay{top:calc(234px + var(--st))}#gGuest,#gParty{top:calc(268px + var(--st))}}
 .saveWarn{background:rgba(10,22,31,.88);color:#ff8f82;border:1px solid #e2483d}.saveWarn.acct{color:#f2b33d;border-color:rgba(242,179,61,.55)}
 #damageHud.high{color:#f2b33d}
@@ -498,7 +501,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   /* REST (your needs, js/life.js) goes on a second line when the row would reach the garage's name */
   /* (clear of the car arrows at the sides: with every pill on, the third row ran under the right one) */
   #garageOptions{position:absolute;top:calc(60px + var(--st));right:calc(74px + var(--sr));display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:min(480px,calc(100vw - 148px - var(--sl) - var(--sr)))}
-  #garageOptions .pill{position:static;min-height:36px}
+  #gBedActions{position:static}#garageOptions .pill{position:static;min-height:36px}
 }
 /* photo mode: a gesture layer over the whole screen, the controls along the top and bottom edges */
 #photo{position:fixed;inset:0;z-index:58;pointer-events:none}
@@ -689,6 +692,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <button class="btn ghost" id="arrivalSkip">Skip intro</button>
 </section>
 
+<div id="sleepNotice" role="status" aria-live="polite"></div>
 <div id="gui" class="hide">
   <div id="gtitle"><div class="k">HOME · EASTBANK HILLS · <span id="gcount"></span><span id="gcups"></span></div><div class="t">MY GARAGE</div><div id="ghint">Click a car to select it, click it again to drive</div></div>
   <div id="gcr" class="pill">Credits<b class="num" id="gcrv">0</b><button type="button" id="gSave" class="hide saveWarn" aria-live="polite">NOT SAVED</button></div>
@@ -700,7 +704,10 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
     <button id="gPlay" class="pill hide">PLAY</button>
     <button id="gGuest" class="pill hide">HANG OUT</button>
     <button id="gParty" class="pill hide">THROW A PARTY</button>
-    <button id="gRest" class="pill">REST · ENERGY 80</button>
+    <div id="gBedActions">
+      <button id="gRest" class="pill">REST · ENERGY 80</button>
+      <button id="gSleep" class="pill hide" title="Sleep until 07:00 (N or RB)">SLEEP</button>
+    </div>
   </div>
   <div id="hd" class="hide" role="region" aria-label="Design your home">
     <div class="hdh"><b>DESIGN YOUR HOME</b><span id="hdMsg" aria-live="polite"></span></div>
