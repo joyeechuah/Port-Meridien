@@ -48,7 +48,7 @@ test("an NPC traffic collision affects both vehicles without player contact", as
   expect(result[1]).toBeGreaterThan(0);
 });
 
-test("race rivals take damage and a new race resets it for everyone", async ({ game }) => {
+test("race rivals take damage and a new race resets theirs; yours stays until you repair", async ({ game }) => {
   await driving(game);
   const result = await game.eval(() => {
     const T = __T, P = T.P, race = T.EVENTS.find(e => e.type === "race");
@@ -63,7 +63,9 @@ test("race rivals take damage and a new race resets it for everyone", async ({ g
     return { damaged, fresh: [P.damage || 0, ...T.ev.ai.map(car => car.damage || 0)] };
   });
   expect(result.damaged.every(amount => amount > 0)).toBe(true);
-  expect(result.fresh).toEqual([0, 0, 0, 0]);
+  // an event used to repair your car for free, so entering one was the way round paying for it
+  expect(result.fresh[0]).toBe(result.damaged[0]);
+  expect(result.fresh.slice(1)).toEqual([0, 0, 0]);
 });
 
 test("damage costs acceleration, shows a warning and clears at the garage", async ({ game, page }) => {

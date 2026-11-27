@@ -8,6 +8,7 @@ function toastOnce(k,[t,m]){const now=performance.now();if(TOAST_AT[k]!==undefin
 function driveUpdate(dt){
   needsTick(dt);   // your needs fall while you play, whether you drive, walk or sail (js/life.js)
   rideTick(dt);    // a friend with you, following you or riding beside you (js/life.js)
+  if(typeof partyAbout==="function")partyAbout();   // a party in the house, while you walk about it (js/life.js)
   if(BOAT.on){boatUpdate(dt);return}
   if(FOOT.on){footUpdate(dt);return}
   tickDamage(P,dt);

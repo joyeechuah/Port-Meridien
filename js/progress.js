@@ -381,7 +381,8 @@ $("pJobs").onclick=jobsOpen;$("jbClose").onclick=jobsClose;
 /* ================================================================ CLASS CHAMPIONSHIPS
    Seven cups, A1 to A7, in the style of Test Drive Unlimited 2. Each is three of the island's events, entered in a car
    of the cup's class (a cup opens once you own one). Rounds score 10, 6, 4 or 3 points (1st to 4th in a race, gold to
-   no medal in a time trial); 22 of the 30 points wins the cup, which pays its prize the first time. Each round also
+   no medal in a time trial); 22 of the 30 points wins the cup, which pays its prize the first time, scaled by the
+   easiest difficulty its races were driven at. Each round also
    pays its event's own reward. A cup's time trial has medal times for its class, from the class's cars, the same way
    the usual medal times come from a quick road car (A3, the usual times). In a cup race the rivals drive cars of the
    class. Quitting a round leaves the cup where it was; after the third round the next start begins it afresh. */
@@ -402,7 +403,7 @@ function cupTimes(E,cls){
   const t=routeTime(E.k,13*gr(a.grip)/gr(r.grip),62*a.top/r.top,5.5*1.15*pw(a.acc)/pw(r.acc),8);
   return CUPT[key]={gold:t*1.02,silver:t*1.15,bronze:t*1.32};
 }
-const champOf=cls=>save.champ[cls]||(save.champ[cls]={r:0,pts:[],won:false});
+const champOf=cls=>save.champ[cls]||(save.champ[cls]={r:0,pts:[],d:[],won:false});
 const cupTotal=c=>c.pts.reduce((a,x)=>a+x,0);
 // can a cup start now? the reason if not
 // (the police first: a won cup played AGAIN during a chase used to wipe its rounds and points, then be refused)
@@ -416,19 +417,22 @@ function cupBlocked(cls){
 }
 function cupStart(cls){
   const C=cupOf(cls);if(!C||cupBlocked(cls))return false;
-  const c=champOf(cls);if(c.r>=3){c.r=0;c.pts=[]}
+  const c=champOf(cls);if(c.r>=3){c.r=0;c.pts=[];c.d=[]}
   persist();openIntro(evById(C.ev[c.r]),{cls,round:c.r});return true;
 }
 // after a cup round: its points, and at the third round whether the cup is won (the prize is paid the first time)
-function cupScore(cup,place){
+// The prize scales with the easiest race round, as each round's own reward does (a cup won on EASY used to pay
+// its full prize). Time trials have no difficulty and don't count.
+function cupScore(cup,place,diff){
   const C=cupOf(cup.cls),c=champOf(cup.cls),pts=CUP_PTS[place]||0;
   if(cup.round!==c.r)return{rows:[["Cup points","+"+pts+" (this round was already scored)"]]};
-  c.pts.push(pts);c.r++;const total=cupTotal(c),rows=[["Cup points","+"+pts+" · "+total+" of "+c.r*10]];let prize=0,next=null;
+  if(!c.d)c.d=[];c.pts.push(pts);c.d.push(diff===undefined?null:diff);c.r++;const total=cupTotal(c),rows=[["Cup points","+"+pts+" · "+total+" of "+c.r*10]];let prize=0,next=null;
   if(c.r<3)next={cls:cup.cls};
-  else if(total>=CUP_WIN){if(!c.won){prize=C.prize;rows.push(["Cup won",cup.cls+" Cup · +"+fmtCr(prize)+" CR"])}else rows.push(["Cup won","again · the prize was paid the first time"]);c.won=true;toast(cup.cls+" CUP WON",total+" of 30 points","gold")}
+  else if(total>=CUP_WIN){if(!c.won){prize=Math.round(C.prize*cupPay(c)/100)*100;rows.push(["Cup won",cup.cls+" Cup · +"+fmtCr(prize)+" CR"])}else rows.push(["Cup won","again · the prize was paid the first time"]);c.won=true;toast(cup.cls+" CUP WON",total+" of 30 points","gold")}
   else rows.push(["Cup over",total+" points, "+CUP_WIN+" needed to win"]);
   return{rows,prize,next};
 }
+function cupPay(c){const p=(c.d||[]).filter(x=>x!==null&&x!==undefined).map(x=>DIFFS[x].pay);return p.length?Math.min(...p):1}
 // ---- the championships screen, from the pause menu
 function renderCups(){
   const list=$("cpList");list.innerHTML="";const busy=job?"Finish or abandon your contract first":testDrive?"Not during a test drive":ev?"Finish or quit this event first":"";
@@ -438,7 +442,7 @@ function renderCups(){
     const t=document.createElement("div"),k=document.createElement("i"),b=document.createElement("b"),sp=document.createElement("span");
     k.textContent=C.cls+" CUP"+(c.won?" · WON":"");b.textContent=C.ev.map(id=>evById(id).name).join(" · ");
     const st=c.r>0&&c.r<3?"Round "+(c.r+1)+" of 3 · "+cupTotal(c)+" points so far":c.r>=3?"Last time: "+cupTotal(c)+" points"+(cupTotal(c)>=CUP_WIN?", won":", "+CUP_WIN+" needed"):"Win with "+CUP_WIN+" of 30 points";
-    sp.textContent=(why&&!busy?why+" · ":"")+st+" · prize "+fmtCr(C.prize)+" CR"+(c.won?" (paid)":"");
+    sp.textContent=(why&&!busy?why+" · ":"")+st+" · prize "+fmtCr(Math.round(C.prize*Math.min(cupPay(c.r<3?c:{d:[]}),DIFFS[save.diff].pay)/100)*100)+" CR at "+DIFFS[save.diff].n+(c.won?" (paid)":"");
     t.append(k,b,sp);row.appendChild(t);
     const g=document.createElement("button");g.className="mbtn"+(why?"":" pri");g.textContent=c.r>0&&c.r<3?"ROUND "+(c.r+1):c.r>=3?"AGAIN":"START";g.disabled=!!why;g.setAttribute("aria-label",g.textContent+" "+C.cls+" Cup");
     g.onclick=()=>{if(cupBlocked(C.cls))return;cupsClose();show("pause",false);cupStart(C.cls)};row.appendChild(g);list.appendChild(row);

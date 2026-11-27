@@ -810,6 +810,8 @@ function pollPad(){
   if(tabIdle)return;
   if(clOverlayOpen()){if(hit(1))clEscape();return}
   if(WORK.panel){GP.steer=GP.gas=GP.brake=0;GP.fire=GP.hb=false;workPad(hit);return}
+  // the party's invitations, opened on foot in the house: B closes them, and the walker stays put behind
+  if(state==="DRIVE"&&typeof partyOpen==="function"&&partyOpen()){GP.steer=GP.gas=GP.brake=0;GP.fire=GP.hb=false;if(hit(1))partyPanelClose();else padIn($("party"),hit);return}
   const inputState=state;
   // (the pause menu's scroll clock starts again on each visit: it kept the last one's time, and the first move jumped)
   if(state!=="PAUSE")GP.t=0;
