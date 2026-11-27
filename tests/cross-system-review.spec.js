@@ -86,7 +86,7 @@ test("the local relay preserves a name split across UTF-8 network chunks", () =>
   const writes = [];
   const source = segment("./support/server.js", "const ROOMS", "const server");
   vm.runInNewContext(source + 'ROOMS.set("ABCD",new Set([{write:s=>writes.push(s)}]));relay(req,res,"ABCD")',
-    {req, writes, res: {writeHead() {return this}, end() {}}});
+    {req, writes, Buffer, res: {writeHead() {return this}, end() {}}});
   const body = Buffer.from(JSON.stringify({n: "Inês"}));
   const split = body.indexOf(Buffer.from("ê")) + 1;
   req.emit("data",body.subarray(0,split));

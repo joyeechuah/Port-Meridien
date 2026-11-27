@@ -43,7 +43,10 @@ function resStill(on){
   if(on===RES.held)return;RES.held=on;
   if(on){RES.drive=prNow;if(RES.baseline)RES.drive=RES.previous}
   const next=on?PR_MAX:Math.min(PR_MAX,Math.max(PR_MIN,RES.drive||PR_MAX));
-  resetResolutionSample();
+  // the frames timed in the other scene go, and a trial of a lower scale with them; the waits before trying a scale
+  // again carry on where they were (cleared, a lower scale that had just been tried and given up was tried again
+  // three seconds after leaving the showroom; Codex's review)
+  RES.frames.length=0;RES.elapsed=0;RES.baseline=0;
   if(next!==prNow){prNow=next;renderer.setPixelRatio(next);renderer.setSize(W,H,false)}
 }
 function resetResolutionSample(){

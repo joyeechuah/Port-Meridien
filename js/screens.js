@@ -742,7 +742,7 @@ const SKILL_TEXT={driving:["Clean road driving and races","race prizes","+"],coo
 let traitDraft=[];
 function traitsRender(){
   const box=$("skTraits");box.replaceChildren();
-  const locked=save.traits.day>=Math.floor(Date.now()/86400000);
+  const locked=traitsLocked();
   for(const [id,[name,effect]] of Object.entries(TRAITS)){
     // a card each: the name, and what it does under it; a chosen one in the accent colour
     const b=document.createElement("button"),on=traitDraft.includes(id),n=document.createElement("b"),e=document.createElement("small");
@@ -1060,6 +1060,11 @@ function fbLoad(f){
 const CL_PREFS=["outfit","nick","auto","assist","sound","music","gfx","cam","todMode","tod","steer","tilt","side","diff","cur","jobActive","ghost","ghostOn","needs","homeWait","flash","violence","armed"];
 function clCanon(v){if(Array.isArray(v))return "["+v.map(clCanon).join(",")+"]";if(v&&typeof v==="object")return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+clCanon(v[k])).join(",")+"}";return JSON.stringify(v===undefined?null:v)}
 function clHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}return(h>>>0).toString(36)+":"+str.length}
+// today's allowances in a save (who has had a gift, how many photos counted): a restore from the same account adds
+// this device's to the account's (clApply), and then the save that loads isn't the account's, though it would count as
+// backed up (clBoot); the merged claims never reached the account, and another device offered the same gift again
+// (Codex's review)
+function clClaims(sv){return clCanon([typeof giftClean==="function"?giftClean(sv.gift):sv.gift??null,typeof photoDayClean==="function"?photoDayClean(sv.photoDay):sv.photoDay??null])}
 // (the save's number, gen, is this device's own: neither progress nor sent to the account)
 const clProg=sv=>{const o={};for(const k in sv)if(k!=="home"&&k!=="work"&&k!=="gen"&&!CL_PREFS.includes(k))o[k]=sv[k];
   delete o.postcards;if(sv.postcards?.length){const cards=postcardsClean(sv.postcards);if(cards.length)o.postcards=cards}
@@ -1159,7 +1164,9 @@ function clSet(st,msg){CL.st=st;CL.msg=msg||"";clRender();saveMark()}
 function clBoot(){
   CL.ad=clAdapter();
   // straight after a restore from the account: the save as this game reads it is the version now in step
-  if(CL.meta.rehash){CL.meta.rehash=false;CL.meta.prog=clProg(save);CL.meta.diskGen=SAVE.gen;CL.meta.disk=SAVE.gen?"":CL.meta.prog;CL.meta.full=clHash(clCanon(clPayload(save)));CL.meta.needs=needsKey(save);clSaveMeta()}
+  // (unless today's allowances differ from the account's, or the restore didn't note them: then it goes up once)
+  if(CL.meta.rehash){const got=CL.meta.claims;delete CL.meta.claims;CL.meta.rehash=false;CL.meta.prog=clProg(save);CL.meta.diskGen=SAVE.gen;CL.meta.disk=SAVE.gen?"":CL.meta.prog;
+    CL.meta.full=typeof got==="string"&&got===clClaims(save)?clHash(clCanon(clPayload(save))):"";CL.meta.needs=needsKey(save);clSaveMeta()}
   if(CL.meta.uid&&CL.ad)clConnect(false);else clRender();
   addEventListener("online",()=>{if(CL.user&&(CL.st==="offline"||CL.st==="pending"))clSync()});
   document.addEventListener("visibilitychange",()=>{if(document.hidden&&CL.user)clSync()});
@@ -1266,13 +1273,18 @@ function clApply(doc,cloud){const lost=[],sv=Object.assign({},cloud,{home:homeCl
       left=Math.max(0,Math.ceil(homeUntil.party-NS.t)),wait=Math.min(180,at>homeUntil.partyAt||!at&&!homeUntil.partyAt?there:at===homeUntil.partyAt?Math.min(left,there):left),
       hw=Object.assign({},w),stamp=Math.max(at,homeUntil.partyAt);
     delete hw.party;delete hw.partyAt;if(wait)hw.party=wait;if(stamp)hw.partyAt=stamp;sv.homeWait=hw}
+  // the same account's kitchen cooldown, with the same shifts done: the shorter, as sync keeps it (clWork). It only counts
+  // down, on either device; a restore brought back the longer (5 s left became 90 s: Codex's review)
+  if(!CL.other&&typeof WORK!=="undefined"&&save.work){const w=cloud.work;
+    if(w&&typeof w==="object"&&!Array.isArray(w)&&w.v===1&&Number.isFinite(w.completed)&&Math.min(9999,Math.floor(w.completed))===save.work.completed&&
+      Number.isFinite(w.cool)&&Math.ceil(WORK.cool)<w.cool)sv.work=Object.assign({},w,{cool:Math.max(0,Math.ceil(WORK.cool))})}
   CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   // if the browser won't store it, nothing changed: saving and backing up carry on, and the choice stays to try again
   // (and nothing from this device goes up in the meantime without comparing again: its older save would replace the
   // account's at the same revision)
   const written=saveWrite(sv,true);if(!written){CL.applying=false;CL.meta.rev=-1;CL.pick={doc,cloud};clSet("error","This browser won't store the restored progress.");return}
   if(written===1)sv.ghost={};
-  CL.meta.rev=doc.rev||0;CL.meta.rehash=true;clOwn();CL.meta.at=clAt(doc);clSaveMeta();
+  CL.meta.rev=doc.rev||0;CL.meta.rehash=true;if(typeof clClaims==="function")CL.meta.claims=clClaims(cloud);clOwn();CL.meta.at=clAt(doc);clSaveMeta();
   clSet("synced","Restoring your progress…");if(window.__cloudNoReload){window.__cloudApplied=sv;return}setTimeout(()=>{if(!tabIdle)location.reload()},400)}
 // this device's save goes to the account, if nobody else wrote there since (otherwise: compare again)
 function clUpload(rev,onlyIfChanged){if(tabIdle||CL.applying||CL.signingOut)return Promise.resolve();

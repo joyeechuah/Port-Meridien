@@ -130,8 +130,9 @@ function giftMenu(open){
   const bs=tkButtons(),gift=bs.indexOf($("tkGift")),i=open?0:gift>=0?gift:bs.length-1;
   talkSel(i);bs[i]?.focus({preventScroll:true});
 }
-// (a day recorded ahead of the clock, put back while playing, still counts as today: the latest day is kept)
-function giftGiven(id,day=Math.floor(Date.now()/86400000)){const g=save.gift;return g.day>=day&&g.ids.includes(id)}
+// (a day recorded ahead of the clock, put back while playing, is today from then on, its gifts with it, as on loading:
+// kept as it was, a gift given meanwhile went under that later day, and tomorrow refused the same person; Codex's review)
+function giftGiven(id,day=Math.floor(Date.now()/86400000)){const g=save.gift;if(g.day>day)g.day=day;return g.day===day&&g.ids.includes(id)}
 function talkGift(id){
   const item=GIFTS.find(g=>g.id===id);if(!item||tabIdle)return false;
   const who=TALK.person,p=TALK.p,today=Math.floor(Date.now()/86400000);

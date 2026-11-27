@@ -172,7 +172,9 @@ function wantsTidy(){const w=save.wants;let n=0;
   for(let i=0;i<w.active.length;i++)if(!wantOpen(w.active[i])){w.active[i]=wantDraw(w.active);wantFreshMark(i);n++}
   return n>0}
 function wantPay(item){return Math.round(item.cr*(save.traits?.ids.includes("freeSpirit")?1.2:1))}
-function rerollAvailable(w,today){return w.day<today||w.day===today&&!w.extra&&!!save.traits?.ids.includes("freeSpirit")}
+// (a day ahead of the clock, which was put back while playing, is today from then on, as on loading: kept, it held the
+// rerolls back until that later day came, and the button said tomorrow every day until then. The traits' day too)
+function rerollAvailable(w,today){if(w.day>today)w.day=today;return w.day<today||w.day===today&&!w.extra&&!!save.traits?.ids.includes("freeSpirit")}
 function wantEvent(id,metres=0){
   const w=save.wants,slot=w.active.indexOf(id);
   if(slot<0||wantFresh.has(slot))return false;
@@ -209,9 +211,10 @@ function traitsClean(raw){
   const day=valid&&Number.isSafeInteger(raw.day)&&raw.day>=0?Math.min(raw.day,Math.floor(Date.now()/86400000)):-1;
   return {v:1,ids,day};
 }
+function traitsLocked(today=Math.floor(Date.now()/86400000)){const t=save.traits;if(t.day>today)t.day=today;return t.day>=today}
 function traitsApply(ids){
   const today=Math.floor(Date.now()/86400000),old=save.traits;
-  if(state!=="PAUSE"||tabIdle||document.hidden||old.day>=today||!Array.isArray(ids)||ids.length>2)return false;
+  if(state!=="PAUSE"||tabIdle||document.hidden||traitsLocked(today)||!Array.isArray(ids)||ids.length>2)return false;
   const next=traitsClean({v:1,ids,day:today});
   if(next.ids.length!==ids.length||next.ids.join()===old.ids.join())return false;
   save.traits=next;persist();return true;
@@ -352,7 +355,8 @@ try{
   save.v=3;
   if(!OUTFITS.some(o=>o.id===save.outfit))save.outfit=OUTFITS[0].id;
   // the name friends see when playing together (js/net.js): letters, digits, spaces and . ' _ -, at most 12
-  save.nick=typeof save.nick==="string"?save.nick.normalize("NFC").replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim().slice(0,12):"";
+  // (cut at a whole character, as js/net.js netName does)
+  save.nick=typeof save.nick==="string"?(()=>{let o="";for(const ch of save.nick.normalize("NFC").replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim()){if(o.length+ch.length>12)break;o+=ch}return o})():"";
   save.cr=num(save.cr,120000,0,1e12);save.xp=num(save.xp,0,0,1e12);
   save.todMode=Math.round(num(save.todMode,0,0,4));save.tod=num(save.tod,16.6,0,23.99);
   save.paint=dict(save.paint,c=>Number.isInteger(c)&&c>=0&&c<=0xffffff);
@@ -435,11 +439,13 @@ function persist(){if(tabIdle)return;if(typeof needsCommit==="function")needsCom
 // Every save written here is numbered (gen), one more than the last that went in: the number of the save stored is
 // gen, and a backup notes it (js/screens.js clUpload), so the next start can tell that very save from a newer one, even
 // one that has come back to an earlier state, whatever loading has tidied in it since
-const SAVE={ok:true,liteUntil:0,liteWarned:false,gen:save.gen|0,bootProg:""};
+// (whole numbers as far as a number can count exactly: "|0" made 2,147,483,648 negative on the next save, and a negative
+// number reads as no number; Codex's review. At the very top the number stays there rather than wrapping round)
+const SAVE={ok:true,liteUntil:0,liteWarned:false,gen:save.gen,bootProg:""};
 // (an account's progress being restored, js/screens.js clApply, is tried whole first whatever the five minutes say,
 // and doesn't start them: it isn't the save the game goes on writing)
 function saveWrite(snapshot=save, restoring=false){
-  const gen=(SAVE.gen|0)+1,put=o=>{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},o,{gen})));SAVE.gen=save.gen=gen;saveRaw=null};
+  const was=Number.isSafeInteger(SAVE.gen)&&SAVE.gen>0?SAVE.gen:0,gen=Math.min(Number.MAX_SAFE_INTEGER,was+1),put=o=>{localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({},o,{gen})));SAVE.gen=save.gen=gen;saveRaw=null};
   if(restoring||Date.now()>=SAVE.liteUntil)try{put(snapshot);SAVE.liteUntil=0;return 2}catch(e){if(!restoring)SAVE.liteUntil=Date.now()+300000}
   try{put(Object.assign({},snapshot,{ghost:{}}));return 1}catch(e){}
   return 0}

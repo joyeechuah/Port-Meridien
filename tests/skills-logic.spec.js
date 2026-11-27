@@ -212,3 +212,13 @@ test("secondary effects adjust the actual repair price, snack XP, home gains and
   g.save.traits.ids=["athletic","outgoing"];expect(run('traitLoss("energy")')).toBe(.9);expect(run('traitLoss("social")')).toBe(1.15);
   g.BOAT.on=true;expect(run('traitLoss("energy")')).toBe(1);g.save.traits.ids=["foodie"];expect(run('traitLoss("hunger")')).toBe(1.15);
 });
+
+test("a traits day left ahead by a clock put back while playing unlocks the next day", () => {
+  const { g, run } = game();
+  g.save.traits = { v: 1, ids: [], day: 20005 };
+  expect(run('traitsApply(["foodie"])')).toBe(false);
+  g.Date.now = () => 86400000 * 20001;
+  expect(run('traitsLocked()')).toBe(false);
+  expect(run('traitsApply(["foodie"])')).toBe(true);
+  expect(g.save.traits).toEqual({ v: 1, ids: ["foodie"], day: 20001 });
+});
