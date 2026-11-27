@@ -129,3 +129,13 @@ test("today's recipients follow the account on restore or equal-progress sync", 
   g.local.day--;
   expect(vm.runInContext("giftSync(local,remote,false)",g)).toEqual(rec(day,[2,3]));
 });
+
+test("correcting the clock in play allows another gift on the next corrected UTC day", () => {
+  const { ctx, run } = game("grumpy");
+  ctx.save.gift = { v: 1, day: 55, ids: [0] };
+  ctx.Date.now = () => 50 * 86400000;
+  expect(run('talkGift("coffee")')).toBe(true);
+  ctx.Date.now = () => 51 * 86400000;
+  ctx.TALK.busy = 0;
+  expect(run('talkGift("coffee")')).toBe(true);
+});
