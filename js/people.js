@@ -337,14 +337,18 @@ function houseClear(x,z,y,r){
 function houseWay(x,z,y){
   if(!FOOT.on||!houseIn(x,z)||!houseIn(FOOT.x,FOOT.z))return null;
   const up=FOOT.y-gY>2.6,h=y-gY,l=houseLocal(x,z),stair=l.x>=-3.25&&l.x<=0&&l.z>=18.5&&l.z<=27.95,at=(lx,lz)=>{const p=gW(lx,lz);return{x:p.x,z:p.z,stop:.2}};
-  if(up)return stair?(l.z<26.9?at(-1.6,27.5):at(1.6,27.4)):h>2.6?null:at(-1.6,19);
+  // (from beside the stairs, first round to their foot: straight across, the treads were too tall a step there, and
+  // an officer coming for you stood stuck against their side)
+  if(up)return stair?(l.z<26.9?at(-1.6,27.5):at(1.6,27.4)):h>2.6?null:(l.x>0||l.x<-3.25)&&l.z>19.2?at(l.x<-1.6?-4.5:1.5,17.6):at(-1.6,19);
   return stair?at(-1.6,17.5):h>2.6?at(-1.2,27.4):null;
 }
 // what a piece of furniture does when you walk up to it: the prompt and its action (null for one that does nothing)
 const HOUSE_SEATS=new WeakMap();
 function houseUse(p,it){
   if(it.effect==="rest"){const e=needOf("energy");
-    if(typeof sleepNight==="function"&&sleepNight())return{t:"Sleep until 07:00 · energy "+e,a:needsSleep};
+    // (Sleep only when you can: a friend waiting, a party on or the police after you left the bed offering a Sleep that
+    // refused, with REST out of reach; Codex's audit)
+    if(typeof sleepNight==="function"&&sleepNight()&&!sleepReason())return{t:"Sleep until 07:00 · energy "+e,a:needsSleep};
     return{t:e>=100?"Energy full":NS.t<NS.restAt?"Rested · energy "+e:"Rest · energy "+e,a:needsRest}}
   if(it.effect==="snack"||it.effect==="play"){const k=it.effect==="snack"?"hunger":"fun",v=needOf(k),wait=NS.t<homeUntil[it.effect];
     return{t:v>=100?(k==="hunger"?"Not hungry":"Fun full"):wait?(it.effect==="snack"?"Snack again soon":"Play again soon"):(it.effect==="snack"?"Snack":"Play")+" · "+k+" "+v,a:()=>homeUse(it.effect)}}
@@ -353,9 +357,11 @@ function houseUse(p,it){
     if(typeof GUEST!=="undefined"&&GUEST.m&&GUEST.m.G.visible&&!GUEST.done&&GUEST.seat===p)return null;
     if(typeof PARTY_M!=="undefined")for(const M of PARTY_M.values())if(M.G.visible&&M.seat===p)return null;
     // a seat to sit on, as on the fountain's benches: you face the way it faces, a little forward of its middle
-    let b=HOUSE_SEATS.get(p);
-    if(!b){const q=homeRect(p.id,p.x,p.z,p.r),th=gYaw-p.r*Math.PI/2,c=gW(HOME_ORIGIN.x+(q.x+q.w/2)*HOME_CELL,HOME_ORIGIN.z+(q.z+q.d/2)*HOME_CELL);
-      b={x:c.x-Math.sin(th)*.2,z:c.z-Math.cos(th)*.2,a:th,y:gY+HOME_ORIGIN.y+(GUEST_SEAT[p.id]||.48)};HOUSE_SEATS.set(p,b)}
+    // (kept for the piece where it stands: moved or turned in DESIGN HOME it's the same piece, and you used to sit down
+    // where it had been)
+    let b=HOUSE_SEATS.get(p);const key=p.x+","+p.z+","+p.r;
+    if(!b||b.key!==key){const q=homeRect(p.id,p.x,p.z,p.r),th=gYaw-p.r*Math.PI/2,c=gW(HOME_ORIGIN.x+(q.x+q.w/2)*HOME_CELL,HOME_ORIGIN.z+(q.z+q.d/2)*HOME_CELL);
+      b={key,x:c.x-Math.sin(th)*.2,z:c.z-Math.cos(th)*.2,a:th,y:gY+HOME_ORIGIN.y+(GUEST_SEAT[p.id]||.48)};HOUSE_SEATS.set(p,b)}
     return{t:"Sit on the "+it.name.toLowerCase(),a:()=>sitDown(b)}}
   return null;
 }
@@ -384,6 +390,8 @@ function houseCam(eye,lens,lift=true){
   };
   for(const box of houseCamBoxes)clip(ray,box);
   const box=new THREE.Box3();
+  // and the furniture upstairs, where it stands now (a fridge between you and the lens hid you; Codex's audit)
+  if(typeof HV!=="undefined"&&HV.root&&HV.root.visible)for(const m of HV.meshes)clip(ray,box.setFromObject(m));
   doorMesh.updateMatrixWorld(true);clip(ray,box.setFromObject(doorMesh));
   // Work in each occupied bay's rotated frame. Its occupant (and shape)
   // can change when a player buys, sells or switches cars.
@@ -505,7 +513,7 @@ function footTarget(){
   const K=QUAY.kitchen;if(K)see(K.x,K.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:kitchenText(),a:needsEat});
   // in the room upstairs: what your furniture is for, within a metre of it, and a friend you've asked over
   if(typeof homeOnFoot==="function"&&homeOnFoot()&&FOOT.y-gY>2.6){
-    const l=houseLocal(FOOT.x,FOOT.z);
+    const l=houseLocal(FOOT.x,FOOT.z),before=best;
     for(const p of save.home.items){const it=homeById.get(p.id),act=houseUse(p,it);if(!act)continue;
       const q=homeRect(p.id,p.x,p.z,p.r),x0=HOME_ORIGIN.x+q.x*HOME_CELL,z0=HOME_ORIGIN.z+q.z*HOME_CELL,
         d=Math.hypot(Math.max(x0-l.x,0,l.x-(x0+q.w*HOME_CELL)),Math.max(z0-l.z,0,l.z-(z0+q.d*HOME_CELL)));
@@ -517,6 +525,8 @@ function footTarget(){
     if(typeof PARTY!=="undefined"&&PARTY.active){for(const M of PARTY_M.values()){if(!M.G.visible)continue;const q=M.G.position,d=Math.hypot(FOOT.x-q.x,FOOT.z-q.z)-.6;
       if(Math.abs(q.y-FOOT.y)<1.5&&d<=1.2&&d<bd){bd=d;best={t:"See them off · party "+partyScore(),a:()=>{partyFinish()}}}}}
     else if(!best&&typeof partyCanHost==="function"&&partyCanHost()&&partyFriends().length&&!(GUEST.who&&!GUEST.done))best={t:"Throw a party",a:()=>{partyPanel()}};
+    // with the police after you none of it works, as on the bench (the prompts used to show, and do nothing)
+    if(WANTED.lvl&&best!==before)best={t:"Lose the police first",a:wantedBlock};
   }
   // in the house, with nothing else in reach: the garage screen (your cars, your home, rest)
   if(!best&&houseIn(FOOT.x,FOOT.z))best=WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:"Garage · your cars and your home",a:()=>goGarage(false)};
@@ -951,7 +961,10 @@ function copOfficer(dt,ch,still){
   const dMe=Math.hypot(me.x-O.x,me.z-O.z);O.outT+=dt;
   // once they turn back they go all the way to the car; it waits 12 s before sending anyone again
   if(!O.back&&(!WANTED.lvl||BOAT.on||(!FOOT.on&&!still)||dMe>OFF_V.giveUp||O.detT>15||O.outT>OFF_V.outT)){O.back=true;car.offAt=copClock}
-  const tx=O.back?car.wx:me.x,tz=O.back?car.wz:me.z,dx=tx-O.x,dz=tz-O.z,d=Math.hypot(dx,dz);
+  // in your house they go by the stairs to the floor you're on, as a friend following you does (straight at you,
+  // they stood on the garage floor under the room and arrested you through it)
+  const way=!O.back&&FOOT.on&&typeof houseWay==="function"?houseWay(O.x,O.z,O.y):null;
+  const tx=way?way.x:O.back?car.wx:me.x,tz=way?way.z:O.back?car.wz:me.z,dx=tx-O.x,dz=tz-O.z,d=Math.hypot(dx,dz);
   if(O.back&&d<1.9){copOfficerIn();return false}
   // the chase over and you long gone: back in the car without the walk
   if(O.back&&!WANTED.lvl&&dMe>120){copOfficerIn();return false}
@@ -961,7 +974,7 @@ function copOfficer(dt,ch,still){
     // nearer the straight line), always taking the heading nearest straight that is open for the next metre and a half.
     // Straight is taken again as soon as it is open (one that only slid along a dry-stone wall stood there for good)
     const rot=(a)=>[dx/d*Math.cos(a)-dz/d*Math.sin(a),dx/d*Math.sin(a)+dz/d*Math.cos(a)];
-    const open=(a)=>{const[vx,vz]=rot(a);for(const k of[.45,.9,1.35]){const px=O.x+vx*k,pz=O.z+vz*k,q=footClear(px,pz);if(Math.hypot(q[0]-px,q[1]-pz)>.05)return false}return true};
+    const open=(a)=>{const[vx,vz]=rot(a);for(const k of[.45,.9,1.35]){const px=O.x+vx*k,pz=O.z+vz*k,q=footClear(px,pz,O.y);if(Math.hypot(q[0]-px,q[1]-pz)>.05)return false}return true};
     if(d<1.4||open(0)){O.detA=0;O.detT=0;O.best=d}
     else{if(!O.detA)O.detSide=0;
       const sides=O.detSide?[O.detSide]:[1,-1];let best=null;
@@ -970,20 +983,23 @@ function copOfficer(dt,ch,still){
       // the 15 s counts only while they get no nearer to where they are going: going round a long wall and gaining
       // ground starts it again (ChatGPT's review of #28)
       O.detA=best;O.detSide=Math.sign(best);if(d<O.best-2){O.best=d;O.detT=0}else O.detT+=dt}
-    const[ux,uz]=rot(O.detA),st=Math.min(d,O.v*dt),c=footClear(O.x+ux*st,O.z+uz*st);
-    O.x=c[0];O.z=c[1];O.h+=wrapA(Math.atan2(ux,uz)-O.h)*Math.min(1,dt*10)}
-  O.y+=(footGround(O.x,O.z)-O.y)*Math.min(1,dt*12);
+    const[ux,uz]=rot(O.detA),st=Math.min(d,O.v*dt),c=footClear(O.x+ux*st,O.z+uz*st,O.y);
+    // (at their own height, and up no step taller than a kerb in one stride)
+    if(footGround(c[0],c[1],O.y)-O.y<=.6){O.x=c[0];O.z=c[1]}O.h+=wrapA(Math.atan2(ux,uz)-O.h)*Math.min(1,dt*10)}
+  O.y+=(footGround(O.x,O.z,O.y)-O.y)*Math.min(1,dt*12);
+  // on the same floor as you, to shoot or take hold of you
+  const level=Math.abs((me.y===undefined?O.y:me.y)-O.y)<1.5;
   O.ph+=O.v*dt*3.3;const sw=Math.sin(O.ph)*Math.min(.9,O.v*.3),G=O.m.G;
   G.position.set(O.x,O.y,O.z);G.rotation.y=O.h;O.m.legs[0].rotation.x=sw;O.m.legs[1].rotation.x=-sw;O.m.arms[0].rotation.x=-sw*.8;O.m.arms[1].rotation.x=sw*.8;
   // at three stars or more an officer fires at you while you're on foot, from within 20 m with a clear line: about
   // one shot in three hits at 10 m, fewer further off, 10 health a hit (the violence setting changes how hits look,
   // not the rules)
   O.shootT=(O.shootT||0)-dt;
-  if(WANTED.lvl>=3&&FOOT.on&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6)){
+  if(WANTED.lvl>=3&&FOOT.on&&level&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6)){
     O.shootT=1.2;gunMuzzle(O.x+Math.sin(O.h)*.5,O.y+1.35,O.z+Math.cos(O.h)*.5);gunSound();
     if(Math.random()<Math.max(.08,.45-dMe*.015))hurt(10)}
   // caught: they have hold of you (on foot), or are at your door while you sit still
-  const grab=FOOT.on?dMe<OFF_V.grab:still&&dMe<OFF_V.grabCar;
+  const grab=level&&(FOOT.on?dMe<OFF_V.grab:still&&dMe<OFF_V.grabCar);
   if(!O.back&&grab)O.caughtT+=dt;else O.caughtT=0;
   if(O.caughtT>=OFF_V.grabT){copOfficerIn();copCaught();return true}
   return false;
@@ -1086,7 +1102,11 @@ function gunPick(){
   if(OFFICER.on&&!(OFFICER.down>0))list.push({k:"officer",x:OFFICER.x,z:OFFICER.z,y:1.2,o:OFFICER,stop:.6});
   for(const p of VERGE)if(p.m.G.visible&&p.st!=="down")list.push({k:"ped",x:p.x,z:p.z,y:1.2,o:p,stop:.6});
   let best=null,bs=1e9;
+  // in the house, only on your own floor: up in the room you locked onto (and shot) an officer standing on the garage
+  // floor below, through it. Where they stand: an officer or someone walking at their height, a car on the road
+  const at=q=>q.o===OFFICER||q.k==="ped"?q.o.y:surfH(q.x,q.z),house=typeof FOOT!=="undefined"&&FOOT.on&&typeof houseIn==="function";
   for(const q of list){const dx=q.x-F.x,dz=q.z-F.z,d=Math.hypot(dx,dz);if(d<.8||d>GUN.range)continue;
+    if(house&&(houseIn(F.x,F.z)||houseIn(q.x,q.z))){const y=at(q);if(Number.isFinite(y)&&Math.abs(y-(F.y-1.3))>2.5)continue}
     const a=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1));if(a>GUN.cone)continue;
     const sc=d+a*25;if(sc<bs&&gunClear(F.x,F.z,q.x,q.z,q.stop)){bs=sc;best=q}}
   return best;

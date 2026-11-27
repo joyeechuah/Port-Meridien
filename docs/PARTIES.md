@@ -17,7 +17,7 @@ Each reply includes its reason. Responses are deterministic. Sending the same in
 - `partyInvite(ids)` replaces the pending selection and returns one `{id,accepted,reason}` per invitation, in selection order. An empty selection clears it. Duplicate, unknown or excessive ids reject the entire request without changing the selection. A blocked action returns an empty array.
 - `partyStart()` rechecks attendance and returns true only on starting a party with at least one willing guest. While `PARTY.active` is true, seat the residents in `PARTY.ids`. A second start or invitation leaves the party alone.
 - `partyScore()` previews the current group's score. It returns zero for an empty group.
-- `partyEnd()` settles an active party at home and returns `{score,guests,happy}`. An invalid or repeated end returns false. Leaving home (driving out, or walking out of the house) or reloading cancels without an award. The pause menu, the map and Photo Mode, opened on foot in the house, don't. The existing HANG OUT action remains available for a single private visit.
+- `partyEnd()` settles an active party at home and returns `{score,guests,happy}`. An invalid or repeated end returns false. Leaving home (driving out, walking out of the house, or a race, a cup or the map's travel from the pause menu) cancels without an award, with a message saying so; reloading cancels it too. The friend following you about isn't on the list: they're with you already. The pause menu, the map and Photo Mode, opened on foot in the house, don't. The existing HANG OUT action remains available for a single private visit.
 
 ## In the game
 

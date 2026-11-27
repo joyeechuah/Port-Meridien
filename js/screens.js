@@ -15,7 +15,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(typeof partyClear==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyClear();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
+function setState(s){if(typeof partyLeft==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyLeft();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
@@ -419,6 +419,23 @@ function goDrive(){
   exitLen=exitCurve.getLength();
   // where along the path the car passes the door: from there on it rides on the driveway, which climbs
   const door=gW(0,.6);let bd=1e9;for(let i=0;i<=200;i++){const q=exitCurve.getPointAt(i/200),d=Math.hypot(q.x-door.x,q.z-door.z);if(d<bd){bd=d;exitDoorU=i/200}}
+}
+// GO UPSTAIRS: straight into your room on foot, from the top of the stairs, the car you chose waiting out on the
+// drive (the house used to be reached on foot only by driving out, getting out and walking back in)
+function goUpstairs(){
+  if(state!=="GARAGE"||tabIdle||(typeof HV!=="undefined"&&HV.on)||cuOpen()||typeof partyOpen==="function"&&partyOpen())return false;
+  prepareDrive();
+  const c=gW(.5,-16);
+  Object.assign(P,{x:c.x,z:c.z,h:-Math.PI/2,vx:0,vz:0,vy:0,r:0,steer:0,steerS:0,thr:0,air:false,pitch:0,roll:0});P.ty=surfH(P.x,P.z);P.y=P.ty;
+  camYaw=P.h;autoHold=true;
+  // on the landing beside the top stair, which furniture can't stand on (js/home.js HOME_CLEAR), facing into the room.
+  // You're there before the state changes, so a party at home goes on (js/life.js partyHome)
+  const m=footModel(),s=gW(1.5,27.5);
+  Object.assign(FOOT,{on:true,x:s.x,z:s.z,y:gY+5.25,h:Math.PI,v:0,ph:0,cy:Math.PI,car:[P.x,P.z]});
+  m.G.visible=true;
+  beginFreeRide();
+  footPlace(0);pc.inside.visible=false;pc.glass.visible=pc.shell.visible=true;placeCarMesh(0);footCam(0,true);footHud(true);footPrompt();
+  return true;
 }
 function exitSeq(dt){
   exitT+=dt;const dur=3.2+exitLen/40,u=Math.min(1,exitT/dur),e=.35*u+.65*u*u;
@@ -853,7 +870,7 @@ $("iGo").onclick=()=>{if(state!=="INTRO")return;show("intro",false);const c=intr
 $("iNo").onclick=()=>{if(state!=="INTRO")return;show("intro",false);setState("DRIVE");audioOn(true)};
 $("rOk").onclick=()=>{if(state!=="RESULT")return;show("result",false);setState("DRIVE");audioOn(true)};
 $("rNext").onclick=()=>{if(state!=="RESULT"||!resNext)return;const n=resNext;resNext=null;show("result",false);setState("DRIVE");cupStart(n.cls)};
-$("drive").onclick=goDrive;$("gprev").onclick=()=>gPick((gSel-1+save.owned.length)%save.owned.length);$("gnext").onclick=()=>gPick((gSel+1)%save.owned.length);
+$("drive").onclick=goDrive;$("gUp").onclick=()=>goUpstairs();$("gprev").onclick=()=>gPick((gSel-1+save.owned.length)%save.owned.length);$("gnext").onclick=()=>gPick((gSel+1)%save.owned.length);
 
 /* ---------- input wiring ---------- */
 // Safari zooms on a pinch (its own gesture events) and on a double tap even where touch-action says not to, on some
@@ -944,7 +961,7 @@ addEventListener("keydown",e=>{
     if(!$("phShot").classList.contains("hide")){if(k==="escape")photoShotClose()}
     else if(k==="escape"||k==="v")photoExit();else if(k==="enter")photoCapture();else if(k==="r")photoReset();else if(k>="1"&&k<="4"&&k.length===1)photoLookSet(+k-1)}
   else if(state==="MAP"){if(k==="escape"&&mapKey.offsetWidth&&mapKey.getAttribute("aria-expanded")==="true"){mapKey.click();mapKey.focus()}else if(k==="escape"||k==="m")closeMap();else if(k==="+"||k==="=")$("mapIn").onclick();else if(k==="-")$("mapOut").onclick()}
-  else if(state==="GARAGE"){if(k==="n")needsSleep();else if(k==="arrowleft"||k==="a")$("gprev").onclick();else if(k==="arrowright"||k==="d")$("gnext").onclick();else if(k==="enter")goDrive()}
+  else if(state==="GARAGE"){if(k==="n")needsSleep();else if(k==="arrowleft"||k==="a")$("gprev").onclick();else if(k==="arrowright"||k==="d")$("gnext").onclick();else if(k==="enter")goDrive();else if(k==="u")goUpstairs()}
   else if(state==="DEALER"){if(k==="arrowup"||k==="arrowleft"){e.preventDefault();dPick(dSel-1)}else if(k==="arrowdown"||k==="arrowright"){e.preventDefault();dPick(dSel+1)}else if(k==="escape")closeDealer()}
   else if(state==="INTRO"){if(k==="enter")$("iGo").onclick();else if(k==="escape")$("iNo").onclick();else if(k==="arrowleft"||k==="a")setDiff(save.diff-1);else if(k==="arrowright"||k==="d")setDiff(save.diff+1)}
   else if(state==="RESULT"){if(k==="enter"||k==="escape")$("rOk").onclick()}

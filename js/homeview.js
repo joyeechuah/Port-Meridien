@@ -7,7 +7,7 @@ if(window.__gameOff)throw window.__gameOff;
 
 // on: designing. sel: the catalogue piece being placed, pick: the index of the placed piece picked, r: the turn for a
 // new piece, at: the cell the preview stands on, tap: the cell a touch first previewed (a second touch there places)
-const HV={on:false,sel:null,pick:-1,r:0,at:null,tap:null,down:null,ptrs:new Set(),multi:false,group:"beds",root:null,meshes:[],ghost:null,mark:null,grid:null,floor:null,wall:null,geo:new Map(),roofs:[]};
+const HV={on:false,sel:null,pick:-1,r:0,at:null,tap:null,down:null,stickAt:0,ptrs:new Set(),multi:false,group:"beds",root:null,meshes:[],ghost:null,mark:null,grid:null,floor:null,wall:null,geo:new Map(),roofs:[]};
 const HV_GROUPS=[["beds","BEDS"],["seating","SEATING"],["tables","TABLES"],["kitchen","KITCHEN"],["fun","FUN"],["decor","DECOR"],["room","ROOM"]];
 const HV_WALL={plaster:0xe9e2d4,sage:0xb4c3a7,sand:0xe2cca0,slate:0x8b98a2},HV_FLOOR={oak:0xb48a5a,tile:0xd9d4c8,concrete:0x9b9d9b,walnut:0x6a4730};
 const HV_MAT=new THREE.MeshLambertMaterial({vertexColors:true});
@@ -164,7 +164,42 @@ function hvMarks(){
     HV_GHOST.color.setHex(homeFits(save.home,id,HV.at.x,HV.at.z,r,HV.sel?-1:HV.pick)?0x6fd08a:0xe0614f)}
   const p=HV.pick>=0?save.home.items[HV.pick]:null;HV.mark.visible=HV.on&&!!p;
   if(p){const q=homeRect(p.id,p.x,p.z,p.r);HV.mark.scale.set(q.w*HOME_CELL+.12,.012,q.d*HOME_CELL+.12);HV.mark.position.copy(hvSpot(p.id,p.x,p.z,p.r)).setY(gY+HOME_ORIGIN.y+.04);HV.mark.rotation.y=gYaw}
-  if(HV.on){$("hdTurn").disabled=!HV.sel&&HV.pick<0;$("hdSell").disabled=HV.pick<0}
+  if(HV.on){$("hdTurn").disabled=!HV.sel&&HV.pick<0;$("hdSell").disabled=HV.pick<0;hvBuyBtn()}
+}
+// BUY places the chosen piece where its preview stands (MOVE HERE, for a placed piece picked): there was no button,
+// only a click on the floor, so the room couldn't be furnished at all with the keyboard or a controller
+function hvBuyBtn(){
+  const b=$("hdBuy"),it=HV.sel?homeById.get(HV.sel):null;
+  b.textContent=it?"BUY · "+fmtCr(it.price)+" CR":HV.pick>=0?"MOVE HERE":"BUY";
+  b.disabled=!HV.at||!it&&HV.pick<0;
+}
+// a first place for the preview when a piece is chosen: the free spot nearest the middle of the room, else the middle
+function hvStart(id,r){
+  const q=homeRect(id,0,0,r),cx=Math.round((HOME_COLS-q.w)/2),cz=Math.round((HOME_ROWS-q.d)/2);
+  let best=null,far=Infinity;
+  for(let z=0;z+q.d<=HOME_ROWS;z++)for(let x=0;x+q.w<=HOME_COLS;x++){const d=Math.hypot(x-cx,z-cz);
+    if(d<far&&homeFits(save.home,id,x,z,r,HV.sel?-1:HV.pick)){far=d;best={x,z}}}
+  return best||{x:cx,z:cz};
+}
+// the left stick: a square at a time, about six a second while it's held over
+function hvStick(g){
+  const x=g.axes[0]||0,y=g.axes[1]||0,now=performance.now();
+  if(Math.hypot(x,y)<.5){HV.stickAt=0;return}
+  if(HV.stickAt&&now-HV.stickAt<160)return;HV.stickAt=now;
+  Math.abs(x)>Math.abs(y)?hvNudge(Math.sign(x),0):hvNudge(0,Math.sign(y));
+}
+// the arrow keys and the left stick move the preview a square at a time, in the direction they point on screen
+function hvNudge(sx,sy){
+  const id=HV.sel||(HV.pick>=0?save.home.items[HV.pick].id:null);if(!id)return;
+  const r=HV.sel?HV.r:save.home.items[HV.pick].r,q=homeRect(id,0,0,r);
+  if(!HV.at){const p=HV.pick>=0&&!HV.sel?save.home.items[HV.pick]:null;HV.at=p?{x:p.x,z:p.z}:hvStart(id,r)}
+  camera.updateMatrixWorld();
+  const scr=(x,z)=>{const v=hvSpot(id,x,z,r).project(camera);return[v.x,-v.y]},o=scr(HV.at.x,HV.at.z);
+  let best=null,dot=0;
+  for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){const s=scr(HV.at.x+dx,HV.at.z+dz),vx=s[0]-o[0],vy=s[1]-o[1],L=Math.hypot(vx,vy)||1,k=(vx*sx+vy*sy)/L;
+    if(k>dot){dot=k;best=[dx,dz]}}
+  if(!best)return;
+  HV.at={x:clamp(HV.at.x+best[0],0,HOME_COLS-q.w),z:clamp(HV.at.z+best[1],0,HOME_ROWS-q.d)};HV.tap=null;hvMarks();
 }
 // where a pointer meets the room's floor: the cell a piece would stand on, centred there (null off the floor)
 const hvRay=new THREE.Raycaster(),hvNdc=new THREE.Vector2(),hvPlane=new THREE.Plane(new V3(0,1,0),0);
@@ -198,7 +233,7 @@ function hvCommit(){
     if(save.cr<it.price){hvMsg("You need "+fmtCr(it.price-save.cr)+" more CR");return}
     if(save.home.items.length>=HOME_CAP){hvMsg("The room holds "+HOME_CAP+" pieces at most");return}
     if(!homeFits(save.home,HV.sel,c.x,c.z,HV.r)){hvMsg("It doesn't fit there");beep(220);return}
-    if(homePlace(HV.sel,c.x,c.z,HV.r)){homeBuild();hvPanel();hvMsg(it.name+" · −"+fmtCr(it.price)+" CR");beep(760)}
+    if(homePlace(HV.sel,c.x,c.z,HV.r)){HV.at=hvStart(HV.sel,HV.r);homeBuild();hvPanel();hvMsg(it.name+" · −"+fmtCr(it.price)+" CR");beep(760)}
   }else if(HV.pick>=0){
     if(homeMove(HV.pick,c.x,c.z)){HV.at=null;homeBuild();hvMsg("Moved")}else{hvMsg("It doesn't fit there");beep(220)}
   }
@@ -242,11 +277,11 @@ function hvPanelDraw(){
     b.className="hdc"+(HV.sel===it.id?" on":"")+(save.cr<it.price||locked?" dim":"");b.dataset.k="i:"+it.id;b.setAttribute("aria-pressed",String(HV.sel===it.id));b.disabled=locked;
     b.innerHTML="<b></b><span></span><em></em>";b.children[0].textContent=it.name;b.children[1].textContent=fmtCr(it.price)+" CR";
     b.children[2].textContent=locked?"Find a postcard first":it.id==="postcard-board"?"Comfort +"+(it.comfort+Math.min(8,cards))+" with your "+cards+" card"+(cards===1?"":"s"):fx||"Comfort +"+it.comfort;
-    b.onclick=()=>{HV.sel=HV.sel===it.id?null:it.id;HV.pick=-1;HV.r=0;HV.tap=null;hvPanel();hvMarks();
-      hvMsg(HV.sel?(isTouch?"Tap the floor to place it":"Click the floor to place it")+" · TURN or R to turn":"")};l.appendChild(b)}
+    b.onclick=()=>{HV.sel=HV.sel===it.id?null:it.id;HV.pick=-1;HV.r=0;HV.tap=null;HV.at=HV.sel?hvStart(HV.sel,0):null;hvPanel();hvMarks();
+      hvMsg(HV.sel?(isTouch?"Tap the floor to put it there, then BUY · TURN to turn it":"Click the floor, or move it with the arrow keys, then BUY · TURN or R to turn"):"")};l.appendChild(b)}
 }
 function hvInit(){
-  $("gDesign").onclick=hvOpen;$("hdDone").onclick=hvClose;$("hdTurn").onclick=hvTurn;$("hdSell").onclick=hvSell;
+  $("gDesign").onclick=hvOpen;$("hdDone").onclick=hvClose;$("hdBuy").onclick=()=>{HV.tap=null;hvCommit()};$("hdTurn").onclick=hvTurn;$("hdSell").onclick=hvSell;
   const cv=$("c");
   // in front of the garage's own handlers (which turn the view round the car): while designing, the room has the pointer
   // A tap is one pointer going down and up in about the same place. A second finger on the glass cancels the tap in
@@ -273,6 +308,9 @@ function hvInit(){
   addEventListener("keydown",e=>{const t=/** @type {HTMLElement} */ (e.target);
     if(!HV.on||tabIdle||clOverlayOpen()||t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable))return;
     const k=e.key.toLowerCase();e.stopImmediatePropagation();
+    // (an arrow held down moves on, square by square)
+    const arrow={arrowleft:[-1,0],arrowright:[1,0],arrowup:[0,-1],arrowdown:[0,1]}[k];
+    if(arrow){e.preventDefault();hvNudge(arrow[0],arrow[1]);return}
     if(k==="tab"||k===" "||k==="enter"||e.repeat)return;
     if(k==="r"){e.preventDefault();hvTurn()}else if(k==="delete"||k==="backspace"){e.preventDefault();hvSell()}
     else if(k==="escape"){e.preventDefault();if(HV.sel||HV.pick>=0){HV.sel=null;HV.pick=-1;HV.at=null;hvPanel();hvMarks();hvMsg("")}else hvClose()}},true);

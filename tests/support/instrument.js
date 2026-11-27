@@ -55,7 +55,8 @@ const NAMES = (
   "seaT setGPS clearGPS setState skyClock skyU startEvent startTestDrive state streakReset testDrive " +
   "SAVE saveWrite saveTrim saveMark saveWhy " +
   "updatePrompt zoneAt Hf LM_R gates fadeThen layoutHUD show audioOn acResume musicWant photoFrame finishTestDrive gateOf trackRoute trackRouteFull mapMarkers CAMV snapCam DIFFS setDiff raceRewards GH ghostAt ghostTimeAt evDirs updateTraffic GP TILT steerIn STEER_SENS pollPad CUPS cupTimes cupsOpen PROF carShape bodyPaint LOOK cabinPaint GO garageWant garageCam HOUSE_MESHES SPOTS gW GO_STAGE custOpen custClose modsOf modCost MOD_OPTS carMeshes showMeshes getCar rebuildCar PLATE_TEX HD junctionAt RT TEDGES cupStart cupBlocked showResult SIDE buildHeroCar disposeHeroCar SHAPE_CACHE CAR_ENV ghostModel buildTrafficCar updateCarEnv rebuildCarModels tabStop tabIdle frame CL CLOUD_KEY FIREBASE_CONFIG fbAdapter clSync clProg clFresh clOpen lvlOf jobTick" +
-  " cupScore cupPay"
+  " cupScore cupPay" +
+  " homeOnFoot relSet houseLocal hvMarks goUpstairs"
 ).split(/\s+/);
 
 const EDITS = [

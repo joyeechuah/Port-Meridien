@@ -838,11 +838,12 @@ function pollPad(){
   {const dz=a=>Math.abs(a)<.2?0:Math.sign(a)*(Math.abs(a)-.2)/.8;const turn=state==="GARAGE"&&!HV.on&&!(typeof partyOpen==="function"&&partyOpen());GO.stick[0]=turn?dz(g.axes[2]||0):0;GO.stick[1]=turn?dz(g.axes[3]||0):0}
   if(state==="GARAGE"&&cuOpen()){if(hit(1))custClose(false);else if(hit(0))custClose(true)}
   else if(state==="GARAGE"&&typeof partyOpen==="function"&&partyOpen()){if(hit(1))partyPanelClose();else padIn($("party"),hit)}
-  else if(state==="GARAGE"&&HV.on){if(hit(1)||hit(9))hvClose();else if(hit(3))hvTurn()}
+  // designing: the D-pad and A work the panel (BUY included), the left stick moves the piece's preview, Y turns it
+  else if(state==="GARAGE"&&HV.on){if(hit(1)||hit(9))hvClose();else if(hit(3))hvTurn();else{padIn($("hd"),hit);hvStick(g)}}
   // Y: HANG OUT with a friend over, or the party's button (THROW A PARTY, SEE THEM OFF)
   else if(state==="GARAGE"&&hit(3)){const b=/** @type {HTMLButtonElement|undefined} */(["gGuest","gParty"].map(id=>$(id)).find(x=>!x.classList.contains("hide")&&!(/** @type {HTMLButtonElement} */(x).disabled)));if(b)b.click()}
   // (RB, SLEEP, after the D-pad: first, held with it, it took the press and the next car was never picked)
-  else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(2))needsRest();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick();else if(hit(5))needsSleep()}
+  else if(state==="GARAGE"){if(hit(0))goDrive();else if(hit(2))needsRest();else if(hit(14))$("gprev").onclick();else if(hit(15))$("gnext").onclick();else if(hit(5))needsSleep();else if(hit(4))goUpstairs()}
   // in the dealership A buys the car shown (or drives it, if it's yours), X takes it for a test drive
   else if(state==="DEALER"){const on=id=>{const b=$(id);return !b.classList.contains("hide")&&!b.disabled};
     if(hit(1))closeDealer();else if(hit(12)||hit(14))dPick(dSel-1);else if(hit(13)||hit(15))dPick(dSel+1);
