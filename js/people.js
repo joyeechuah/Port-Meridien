@@ -297,25 +297,74 @@ function footModel(){
   G.visible=false;scene.add(G);dress(OUTFITS.find(o=>o.id===save.outfit));
   return FOOT.m={G,legs,arms,knees,elbows,dress,face:{m:faceM,tex:faceT,t:2+Math.random()*3,shut:false}};
 }
-function footGround(x,z){
+/* ---------- the house on foot: in through the garage door, round your cars, up the stairs to the room ----------
+   In the garage's own frame (js/world.js buildHouse: x across, z from the door into the room, y up from its floor).
+   The building stays one solid block for cars and the police; someone on foot goes in through the door while it's up
+   (it opens as you come near), and what stops them inside depends on how high they are: on the floor, your cars and
+   the aquarium; on the stairs, their open sides; in the room upstairs, its railing, its open edges and what you've
+   put there. y is how high they stand now (the floor below the room upstairs is open to walk on) */
+const houseLocal=(x,z)=>({x:HOUSE.z-z,z:x-HOUSE.x});
+const houseIn=(x,z,m=0)=>{const l=houseLocal(x,z);return l.x>-23.6-m&&l.x<23.6+m&&l.z>-.6-m&&l.z<30.6+m};
+// the floor's height under (lx,lz) above the garage floor, for someone h above it: the stairs climb 5 m over 9 m, and
+// the room upstairs is 5.25 m up (for someone already up there; under it, the floor)
+function houseFloor(lx,lz,h){
+  if(lx>=-3.25&&lx<=0&&lz>=18.5&&lz<=27.95)return clamp((lz-18.5)*5/9,0,5);
+  if(h>2.6&&lx>=-.05&&lx<=21.5&&lz>=19&&lz<=29.8)return 5.25;
+  return 0;
+}
+// what someone on foot can't walk through: [x0,x1,z0,z1, from, to], the heights above the floor it stands between
+const HOUSE_WALLS=[
+  [-23.6,-22.75,-.6,30.6,-9,99],[22.75,23.6,-.6,30.6,-9,99],[-23.6,23.6,29.75,30.6,-9,99],   // the sides and the back
+  [-23.6,-7,-.6,.25,-9,99],[7,23.6,-.6,.25,-9,99],                                              // the front, either side of the door
+  [3,21,27.8,29.75,-9,2.6],                                                                     // the aquarium, under the room upstairs
+  [-3.45,-3.2,19,28,.55,99],[-3.45,0,27.95,30,.55,99],[0,.5,18.8,26.5,.55,99],                 // the stairs' open sides, and past the top step
+  [.5,21.5,18.8,19.3,2.6,99],[21.5,22.75,19,29.75,2.6,99]];                                      // upstairs: the railing, the gap by the wall
+// a point pushed clear of them, r round it, for someone standing at height y
+function houseClear(x,z,y,r){
+  const l=houseLocal(x,z),h=y-gY;let lx=l.x,lz=l.z;
+  const push=(x0,x1,z0,z1)=>{const qx=clamp(lx,x0,x1),qz=clamp(lz,z0,z1),ex=lx-qx,ez=lz-qz,d=Math.hypot(ex,ez);if(d>=r)return;
+    if(d<1e-6){const m=Math.min(lx-x0,x1-lx,lz-z0,z1-lz);if(m===lx-x0)lx=x0-r;else if(m===x1-lx)lx=x1+r;else if(m===lz-z0)lz=z0-r;else lz=z1+r}
+    else{lx=qx+ex/d*r;lz=qz+ez/d*r}};
+  for(const w of HOUSE_WALLS)if(h>=w[4]&&h<w[5])push(w[0],w[1],w[2],w[3]);
+  // the door, until it's most of the way up
+  if((typeof doorOpen==="undefined"?0:doorOpen)<.7)push(-7,7,-.55,.1);
+  if(h>2.6&&typeof homeRect==="function"&&save.home)for(const p of save.home.items){const q=homeRect(p.id,p.x,p.z,p.r),x0=HOME_ORIGIN.x+q.x*HOME_CELL,z0=HOME_ORIGIN.z+q.z*HOME_CELL;
+    push(x0,x0+q.w*HOME_CELL,z0,z0+q.d*HOME_CELL)}
+  return[HOUSE.x+lz,HOUSE.z-lx];
+}
+// the door opens for someone on foot near it, inside or out
+const houseDoorNear=()=>FOOT.on&&!BOAT.on&&(state==="DRIVE"||state==="PAUSE")&&(()=>{const l=houseLocal(FOOT.x,FOOT.z);return Math.abs(l.x)<10&&l.z>-9&&l.z<9})();
+// the camera while you're in the house: inside its walls and under its ceiling, and under the room upstairs while
+// you're below it
+function houseCam(px,py,pz){
+  const l=houseLocal(px,pz),lx=clamp(l.x,-22.2,22.2),lz=clamp(l.z,.7,29.2),up=FOOT.y-gY>2.6;
+  const top=!up&&lx>.2&&lz>18.6?gY+4.4:gY+9.6;
+  return[HOUSE.x+lz,Math.min(py,top),HOUSE.z-lx];
+}
+function footGround(x,z,y){
+  if(houseIn(x,z)){const l=houseLocal(x,z);return gY+houseFloor(l.x,l.z,(y===undefined?gY:y)-gY)}
   if(onPier(x,z))return PIER.y;
-  let y=Math.max(meshH(x,z),surfH(x,z));
+  let g=Math.max(meshH(x,z),surfH(x,z));
   for(const f of QUAY.floors){
-    if(Math.abs(x-f.x)<=f.hx&&Math.abs(z-f.z)<=f.hz)y=Math.max(y,f.top);
+    if(Math.abs(x-f.x)<=f.hx&&Math.abs(z-f.z)<=f.hz)g=Math.max(g,f.top);
   }
-  return y;
+  return g;
 }
 // pushes a point clear of buildings, walls and trees, of traffic, and of your own car; returns the cleared point
-function footClear(x,z){
+function footClear(x,z,y){
   const r=FOOT_V.r;
   const box=(ox,oz,hx,hz,cs,sn)=>{const dx=x-ox,dz=z-oz,lx=dx*cs-dz*sn,lz=dx*sn+dz*cs,qx=clamp(lx,-hx,hx),qz=clamp(lz,-hz,hz);let ex=lx-qx,ez=lz-qz;const d=Math.hypot(ex,ez);
     if(d>=r)return;let pen;
     if(d<1e-4){const px=hx-Math.abs(lx),pz=hz-Math.abs(lz);if(px<pz){ex=Math.sign(lx)||1;ez=0;pen=px+r}else{ex=0;ez=Math.sign(lz)||1;pen=pz+r}}else{ex/=d;ez/=d;pen=r-d}
     x+=(ex*cs+ez*sn)*pen;z+=(-ex*sn+ez*cs)*pen};
-  obstaclesNear(x,z,r+1,o=>{if(o.c){const dx=x-o.x,dz=z-o.z,d=Math.hypot(dx,dz),pen=r+o.r-d;if(pen>0&&d>1e-4){x+=dx/d*pen;z+=dz/d*pen}}else box(o.x,o.z,o.hx,o.hz,o.cs,o.sn)});
+  obstaclesNear(x,z,r+1,o=>{if(o===HOUSE_BOX)return;if(o.c){const dx=x-o.x,dz=z-o.z,d=Math.hypot(dx,dz),pen=r+o.r-d;if(pen>0&&d>1e-4){x+=dx/d*pen;z+=dz/d*pen}}else box(o.x,o.z,o.hx,o.hz,o.cs,o.sn)});
   for(const t of TRAFFIC){if(Math.abs(t.wx-x)>7||Math.abs(t.wz-z)>7)continue;box(t.wx,t.wz,.95,t.c.len,Math.cos(t.yaw),Math.sin(t.yaw))}
   box(P.x,P.z,.95,2.3,Math.cos(P.h),Math.sin(P.h));
   for(const l of LEFT)box(l.x,l.z,.95,2.3,Math.cos(l.h),Math.sin(l.h));
+  if(houseIn(x,z,1)){const yy=y===undefined?gY:y;
+    // your cars in their bays, on the floor
+    if(yy-gY<2.6)save.owned.forEach((id,i)=>{const c=carMeshes[id];if(c&&c!==pc&&i<SPOTS.length&&c.G.visible){const q=c.G.position,t=c.G.rotation.y;box(q.x,q.z,1,2.35,Math.cos(t),Math.sin(t))}});
+    [x,z]=houseClear(x,z,yy,r)}
   return[x,z];
 }
 /* ---------- taking cars: any traffic car that has stopped, and the cars you've left standing ---------- */
@@ -386,6 +435,8 @@ function footTarget(){
   // are after you
   for(const b of QUAY.benches)see(b.x,b.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:"Sit on the bench",a:()=>sitDown(b)});
   const K=QUAY.kitchen;if(K)see(K.x,K.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:kitchenText(),a:needsEat});
+  // in the house, with nothing else in reach: the garage screen (your cars, your home, rest)
+  if(!best&&houseIn(FOOT.x,FOOT.z))best=WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:"Garage · your cars and your home",a:()=>goGarage(false)};
   return best;
 }
 // why you can't get out just now, or null if you can
@@ -483,7 +534,9 @@ function carClearY(x,z){
 function footCam(dt,snap){
   FOOT.cy+=wrapA(FOOT.h-FOOT.cy)*(snap?1:1-Math.exp(-dt*5));
   const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),back=boomClear(FOOT.x,FOOT.z,fx,fz,3.9),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
-  const px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,camFloor(px,pz,p),carClearY(px,pz));
+  const inside=houseIn(FOOT.x,FOOT.z);
+  let px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,inside?-1e9:camFloor(px,pz,p),carClearY(px,pz));
+  if(inside)[px,py,pz]=houseCam(px,py,pz);
   const k=snap?1:1-Math.exp(-dt*10);
   FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*2.3,FOOT.y+1.1,FOOT.z+fz*2.3),k);
   camera.position.copy(FOOT.cp);camera.lookAt(FOOT.cl);
@@ -507,7 +560,7 @@ function footUpdate(dt){
   if(SIT.on)FOOT.v=0;
   else if(Math.abs(FOOT.v)>.01){
     let nx=FOOT.x+Math.sin(FOOT.h)*FOOT.v*dt,nz=FOOT.z+Math.cos(FOOT.h)*FOOT.v*dt;
-    [nx,nz]=footClear(nx,nz);
+    [nx,nz]=footClear(nx,nz,FOOT.y);
     // Pedestrians already yield when approaching a walker. Also stop the walker
     // from entering their space from behind, allowing a sideways step or retreat.
     for(const ped of PEDS){
@@ -518,7 +571,7 @@ function footUpdate(dt){
       }
     }
     // not into the sea, and not up a step taller than a kerb in one stride
-    const g=footGround(nx,nz);
+    const g=footGround(nx,nz,FOOT.y);
     if(g>-.4&&g-FOOT.y<.6){
       strideSpeed=dt>0?Math.min(Math.abs(FOOT.v),Math.hypot(nx-FOOT.x,nz-FOOT.z)/dt):0;
       if(wantEvent("walk",strideSpeed*dt))persist();
@@ -527,9 +580,9 @@ function footUpdate(dt){
       if(strideSpeed>0&&typeof postcardPickup==="function")postcardPickup();
     }
     if(strideSpeed<.01)FOOT.v=0;
-  }else{const c=footClear(FOOT.x,FOOT.z);FOOT.x=c[0];FOOT.z=c[1]}   // a passing car nudges you aside
+  }else{const c=footClear(FOOT.x,FOOT.z,FOOT.y);FOOT.x=c[0];FOOT.z=c[1]}   // a passing car nudges you aside
   // Plant the feet immediately on a raised surface. Ease down when leaving it.
-  const g=footGround(FOOT.x,FOOT.z);
+  const g=footGround(FOOT.x,FOOT.z,FOOT.y);
   FOOT.y=Math.max(g,FOOT.y+(g-FOOT.y)*Math.min(1,dt*14));
   FOOT.ph+=strideSpeed*dt*3.1;if(strideSpeed<.05)FOOT.ph+=(Math.round(FOOT.ph/Math.PI)*Math.PI-FOOT.ph)*Math.min(1,dt*10);
   if(SIT.on)sitPose();else footPlace(dt,strideSpeed);

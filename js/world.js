@@ -682,7 +682,7 @@ function buildRoadMeshes(){
 const OC=24,OGRID=new Map();let ostamp=0;
 function gridAdd(o,x0,z0,x1,z1){for(let cx=Math.floor(x0/OC);cx<=Math.floor(x1/OC);cx++)for(let cz=Math.floor(z0/OC);cz<=Math.floor(z1/OC);cz++){const k=rkey(cx,cz);let a=OGRID.get(k);if(!a)OGRID.set(k,a=[]);a.push(o)}}
 function addCircle(x,z,r){gridAdd({c:1,x,z,r,st:0},x-r,z-r,x+r,z+r)}
-function addBox(x,z,hx,hz,yaw){const R=Math.hypot(hx,hz);gridAdd({c:0,x,z,hx,hz,cs:Math.cos(yaw),sn:Math.sin(yaw),st:0},x-R,z-R,x+R,z+R)}
+function addBox(x,z,hx,hz,yaw){const R=Math.hypot(hx,hz),o={c:0,x,z,hx,hz,cs:Math.cos(yaw),sn:Math.sin(yaw),st:0};gridAdd(o,x-R,z-R,x+R,z+R);return o}
 function obstaclesNear(x,z,r,cb){ostamp++;for(let cx=Math.floor((x-r)/OC);cx<=Math.floor((x+r)/OC);cx++)for(let cz=Math.floor((z-r)/OC);cz<=Math.floor((z+r)/OC);cz++){const a=OGRID.get(rkey(cx,cz));if(!a)continue;for(const o of a)if(o.st!==ostamp){o.st=ostamp;cb(o)}}}
 
 /* ================================================================ SCENERY (merged per 320 m tile) */
@@ -1132,6 +1132,9 @@ const gW=(x,z,y=0)=>new V3(HOUSE.x-gDir.x*x+gOut.x*z,gY+y,HOUSE.z-gDir.z*x+gOut.
 const HOUSE_MESHES=[];
 const SPOTS=[[-16,12.5,.55],[-10,10,.42],[-3.6,8.6,.18],[3.6,8.6,-.18],[10,10,-.42],[16,12.5,-.55],[-17,21.5,.35],[-10.5,22,.2],[-4.8,22,.05],[4.8,22,-.05],[10.8,22,-.2],[17,21.5,-.35]];
 let doorMesh,aquaLight,selRing,selSpot;const fishes=[],pickers=[];
+// the whole building as one block, for cars and the police (someone on foot goes round its walls instead, and in
+// through the door: js/people.js houseClear)
+let HOUSE_BOX=/** @type {any} */ (null);
 // polished concrete: one 4 m bay of faintly mottled grey with fine aggregate and a saw-cut joint along two edges, so
 // tiling it lays a joint grid across the floor (the floor was one flat teal)
 function garageFloorTex(){
@@ -1223,7 +1226,7 @@ function buildHouse(){
   SPOTS.forEach((s,i)=>{const hit=new THREE.Mesh(B(3.4,2.4,5.6),new THREE.MeshBasicMaterial({visible:false}));hit.position.copy(gW(s[0],s[1],1.1));hit.rotation.y=gYaw+Math.PI+s[2];hit.userData.slot=i;scene.add(hit);pickers.push(hit)});
   // palms around the house, collision for the whole building and the pool
   [[-28,-4],[-40,-4],[28,-6],[-30,26]].forEach(([x,z])=>{const p=gW(x,z);palm(p.x,p.z,gY,1.1)});
-  const c=gW(0,15);addBox(c.x,c.z,23.6,15.6,gYaw);
+  const c=gW(0,15);HOUSE_BOX=addBox(c.x,c.z,23.6,15.6,gYaw);
   const pl=gW(-34,12);addBox(pl.x,pl.z,9,4.5,gYaw);
 }
 

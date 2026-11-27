@@ -154,8 +154,10 @@ function fastTravel(m){
 // Low walls and guardrails are ignored, the camera is above them.
 let camBoom=null,lookingBehind=false;
 function boomClear(px,pz,fx,fz,back){
+  // (inside the house on foot, its walls are kept round the camera instead: js/people.js houseCam)
+  const indoors=FOOT.on&&typeof houseIn==="function"&&houseIn(px,pz);
   for(let d=2.2;d<=back+.01;d+=.8){const x=px-fx*d,z=pz-fz*d;let hit=false;
-    obstaclesNear(x,z,3.6,o=>{if(hit)return;
+    obstaclesNear(x,z,3.6,o=>{if(hit||indoors&&o===HOUSE_BOX)return;
       if(o.c){if(o.r>=.36&&Math.hypot(x-o.x,z-o.z)<o.r+2.6)hit=true}
       else if(Math.min(o.hx,o.hz)>=.6){const dx=x-o.x,dz=z-o.z,lx=dx*o.cs-dz*o.sn,lz=dx*o.sn+dz*o.cs;if(Math.abs(lx)<o.hx+.6&&Math.abs(lz)<o.hz+.6)hit=true}});
     if(hit)return Math.max(2.6,d-.8)}
