@@ -17,7 +17,7 @@ const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3)
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
 function setState(s){if(s!=="GARAGE"&&typeof partyClear==="function")partyClear();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
-  if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
+  if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
@@ -930,7 +930,7 @@ addEventListener("keydown",e=>{
     if(!$("phShot").classList.contains("hide")){if(k==="escape")photoShotClose()}
     else if(k==="escape"||k==="v")photoExit();else if(k==="enter")photoCapture();else if(k==="r")photoReset();else if(k>="1"&&k<="4"&&k.length===1)photoLookSet(+k-1)}
   else if(state==="MAP"){if(k==="escape"&&mapKey.offsetWidth&&mapKey.getAttribute("aria-expanded")==="true"){mapKey.click();mapKey.focus()}else if(k==="escape"||k==="m")closeMap();else if(k==="+"||k==="=")$("mapIn").onclick();else if(k==="-")$("mapOut").onclick()}
-  else if(state==="GARAGE"){if(k==="arrowleft"||k==="a")$("gprev").onclick();else if(k==="arrowright"||k==="d")$("gnext").onclick();else if(k==="enter")goDrive()}
+  else if(state==="GARAGE"){if(k==="n")needsSleep();else if(k==="arrowleft"||k==="a")$("gprev").onclick();else if(k==="arrowright"||k==="d")$("gnext").onclick();else if(k==="enter")goDrive()}
   else if(state==="DEALER"){if(k==="arrowup"||k==="arrowleft"){e.preventDefault();dPick(dSel-1)}else if(k==="arrowdown"||k==="arrowright"){e.preventDefault();dPick(dSel+1)}else if(k==="escape")closeDealer()}
   else if(state==="INTRO"){if(k==="enter")$("iGo").onclick();else if(k==="escape")$("iNo").onclick();else if(k==="arrowleft"||k==="a")setDiff(save.diff-1);else if(k==="arrowright"||k==="d")setDiff(save.diff+1)}
   else if(state==="RESULT"){if(k==="enter"||k==="escape")$("rOk").onclick()}

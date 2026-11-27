@@ -138,7 +138,10 @@ function frame(ts){
   pollPad();
   const raw=(ts-prevTs)/1000||.016,dt=Math.min(.05,raw);prevTs=ts;if(state==="WARDROBE"&&fittingScene){drawFitting(dt);return}resStill(state==="GARAGE"||state==="DEALER");if(!RES.held)adaptRes(raw);const pt0=perfStart();
   // automatic time: an hour every 30 s by day, and the night passes about twice as fast
-  if(save.todMode===0&&(state==="DRIVE"||state==="GARAGE"||state==="EXIT"))save.tod=(save.tod+dt/30*(1+1.4*night))%24;
+  if(save.todMode===0&&(state==="DRIVE"||state==="GARAGE"||state==="EXIT")){
+    const before=Math.floor(save.tod);save.tod=(save.tod+dt/30*(1+1.4*night))%24;
+    if(state==="GARAGE"&&Math.floor(save.tod)!==before)sleepSync();
+  }
   // photo mode stops the scenery's clocks too (sea, foam, boats, grass, fish, clouds); they carry on from the same
   // point afterwards. Showing and hiding by distance still follows the photo camera
   const wdt=state==="PHOTO"?0:dt;if(state!=="PHOTO")skyClock+=raw;

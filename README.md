@@ -73,6 +73,8 @@ Energy, hunger, fun and social each run from 0 to 100 and fall slowly while you 
 | Fun | Finishing a race or time trial (+15), driving at 80 km/h or more (or 3 m/s on the boat), and a friend over or a party at home |
 | Social | A friendly word with someone in Old Quay (+8 a conversation), a friend over (+30) or a party at home |
 
+In your garage, a bed unlocks **SLEEP** from 20:00 until 05:00 with **TIME OF DAY** on **AUTO**. Press **N**, press **RB** on a controller, or select **SLEEP** beside **REST**. You wake at 07:00 with 100 energy, 15 less hunger and the Energised feeling. Rest is available again after 30 seconds of play. Sleeping leaves other players’ clocks and your snack and party waits alone.
+
 The map shows the Market Kitchen and the benches. Nothing can be done about your needs while the police are after you.
 
 ## Friends who ride with you

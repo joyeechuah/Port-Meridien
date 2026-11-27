@@ -428,12 +428,13 @@ const needsOfSave=sv=>needsClean(sv&&sv.needs);
 function homeWaitClean(raw){
   const seconds=k=>Number.isFinite(raw?.[k])?clamp(Math.ceil(raw[k]),0,180):0;
   const party=seconds("party"),at=Number.isSafeInteger(raw?.partyAt)&&raw.partyAt>0?raw.partyAt:0;
-  return {snack:seconds("snack"),play:seconds("play"),...(party?{party}:{}),...(at?{partyAt:at}:{})};
+  const rest=Math.min(30,seconds("rest"));
+  return {...(rest?{rest}:{}),snack:seconds("snack"),play:seconds("play"),...(party?{party}:{}),...(at?{partyAt:at}:{})};
 }
 const homeUntil={snack:0,play:0,party:0,partyAt:0};
 function homeWaitLoad(raw){
   const wait=homeWaitClean(raw);save.homeWait=wait;
-  homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;homeUntil.party=NS.t+(wait.party||0);homeUntil.partyAt=wait.partyAt||0;
+  NS.restAt=NS.t+(wait.rest||0);homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;homeUntil.party=NS.t+(wait.party||0);homeUntil.partyAt=wait.partyAt||0;
 }
 // another device's party wait: the same party's, the shorter of the two (both count down; the longer would come back
 // up from the other device, again and again); a newer party's, theirs; an older one's, this device's own
@@ -443,12 +444,12 @@ function partyWaitMerge(raw){
   homeUntil.party=NS.t+wait;homeUntil.partyAt=Math.max(at,homeUntil.partyAt);
 }
 homeWaitLoad(save.homeWait);
-const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=NEED_ORDER.map(k=>n[k]).join(",");
+const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=NEED_ORDER.map(k=>n[k]).join(",")+(wait.rest?"/rest"+wait.rest:"");
   if(wait.party)return key+"/"+wait.snack+"/"+wait.play+"/"+wait.party;
   return wait.snack||wait.play?key+"/"+wait.snack+"/"+wait.play:key};
 // the save's needs become the ones in play: on loading, and when another device's are newer (js/screens.js)
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
-function needsCommit(){save.homeWait=homeWaitClean({snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t,partyAt:homeUntil.partyAt});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
+function needsCommit(){save.homeWait=homeWaitClean({rest:NS.restAt-NS.t,snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t,partyAt:homeUntil.partyAt});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
 function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&state==="GARAGE"&&NEEDS[k]>was)skillAward("cooking",hasTrait("handy")?10:5);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
@@ -530,6 +531,36 @@ function needsRest(){
   needsAdd("energy",homeGain("rest"));if(homeHas(save.home,"rest")&&typeof feel==="function")feel("energised","A rest in your own bed");
   NS.restAt=NS.t+30;persist();restSync();return true;
 }
+// Sleep advances the local island clock only. Active-play timers keep their remaining waits.
+function sleepNight(){return save.todMode===0&&(save.tod>=20||save.tod<5)}
+function sleepSync(){show("gSleep",state==="GARAGE"&&sleepNight()&&homeHas(save.home,"rest"))}
+function sleepReason(){
+  if(state!=="GARAGE")return "Return to your garage first";
+  if(tabIdle)return "This tab has stopped";
+  if(document.hidden)return "Return to this tab first";
+  if(!homeEditable()||clOverlayOpen())return "Finish with your cloud save first";
+  if(WANTED.lvl)return "Lose the police first";
+  if(PARTY.active||partyOpen())return "Finish the party first";
+  if(GUEST.who&&!GUEST.done)return "Your friend is waiting to hang out";
+  if(HV.on)return "Finish designing your home first";
+  if(cuOpen())return "Finish customising your car first";
+  if(!homeHas(save.home,"rest"))return "Place a bed in your home first";
+  if(!sleepNight())return "Sleep between 20:00 and 05:00 with automatic time";
+  return "";
+}
+let sleepNoticeTimer=0;
+function sleepNotice(message){
+  const notice=$("sleepNotice");notice.textContent=message;clearTimeout(sleepNoticeTimer);
+  sleepNoticeTimer=setTimeout(()=>{notice.textContent=""},3200);
+}
+function needsSleep(){
+  const why=sleepReason();if(why){sleepNotice(why);return false}
+  // Commit in one turn, so hiding the tab or starting another action during the
+  // visual transition cannot leave a deferred write or an unfinished game state.
+  $("fade").animate([{opacity:0},{opacity:1,offset:.4},{opacity:1,offset:.55},{opacity:0}],650);
+  save.tod=7;NEEDS.energy=100;needsAdd("hunger",-15);NS.restAt=NS.t+30;
+  feel("energised","A good night's sleep");sleepNotice("07:00 · A good night's sleep");persist();restSync();return true;
+}
 function homeGain(action){
   const base=action==="rest"?(homeHas(save.home,"rest")?60:40):action==="snack"?30:25;
   return base*homeLift();
@@ -544,6 +575,7 @@ function homeUse(action){
 }
 function homeChanged(){persist();updateMoney();restSync()}
 function restSync(){
+  sleepSync();
   for(const [action,id,k] of [["snack","gSnack","hunger"],["play","gPlay","fun"]]){
     const button=$(id);show(id,homeHas(save.home,action));button.disabled=needOf(k)>=100||NS.t<homeUntil[action];
     button.textContent=action.toUpperCase()+" · "+k.toUpperCase()+" "+needOf(k);
@@ -624,7 +656,7 @@ function needsClose(){show("needs",false);$("pause").inert=false;try{$("pNeeds")
     r.innerHTML='<span class="ndl">'+NEED_LABEL[k]+'</span><div class="ndb" role="meter" aria-valuemin="0" aria-valuemax="100" aria-label="'+NEED_LABEL[k]+'"><i></i></div><b class="num"></b><em></em>';
     list.appendChild(r)}
   $("ndReroll").onclick=()=>{if(wantsReroll())needsRender()};
-  $("pNeeds").onclick=needsOpen;$("ndClose").onclick=needsClose;$("gSnack").onclick=()=>homeUse("snack");$("gPlay").onclick=()=>homeUse("play");$("gRest").onclick=()=>needsRest()}
+  $("pNeeds").onclick=needsOpen;$("ndClose").onclick=needsClose;$("gSnack").onclick=()=>homeUse("snack");$("gPlay").onclick=()=>homeUse("play");$("gRest").onclick=()=>needsRest();$("gSleep").onclick=()=>needsSleep()}
 needsLoad(save.needs);
 
 /* ================================================================ RIDES: a friend comes along in your car */

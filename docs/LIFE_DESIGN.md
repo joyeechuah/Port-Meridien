@@ -41,6 +41,6 @@ Step 5, part 3. Working decisions, like the rest of this page: numbers are start
 1. **Moods with effects**: today a mood only changes a suggestion and a hint. Small effects (prices, police, friends) are not decided.
 2. **More places for needs**: a café with seats, more benches, the house's own bed.
 3. **More with friends**: calling them, meeting at a place, friends who come to you. (Riding along is built, above. A paid shift at the Market Kitchen is approved as part 4: `docs/LIFE_NEXT_DESIGN.md`.)
-4. **A home to run**: furniture in the house, bills, a bed to sleep in and skip the night.
+4. **A home to run**: furniture and sleeping in a bed are in the game. Bills remain planned. At home, SLEEP (N or controller RB) skips an automatic night to 07:00, fills energy and costs 15 hunger. The Energised feeling and the 30-second REST wait use the active-play clock.
 5. **A job**: shifts that pay, alongside contracts.
 6. **More people** in the new city and more lines (flirting, arguing), with a setting if any of it needs an age rating.
