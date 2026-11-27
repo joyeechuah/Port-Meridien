@@ -452,7 +452,7 @@ const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
 function needsCommit(){save.homeWait=homeWaitClean({rest:NS.restAt-NS.t,snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t,partyAt:homeUntil.partyAt});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
-function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&state==="GARAGE"&&NEEDS[k]>was)skillAward("cooking",hasTrait("handy")?10:5);return NEEDS[k]-was}
+function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&(state==="GARAGE"||typeof homeOnFoot==="function"&&homeOnFoot())&&NEEDS[k]>was)skillAward("cooking",hasTrait("handy")?10:5);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
 // a tie) gives Tired, Hungry, Bored or Lonely, kept until that need is back to 35, unless another drops to 15 or under
 // and lower still. With no low need: Content when all four are at 70 or more, otherwise Okay
@@ -525,10 +525,14 @@ function needsHints(){
 }
 
 /* ---------- putting them back ---------- */
+// at home on foot: about the house in free ride (js/people.js houseIn), the tab live and no cloud restore under way.
+// There the room's furniture does what the garage screen's buttons do: the bed rests you (and at night, sleeps you),
+// the fridge feeds you, the TV or computer entertains you, a seat sits you down
+const homeOnFoot=()=>typeof FOOT!=="undefined"&&FOOT.on&&!BOAT.on&&state==="DRIVE"&&!tabIdle&&!(CL&&CL.applying)&&typeof houseIn==="function"&&houseIn(FOOT.x,FOOT.z);
 // Rest at home: the garage's REST, +40 energy, then not again for 30 s of play. Going home because you were knocked
 // out or chose GO HOME is no rest in itself
 function needsRest(){
-  if(!homeEditable()||document.hidden||WANTED.lvl||NS.t<NS.restAt||needOf("energy")>=100)return false;
+  if(!(homeEditable()||typeof homeOnFoot==="function"&&homeOnFoot())||document.hidden||WANTED.lvl||NS.t<NS.restAt||needOf("energy")>=100)return false;
   needsAdd("energy",homeGain("rest"));if(homeHas(save.home,"rest")&&typeof feel==="function")feel("energised","A rest in your own bed");
   NS.restAt=NS.t+30;persist();restSync();return true;
 }
@@ -536,10 +540,10 @@ function needsRest(){
 function sleepNight(){return save.todMode===0&&(save.tod>=20||save.tod<5)}
 function sleepSync(){show("gSleep",state==="GARAGE"&&sleepNight()&&homeHas(save.home,"rest"))}
 function sleepReason(){
-  if(state!=="GARAGE")return "Return to your garage first";
+  if(state!=="GARAGE"&&!(typeof homeOnFoot==="function"&&homeOnFoot()))return "Return to your garage first";
   if(tabIdle)return "This tab has stopped";
   if(document.hidden)return "Return to this tab first";
-  if(!homeEditable()||clOverlayOpen())return "Finish with your cloud save first";
+  if(!(homeEditable()||typeof homeOnFoot==="function"&&homeOnFoot())||clOverlayOpen())return "Finish with your cloud save first";
   if(WANTED.lvl)return "Lose the police first";
   if(PARTY.active||partyOpen())return "Finish the party first";
   if(GUEST.who&&!GUEST.done)return "Your friend is waiting to hang out";
@@ -571,7 +575,7 @@ function homeLift(){return (1+homeComfort(save.home)/1000)*(hasTrait("homebody")
 function homeUse(action){
   if(action!=="snack"&&action!=="play")return false;
   const need=action==="snack"?"hunger":"fun";
-  if(!homeEditable()||document.hidden||WANTED.lvl||!homeHas(save.home,action)||NS.t<homeUntil[action]||needOf(need)>=100)return false;
+  if(!(homeEditable()||typeof homeOnFoot==="function"&&homeOnFoot())||document.hidden||WANTED.lvl||!homeHas(save.home,action)||NS.t<homeUntil[action]||needOf(need)>=100)return false;
   needsAdd(need,homeGain(action));homeUntil[action]=NS.t+180;wantEvent("home");persist();restSync();return true;
 }
 function homeChanged(){persist();updateMoney();restSync()}
@@ -612,7 +616,7 @@ function sitDown(b){
 // up, a step towards the fountain, clear of the bench
 function sitEnd(){
   if(!SIT.on)return;const b=SIT.b;SIT.on=false;SIT.b=null;
-  const c=footClear(b.x-Math.sin(b.a)*.9,b.z-Math.cos(b.a)*.9);FOOT.x=c[0];FOOT.z=c[1];FOOT.v=0;
+  const c=footClear(b.x-Math.sin(b.a)*.9,b.z-Math.cos(b.a)*.9,FOOT.y);FOOT.x=c[0];FOOT.z=c[1];FOOT.v=0;
   if(FOOT.on&&state==="DRIVE")footPrompt();
 }
 function sitTick(dt){
@@ -753,7 +757,7 @@ function rideTick(dt){
   if(RIDE.st==="follow"){
     if(BOAT.on){rideSay("I'll wait on dry land.","meh");rideEnd("left");return}
     if(RIDE.t>RIDE_V.wait){rideEnd("drop");return}
-    const g=rideGoal(),dx=g.x-p.x,dz=g.z-p.z,d=Math.hypot(dx,dz),car=!FOOT.on,psp=Math.hypot(P.vx,P.vz);
+    const g=(typeof houseWay==="function"&&houseWay(p.x,p.z,p.y))||rideGoal(),dx=g.x-p.x,dz=g.z-p.z,d=Math.hypot(dx,dz),car=!FOOT.on,psp=Math.hypot(P.vx,P.vz);
     // you drove off without them
     if(car&&psp>4&&Math.hypot(P.x-p.x,P.z-p.z)>10){relSet(who.id,r().f-4,r().n);rideSay("You drove off without me!","frown");rideEnd("left");persist();return}
     if(car&&d<RIDE_V.board&&psp<1.5){rideBoard();return}
@@ -761,16 +765,18 @@ function rideTick(dt){
     const want=d<=g.stop?0:d>4?RIDE_V.hurry:RIDE_V.follow;p.v+=clamp(want-p.v,-8*dt,6*dt);
     const step=Math.min(d,p.v*dt);
     if(d>.01){
-      const [nx,nz]=footClear(p.x+dx/d*step,p.z+dz/d*step);
+      // (at their own height, and not up a step taller than a kerb in one stride, as you: they follow you up the stairs)
+      let [nx,nz]=footClear(p.x+dx/d*step,p.z+dz/d*step,p.y);if(footGround(nx,nz,p.y)-p.y>.6){nx=p.x;nz=p.z}
       // Compare movement towards this frame's goal. A walking player moves that goal every frame.
       const progress=((nx-p.x)*dx+(nz-p.z)*dz)/d;
       RIDE.stuck=d>1.5&&progress<step*.15?RIDE.stuck+dt:0;
       p.x=nx;p.z=nz;
       if(p.v>.05)p.h+=wrapA(Math.atan2(dx,dz)-p.h)*Math.min(1,dt*8);
     }else RIDE.stuck=0;
-    if(d>45||RIDE.stuck>4){[p.x,p.z]=footClear(g.x,g.z);RIDE.stuck=0}
+    // (caught up at your height: upstairs, they used to land on the floor below you)
+    if(d>45||RIDE.stuck>4){const t=rideGoal();p.y=FOOT.on?FOOT.y:p.y;[p.x,p.z]=footClear(t.x,t.z,p.y);RIDE.stuck=0}
     if(d<=g.stop&&!car)p.h+=wrapA(FOOT.h-p.h)*Math.min(1,dt*4);
-    p.y=footGround(p.x,p.z);
+    p.y=footGround(p.x,p.z,p.y);
     const G=p.m.G;G.visible=true;p.ph+=p.v*dt*3.3;const sw=Math.sin(p.ph)*Math.min(.8,p.v*.42);
     G.position.set(p.x,p.y,p.z);G.rotation.set(0,p.h,0,"YXZ");p.m.legs[0].rotation.x=sw;p.m.legs[1].rotation.x=-sw;p.m.arms[0].rotation.x=-sw*.7;p.m.arms[1].rotation.x=sw*.7;
     faceBlink(p.m.face,dt);emoteTick(p,dt);
@@ -826,7 +832,7 @@ const ridePrompt=()=>RIDE.st==="ride"&&RIDE.t>5&&kphNow()<5?{t:"Drop off "+RIDE.
 
 /* ================================================================ A FRIEND OVER: asked while talking (Friend and up), they
    wait on the mezzanine at home until you hang out with them there; for this session */
-const GUEST={who:/** @type {any} */ (null),m:/** @type {any} */ (null),done:false,h:1,seat:/** @type {any} */ (null)};
+const GUEST={who:/** @type {any} */ (null),m:/** @type {any} */ (null),done:false,h:1,seat:/** @type {any} */ (null),shown:false};
 const GUEST_LINES={cheerful:"Love what you've done with the place!",grumpy:"It's... fine. Nice sofa, I suppose.",joker:"Is this a garage or a palace?",
   chatty:"We talked for hours. Same again soon?",shy:"Thanks for having me.",busy:"Got to dash, but that was fun."};
 function talkInvite(){
@@ -858,7 +864,15 @@ function guestSync(s=state){
   const home=s==="GARAGE";show("gGuest",home);$("gGuest").textContent="HANG OUT · "+GUEST.who.name.toUpperCase();
   if(!home){if(GUEST.m)GUEST.m.G.visible=false;return}
   if(!GUEST.m){const id=GUEST.who.id;GUEST.h=.94+rnd(id,38)*.12;GUEST.m=pedModel(id,GUEST.h,pedLook(id))}
-  const seat=guestSeat();GUEST.seat=seat;guestPlace(GUEST.m,GUEST.h,seat,[]);
+  const seat=guestSeat();GUEST.seat=seat;guestPlace(GUEST.m,GUEST.h,seat,[]);GUEST.shown=GUEST.m.G.visible;
+}
+// about the house on foot, a friend asked over is in the room, as on the garage screen (from js/cars.js cullParked:
+// near, the camera within 150 m of the house)
+function guestAbout(near){
+  if(state==="GARAGE"||!GUEST.who||GUEST.done)return;
+  if(!near){if(GUEST.m)GUEST.m.G.visible=false;return}
+  if(!GUEST.m){const id=GUEST.who.id;GUEST.h=.94+rnd(id,38)*.12;GUEST.m=pedModel(id,GUEST.h,pedLook(id));GUEST.seat=guestSeat();guestPlace(GUEST.m,GUEST.h,GUEST.seat,[]);GUEST.shown=GUEST.m.G.visible}
+  GUEST.m.G.visible=!!GUEST.shown;
 }
 // a guest at home: on a seat (a little forward of its middle, facing the way it faces; the legs, one piece each from
 // hip to shoe, reach forward and down to the floor and the hands rest in the lap), or else standing on a free cell by
@@ -887,7 +901,7 @@ function guestDrop(){if(!GUEST.m)return;scene.remove(GUEST.m.G);GUEST.m.face.m.d
 // hanging out: social +30 and fun +10 (more in a comfortable home, and for a Homebody), Charisma XP, and friendship +4,
 // up to +8 in a comfortable home; then they go
 function guestHangOut(){
-  const who=GUEST.who;if(!who||GUEST.done||state!=="GARAGE"||tabIdle)return false;
+  const who=GUEST.who;if(!who||GUEST.done||!(state==="GARAGE"||typeof homeOnFoot==="function"&&homeOnFoot())||tabIdle)return false;
   const r=rel(who.id),comfy=typeof homeComfort==="function"?homeComfort(save.home):0,gain=4+Math.floor(comfy/25);
   const lift=typeof homeComfort==="function"?homeLift():1;
   relSet(who.id,r.f+gain,r.n+1);needsAdd("social",30*lift);needsAdd("fun",10*lift);skillAward("charisma",4);if(typeof feel==="function")feel("happy",who.name+" came over");
