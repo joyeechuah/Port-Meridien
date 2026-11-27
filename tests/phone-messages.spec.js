@@ -24,7 +24,11 @@ async function measure(game, page, setup) {
     const kids = [...document.querySelectorAll("#toasts>.toast")];
     const shown = kids.filter((t) => getComputedStyle(t).display !== "none");
     T.camera.updateMatrixWorld();
-    const bb = new THREE.Box3().setFromObject(T.pc.G);
+    // the car itself: not the smoke a damaged car gives off (sprites rising above the roof), now that damage carries into
+    // a race
+    const bb = new THREE.Box3();
+    T.pc.G.updateMatrixWorld(true);
+    T.pc.G.traverse((o) => { if (o.isMesh && !o.isSprite && o.geometry) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
     let carTop = Infinity;
     for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) {
       const p = new THREE.Vector3(x, y, z).project(T.camera);
