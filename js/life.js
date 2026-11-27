@@ -921,8 +921,12 @@ const PARTY_RSVP={
 const PARTY_NO={cheerful:"Maybe after we get to know each other.",joker:"Let's hang out another time.",
   chatty:"Let's talk a bit more first.",shy:"I'd rather know you better first.",
   grumpy:"I'm staying in tonight.",busy:"I can't clear my schedule."};
+// home, for a party: the garage screen, or walking about the house (and the pause menu, map or Photo Mode from
+// there). Parties used to need the garage screen
+const partyHome=(s=state)=>s==="GARAGE"||["DRIVE","PAUSE","MAP","PHOTO"].includes(s)&&typeof FOOT!=="undefined"&&FOOT.on&&!BOAT.on&&
+  typeof houseIn==="function"&&houseIn(FOOT.x,FOOT.z);
 function partyAtHome(){
-  return typeof homeEditable==="function"&&homeEditable()&&!document.hidden&&!WANTED.lvl&&
+  return (typeof homeEditable==="function"&&homeEditable()||typeof homeOnFoot==="function"&&homeOnFoot())&&!document.hidden&&!WANTED.lvl&&
     !(GUEST.who&&!GUEST.done)&&!(typeof clOverlayOpen==="function"&&clOverlayOpen());
 }
 function partyCanHost(){return partyAtHome()&&NS.t>=homeUntil.party}
@@ -975,7 +979,7 @@ function partyEnd(){
 // they're only there while the party is on and you're home
 const PARTY_M=/** @type {Map<number,any>} */ (new Map()),PARTY_SEL=/** @type {number[]} */ ([]);
 function partySync(s=state){
-  const on=PARTY.active&&s==="GARAGE";if(s!=="GARAGE"&&partyOpen()){show("party",false);$("gui").inert=false}
+  const on=PARTY.active&&partyHome(s);if(!partyHome(s)&&partyOpen()){show("party",false);$("gui").inert=false}
   for(const [id,M] of PARTY_M)if(!on||!PARTY.ids.includes(id)){scene.remove(M.G);M.face.m.dispose();PARTY_M.delete(id)}
   partyButton(s);
   if(!on)return;
@@ -983,7 +987,7 @@ function partySync(s=state){
   const taken=[];
   // (no one stands within a metre of a seat someone's on)
   for(const p of seats.slice(0,PARTY.ids.length)){const r=homeRect(p.id,p.x,p.z,p.r);for(let x=r.x;x<r.x+r.w;x++)for(let z=r.z;z<r.z+r.d;z++)taken.push({x,z})}
-  PARTY.ids.forEach((id,i)=>{const h=.94+rnd(id,38)*.12;let M=PARTY_M.get(id);if(!M){M=pedModel(id,h,pedLook(id));PARTY_M.set(id,M)}guestPlace(M,h,seats[i]||null,taken)});
+  PARTY.ids.forEach((id,i)=>{const h=.94+rnd(id,38)*.12;let M=PARTY_M.get(id);if(!M){M=pedModel(id,h,pedLook(id));PARTY_M.set(id,M)}M.seat=seats[i]||null;guestPlace(M,h,M.seat,taken)});
 }
 const partyFriends=()=>PEOPLE.filter(p=>rel(p.id).n>0&&rel(p.id).f>=RIDE_AT);
 // THROW A PARTY in the garage (where HANG OUT goes for a single guest, so the two never show together); SEE THEM OFF
@@ -1001,9 +1005,18 @@ function partyPanel(){
   if(!partyCanHost())return;
   PARTY_SEL.length=0;partyRender();$("pyReplies").replaceChildren();show("pyStart",false);show("pyInvite",true);
   // the garage behind is out of reach while it's open (Tab used to reach DESIGN HOME, and Space opened it underneath)
+  // on foot, the walker stops where they are (keys held as it opened kept them walking)
+  if(state!=="GARAGE"&&typeof clearInput==="function"){clearInput();FOOT.v=0}
   show("party",true);$("gui").inert=true;try{$("pyInvite").focus({preventScroll:true})}catch(e){}
 }
-function partyPanelClose(){show("party",false);$("gui").inert=false;try{$("gParty").focus({preventScroll:true})}catch(e){}}
+function partyPanelClose(){show("party",false);$("gui").inert=false;try{$(state==="GARAGE"?"gParty":"prompt").focus({preventScroll:true})}catch(e){}}
+// about the house on foot (each frame, from js/main.js driveUpdate): the guests are there, and walking out of the house
+// ends the party, as leaving the garage screen does
+function partyAbout(){
+  if(!PARTY.active||state!=="DRIVE")return;
+  if(!partyHome()){const n=PARTY.ids.length;partyClear();partySync();if(n)toast("PARTY OVER","You left, so your guests went home");return}
+  if(PARTY_M.size<PARTY.ids.length)partySync();
+}
 // the Friends who can be asked: up to three chosen; choosing again after the replies means sending again
 function partyRender(){
   const L=$("pyList");L.replaceChildren();

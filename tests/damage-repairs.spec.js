@@ -77,3 +77,14 @@ test("insufficient credits disables roadside repair; canceling confirmation neve
   await page.locator("#damageHud").click();
   await expect(page.locator("#repairNow")).toBeDisabled();
 });
+
+test("starting an event keeps the car's damage, and the intro says so", async ({ game, page }) => {
+  await damagedDrive(game, 40);
+  await game.park();
+  const E = await game.eval(() => __T.EVENTS.find((e) => e.type === "race").id);
+  await game.eval((id) => __T.openIntro(__T.EVENTS.find((e) => e.id === id)), E);
+  await game.waitState("INTRO");
+  await expect(page.locator("#iRows")).toContainText("40% damaged");
+  await game.eval((id) => __T.startEvent(__T.EVENTS.find((e) => e.id === id)), E);
+  expect(await game.eval(() => Math.round(__T.P.damage))).toBe(40);
+});

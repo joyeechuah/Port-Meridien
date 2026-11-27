@@ -163,7 +163,8 @@ function startEvent(E,cup){
   // a friend with you gets out here first, as one won't get in during a race or a time trial (js/life.js rideWhy). They
   // used to stay in the seat for the whole race, or, still walking to the car, be brought to the grid and get in there
   if(typeof RIDE!=="undefined"&&RIDE.p&&typeof rideEnd==="function")rideEnd("out");
-  P.damage=P.damageT=0;repairWarnLevel=0;
+  // the car starts as it is: an event used to repair it for free, so entering one was the way round paying for a repair
+  // (damage costs power, js/cars.js damagePower, and the intro says so)
   const R=E.route,me=curCar(),idx=CARS.indexOf(me);
   ev={E,R,lanes:null,t:-3,phase:"count",cp:0,hint:0,s:14,sNow:14,d:99,ai:[],done:false,wrongT:0,last:4,px:null,pz:null,gate:gateOf(R,E.cps[0]),reT:0,missT:0,diff:E.type==="race"?save.diff:1,obs:[],cup:cup||null,tg:cup&&E.type==="tt"?cupTimes(E,cup.cls):E,rec:E.type==="tt"?[]:null,ghost:E.type==="tt"&&save.ghost[E.id]?save.ghost[E.id]:null};
   const p=edgePos(R,14);
@@ -321,7 +322,7 @@ function finishEvent(tx){
     rows.push(["Gold time",fmtT(G.gold)]);
   }
   if(E.type==="race"){rew=Math.round(rew*skillFactor("driving"));wantEvent("race");skillAward("driving",30)}
-  const cupRows=ev.cup?cupScore(ev.cup,E.type==="race"?pos-1:medal):null;
+  const cupRows=ev.cup?cupScore(ev.cup,E.type==="race"?pos-1:medal,E.type==="race"?ev.diff:null):null;
   const best=save.rec[E.id];const isRec=!best||t<best;if(isRec)save.rec[E.id]=t;
   // a record time trial run becomes the ghost (the last sample is the line itself)
   if(isRec&&ev.rec&&ev.rec.length>=8&&ev.rec.length<12000){ev.rec.push(+P.x.toFixed(1),+P.z.toFixed(1),+P.h.toFixed(2),+E.route.len.toFixed(1));save.ghost[E.id]={c:curCar().id,t,d:ev.rec}   /* a taken car's ghost is kept as the model it borrows: its made-up id means nothing after a reload, and the ghost was dropped */}
@@ -356,6 +357,7 @@ function openIntro(E,cup){
   if(E.type==="tt")rows.push(["Gold / silver / bronze",fmtT(G.gold)+" / "+fmtT(G.silver)+" / "+fmtT(G.bronze)]);else rows.push(["Opponents",cup?"3 rivals in "+cup.cls+" cars":"3 rivals in cars near your class"]);
   if(cup)rows.push(["Cup points",E.type==="race"?"10 / 6 / 4 / 3 for 1st to 4th":"10 / 6 / 4 / 3 for gold to no medal"]);
   rows.push(["Rewards",(E.type==="race"?raceRewards(E,save.diff):E.rewards).map(fmtCr).join(" / ")+" CR"],["Your best",save.rec[E.id]?fmtT(save.rec[E.id]):"--"]);
+  if(damagePct()>0)rows.push(["Your car",damagePct()+"% damaged · less power. Repair it first from the pause menu"]);
   $("iType").textContent=(cup?cup.cls+" CUP · ROUND "+(cup.round+1)+" OF 3 · ":"")+(E.type==="tt"?"TIME TRIAL":"RACE");$("iName").textContent=E.name;
   $("iRows").innerHTML=rows.map(r=>`<div class="row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join("");
   // races: how fast the rivals drive, and what it pays

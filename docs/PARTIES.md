@@ -1,6 +1,6 @@
 # Parties at home
 
-In the garage, choose up to three Old Quay residents. Anyone invited must be a Friend (at least one conversation and 40 friendship). An invitation and its guest list last for this garage visit. A single invited visitor gets the room to themselves until their visit ends. Parties invite residents by permanent id, including people whose pedestrian slot is currently off screen.
+In the garage, or walking about the room upstairs, choose up to three Old Quay residents. Anyone invited must be a Friend (at least one conversation and 40 friendship). An invitation and its guest list last for this visit home. A single invited visitor gets the room to themselves until their visit ends. Parties invite residents by permanent id, including people whose pedestrian slot is currently off screen.
 
 | Personality | Minimum friendship to accept |
 | --- | ---: |
@@ -17,13 +17,15 @@ Each reply includes its reason. Responses are deterministic. Sending the same in
 - `partyInvite(ids)` replaces the pending selection and returns one `{id,accepted,reason}` per invitation, in selection order. An empty selection clears it. Duplicate, unknown or excessive ids reject the entire request without changing the selection. A blocked action returns an empty array.
 - `partyStart()` rechecks attendance and returns true only on starting a party with at least one willing guest. While `PARTY.active` is true, seat the residents in `PARTY.ids`. A second start or invitation leaves the party alone.
 - `partyScore()` previews the current group's score. It returns zero for an empty group.
-- `partyEnd()` settles an active party at home and returns `{score,guests,happy}`. An invalid or repeated end returns false. Leaving the garage or reloading cancels without an award. The existing HANG OUT action remains available for a single private visit.
+- `partyEnd()` settles an active party at home and returns `{score,guests,happy}`. An invalid or repeated end returns false. Leaving home (driving out, or walking out of the house) or reloading cancels without an award. The pause menu, the map and Photo Mode, opened on foot in the house, don't. The existing HANG OUT action remains available for a single private visit.
 
 ## In the game
 
 **THROW A PARTY** in the garage takes the place HANG OUT has for a single guest (the two never show together), once you have a Friend. It opens a panel listing your Friends with their personality and how close you are. Choose up to three and **SEND INVITATIONS**: each answers with their reason. If anyone is coming, **START THE PARTY** (with the score so far) takes SEND's place; choosing again brings SEND back. When nobody can come, the panel says so.
 
 The guests take your seats, comfiest first (a sofa, then a reading chair, a window bench, a stool), one each. The rest stand by the railing, a metre clear of each other and of the seats in use. Moving or selling furniture seats them again. The button then reads **SEE THEM OFF · PARTY** and the score; pressing it ends the party, with a message giving the score and who you got closer to. While the next one waits, it reads **PARTY · AGAIN IN** and the minutes left.
+
+On foot in the room upstairs, **Throw a party** is the prompt wherever nothing else is in reach, and opens the same panel; the walker stands still behind it, and a controller's D-pad and A choose, B closes it. The guests are in the room, a standing one solid to walk into, and **See them off** is the prompt beside any of them. Walking out of the house calls the party off.
 
 With a controller, Y presses HANG OUT or the party's button; in the panel the D-pad and A choose, and B closes it. Escape closes it too.
 

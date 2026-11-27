@@ -1,7 +1,7 @@
 // A party at home (docs/PARTIES.md, js/life.js): THROW A PARTY in the garage asks up to three Friends over. Each
 // answers with a reason; those coming take the comfiest seats and the rest stand by the railing, a metre apart. SEE THEM
 // OFF ends it: friendship, social, fun and Charisma, and the next party waits three minutes of play. Leaving the garage
-// calls it off. A controller's Y opens it, the D-pad and A choose, and B closes it.
+// calls it off (walking about the house doesn't: tests/party-on-foot.spec.js). A controller's Y opens it, the D-pad and A choose, and B closes it.
 const { test, expect } = require("./support/game");
 
 const HOME = {

@@ -408,7 +408,9 @@ try{
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};
    for(const k of ["A1","A2","A3","A4","A5","A6","A7"]){const v=c[k];if(!v||typeof v!=="object")continue;
      const pts=Array.isArray(v.pts)?v.pts.filter(x=>[0,3,4,6,10].includes(x)).slice(0,3):[];
-     o[k]={r:pts.length,pts,won:v.won===true}}
+     // the difficulty of each race round (null for a time trial), which scales the prize
+     const d=Array.isArray(v.d)?v.d.slice(0,pts.length).map(x=>x===0||x===1||x===2?x:null):[];while(d.length<pts.length)d.push(null);
+     o[k]={r:pts.length,pts,d,won:v.won===true}}
    save.champ=o}
   // Island Passport: landmarks found, by stable id (ids not in this version are kept, so nothing is lost), and the one-time bonus
   save.found=dict(save.found,v=>v===1||v===true);for(const k in save.found)save.found[k]=1;

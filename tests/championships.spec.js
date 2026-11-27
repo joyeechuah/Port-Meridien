@@ -90,7 +90,7 @@ test.describe("class championships", () => {
       }
     }
     const after = await game.eval(() => ({ cr: __T.save.cr, champ: __T.save.champ.A1 }));
-    expect(after.champ).toEqual({ r: 3, pts: [10, 10, 10], won: true });
+    expect(after.champ).toEqual({ r: 3, pts: [10, 10, 10], d: [null, 1, 1], won: true });
     // a first cup is also the first step of the Speed demon aspiration (js/progress.js): 1,500 CR more, once
     expect(after.cr - cr0).toBe(paid + cup.prize + 1500);
     expect(await game.eval(() => __T.save.aspire.claimed)).toEqual({ racer: 1 });
@@ -152,7 +152,7 @@ test.describe("class championships", () => {
     await game.waitState("PAUSE");
     await page.locator("#pQuit").click();
     await game.waitState("DRIVE");
-    expect(await game.eval(() => __T.save.champ.A1)).toEqual({ r: 2, pts: [6, 6], won: false });
+    expect(await game.eval(() => __T.save.champ.A1)).toEqual({ r: 2, pts: [6, 6], d: [null, 1], won: false });
     // the third round again: 6 more is 18, short of 22
     await game.eval(() => __T.cupStart("A1"));
     await game.waitState("INTRO");
@@ -230,7 +230,7 @@ test.describe("class championships", () => {
     await game.open({
       save: JSON.stringify({ v: 3, champ: { A1: { r: 3, pts: [10, 6, 10], won: true }, A2: { pts: [7, "x", 4] }, A9: { r: 1, pts: [10] }, A3: "yes" } }),
     });
-    expect(await game.eval(() => __T.save.champ)).toEqual({ A1: { r: 3, pts: [10, 6, 10], won: true }, A2: { r: 1, pts: [4], won: false } });
+    expect(await game.eval(() => __T.save.champ)).toEqual({ A1: { r: 3, pts: [10, 6, 10], d: [null, null, null], won: true }, A2: { r: 1, pts: [4], d: [null], won: false } });
     await game.eval(() => __T.goGarage(true));
     await game.waitState("GARAGE");
     await expect(page.locator("#gcups")).toHaveText(" · CUPS WON: A1");
@@ -254,5 +254,21 @@ test.describe("class championships", () => {
     expect(b.disabled).toBe(true);
     expect(b.text).toContain("Lose the police first");
     await game.eval(() => __T.copClear());
+  });
+  test("a cup raced on EASY pays its prize at the EASY rate, and the cups screen says so", async ({ game, page }) => {
+    await game.open();
+    await game.driveOut();
+    await game.park();
+    const r = await game.eval(() => {
+      const T = __T, C = T.CUPS[0];
+      T.save.diff = 0;
+      T.save.champ.A1 = { r: 2, pts: [10, 10], d: [null, 0], won: false };
+      const res = T.cupScore({ cls: "A1", round: 2 }, 0, 1);
+      return { prize: res.prize, full: C.prize, want: Math.round(C.prize * T.DIFFS[0].pay / 100) * 100 };
+    });
+    expect(r.prize).toBe(r.want);
+    expect(r.prize).toBeLessThan(r.full);
+    await game.eval(() => { const T = __T; T.save.champ.A2 = { r: 0, pts: [], d: [], won: false }; T.save.diff = 0; T.pauseOn(); T.cupsOpen(); });
+    await expect(page.locator("#cpList")).toContainText("CR at EASY");
   });
 });

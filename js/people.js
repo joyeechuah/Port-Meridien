@@ -349,6 +349,9 @@ function houseUse(p,it){
   if(it.effect==="snack"||it.effect==="play"){const k=it.effect==="snack"?"hunger":"fun",v=needOf(k),wait=NS.t<homeUntil[it.effect];
     return{t:v>=100?(k==="hunger"?"Not hungry":"Fun full"):wait?(it.effect==="snack"?"Snack again soon":"Play again soon"):(it.effect==="snack"?"Snack":"Play")+" · "+k+" "+v,a:()=>homeUse(it.effect)}}
   if(it.group==="seating"){
+    // not a seat a friend is on: you used to sit down in their lap (theirs is the prompt there, HANG OUT or SEE THEM OFF)
+    if(typeof GUEST!=="undefined"&&GUEST.m&&GUEST.m.G.visible&&!GUEST.done&&GUEST.seat===p)return null;
+    if(typeof PARTY_M!=="undefined")for(const M of PARTY_M.values())if(M.G.visible&&M.seat===p)return null;
     // a seat to sit on, as on the fountain's benches: you face the way it faces, a little forward of its middle
     let b=HOUSE_SEATS.get(p);
     if(!b){const q=homeRect(p.id,p.x,p.z,p.r),th=gYaw-p.r*Math.PI/2,c=gW(HOME_ORIGIN.x+(q.x+q.w/2)*HOME_CELL,HOME_ORIGIN.z+(q.z+q.d/2)*HOME_CELL);
@@ -425,8 +428,10 @@ function footClear(x,z,y){
     // your cars in their bays, on the floor
     if(yy-gY<2.6)save.owned.forEach((id,i)=>{const c=carMeshes[id];if(c&&c!==pc&&i<SPOTS.length&&c.G.visible){const q=c.G.position,t=c.G.rotation.y;box(q.x,q.z,1,2.35,Math.cos(t),Math.sin(t))}});
     [x,z]=houseClear(x,z,yy,r);
-    // a friend standing in the room (one on a seat is inside the seat already)
-    if(typeof GUEST!=="undefined"&&GUEST.m&&GUEST.m.G.visible&&!GUEST.seat){const q=GUEST.m.G.position,dx=x-q.x,dz=z-q.z,d=Math.hypot(dx,dz),pen=r+.3-d;
+    // a friend standing in the room, or a party guest (one on a seat is inside the seat already)
+    const stand=[];if(typeof GUEST!=="undefined"&&GUEST.m&&GUEST.m.G.visible&&!GUEST.seat)stand.push(GUEST.m.G.position);
+    if(typeof PARTY_M!=="undefined")for(const M of PARTY_M.values())if(M.G.visible&&!M.seat)stand.push(M.G.position);
+    for(const q of stand){const dx=x-q.x,dz=z-q.z,d=Math.hypot(dx,dz),pen=r+.3-d;
       if(Math.abs(q.y-yy)<1.5&&pen>0&&d>1e-4){x+=dx/d*pen;z+=dz/d*pen}}}
   return[x,z];
 }
@@ -507,6 +512,11 @@ function footTarget(){
       if(d<=1&&d<bd){bd=d;best=act}}
     if(typeof GUEST!=="undefined"&&GUEST.m&&GUEST.m.G.visible&&!GUEST.done){const q=GUEST.m.G.position,d=Math.hypot(FOOT.x-q.x,FOOT.z-q.z)-.6;
       if(Math.abs(q.y-FOOT.y)<1.5&&d<=1.2&&d<bd){bd=d;best={t:"Hang out · "+GUEST.who.name,a:()=>{guestHangOut()}}}}
+    // a party: SEE THEM OFF beside any guest; with none on, THROW A PARTY wherever nothing else is in reach (as on
+    // the garage screen, the two never show while a single friend is over)
+    if(typeof PARTY!=="undefined"&&PARTY.active){for(const M of PARTY_M.values()){if(!M.G.visible)continue;const q=M.G.position,d=Math.hypot(FOOT.x-q.x,FOOT.z-q.z)-.6;
+      if(Math.abs(q.y-FOOT.y)<1.5&&d<=1.2&&d<bd){bd=d;best={t:"See them off · party "+partyScore(),a:()=>{partyFinish()}}}}}
+    else if(!best&&typeof partyCanHost==="function"&&partyCanHost()&&partyFriends().length&&!(GUEST.who&&!GUEST.done))best={t:"Throw a party",a:()=>{partyPanel()}};
   }
   // in the house, with nothing else in reach: the garage screen (your cars, your home, rest)
   if(!best&&houseIn(FOOT.x,FOOT.z))best=WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:"Garage · your cars and your home",a:()=>goGarage(false)};
