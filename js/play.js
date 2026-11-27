@@ -160,6 +160,12 @@ function rivalModel(cd,key){
   return m;
 }
 function startEvent(E,cup){
+  // out of the boat or off your feet only now, as you agree to race: the intro used to end them as it opened, so
+  // cancelling it from the room upstairs left you in the car outside (Codex's audit)
+  if(BOAT.on&&typeof boatEnd==="function")boatEnd();
+  if(FOOT.on&&typeof footEnd==="function")footEnd();
+  // a cup played again begins afresh here, not as its intro opens: cancelling AGAIN wiped the last result
+  if(cup&&cup.fresh){const c=champOf(cup.cls);c.r=0;c.pts=[];c.d=[];persist()}
   // a friend with you gets out here first, as one won't get in during a race or a time trial (js/life.js rideWhy). They
   // used to stay in the seat for the whole race, or, still walking to the car, be brought to the grid and get in there
   if(typeof RIDE!=="undefined"&&RIDE.p&&typeof rideEnd==="function")rideEnd("out");
@@ -197,7 +203,8 @@ function updateEvent(dt){
     locked=true;P.vx*=.9;P.vz*=.9;
     const c=Math.ceil(-ev.t);$("count").classList.remove("hide");$("count").textContent=c>0?c:"GO";
     if(c!==ev.last){ev.last=c;beep(c>0?520:880)}
-    if(ev.t>=0){ev.phase="run";locked=false;setTimeout(()=>$("count").classList.add("hide"),600)}
+    // (this event's GO only: one ended and another started within the 600 ms hid the new countdown; Codex's audit)
+    if(ev.t>=0){ev.phase="run";locked=false;const e=ev;setTimeout(()=>{if(ev===e||!ev)$("count").classList.add("hide")},600)}
   }
   let tr=trackRoute(R,P.x,P.z,ev.hint);
   // strayed beyond the local search (a long detour): look along the whole route, but never past the next
@@ -307,7 +314,7 @@ function updateEvent(dt){
   else ghostHide();
   // over the line, the panel holds the time and place you finished with
   const tt=ev.fin?ev.fin.t:ev.t;
-  $("evPos").textContent=E.type==="race"?(ev.fin?ev.fin.pos:pos)+"/"+(ev.ai.length+1):(tt<ev.tg.gold?"GOLD":tt<ev.tg.silver?"SILVER":tt<ev.tg.bronze?"BRONZE":"--");
+  $("evPos").textContent=E.type==="race"?(ev.fin?ev.fin.pos:pos)+"/"+(ev.ai.length+1):(tt<=ev.tg.gold?"GOLD":tt<=ev.tg.silver?"SILVER":tt<=ev.tg.bronze?"BRONZE":"--");
   $("evTime").textContent=fmtT(Math.max(0,tt));
   $("evCp").textContent=ev.cp+"/"+cps.length;
 }
@@ -318,7 +325,8 @@ function finishEvent(tx){
     title=["1ST PLACE","2ND PLACE","3RD PLACE","4TH PLACE"][pos-1];rew=raceRewards(E,ev.diff)[pos-1]||0;
     rows.push(["Position",pos+" of 4"],["Difficulty",DIFFS[ev.diff].n]);
   }else{
-    const G=ev.tg;medal=t<G.gold?0:t<G.silver?1:t<G.bronze?2:3;title=["GOLD","SILVER","BRONZE","NO MEDAL"][medal];rew=E.rewards[medal]||0;
+    // (a time equal to the target shown earns it: it got the medal below; Codex's audit)
+    const G=ev.tg;medal=t<=G.gold?0:t<=G.silver?1:t<=G.bronze?2:3;title=["GOLD","SILVER","BRONZE","NO MEDAL"][medal];rew=E.rewards[medal]||0;
     rows.push(["Gold time",fmtT(G.gold)]);
   }
   if(E.type==="race"){rew=Math.round(rew*skillFactor("driving"));wantEvent("race");skillAward("driving",30)}
@@ -412,16 +420,19 @@ function updateRadars(dt){
 const gps={t:null,route:null,label:"",timer:0,remain:0};
 function setGPS(x,z,label,forJob){gps.t={x,z};gps.label=label;gps.job=!!forJob;gps.timer=0;recalcGPS();if(gps.route&&!forJob)toast("GPS SET",label+" · "+(gps.route.len/1000).toFixed(1)+" km")}
 function clearGPS(){gps.t=null;gps.route=null;gps.job=false;$("gpsTxt").textContent=""}
-function recalcGPS(){if(!gps.t)return;gps.route=routeBetween(P.x,P.z,gps.t.x,gps.t.z)}
+// where the route starts: where you are, on foot too (a waypoint set while walking was routed from the parked car,
+// half a kilometre away; Codex's audit). A contract's stays with the car, which does the driving
+const gpsMe=()=>typeof FOOT!=="undefined"&&FOOT.on&&!BOAT.on&&!gps.job?FOOT:P;
+function recalcGPS(){if(!gps.t)return;const me=gpsMe();gps.route=routeBetween(me.x,me.z,gps.t.x,gps.t.z)}
 function updateGPS(dt){
   if(!gps.t||!gps.route){$("gpsTxt").textContent="";return}
   gps.timer-=dt;
-  const R=gps.route,n=R.pts.length;let bi=0,bd=1e9;
-  for(let i=0;i<Math.min(n,90);i++){const p=R.pts[i],d=(p.x-P.x)**2+(p.z-P.z)**2;if(d<bd){bd=d;bi=i}}
+  const R=gps.route,n=R.pts.length,me=gpsMe();let bi=0,bd=1e9;
+  for(let i=0;i<Math.min(n,90);i++){const p=R.pts[i],d=(p.x-me.x)**2+(p.z-me.z)**2;if(d<bd){bd=d;bi=i}}
   if(Math.sqrt(bd)>40&&gps.timer<=0){gps.timer=1.5;recalcGPS();return}
   if(bi>2){gps.route=makePath(R.pts.slice(bi))}
   gps.remain=gps.route.len;
-  if(!gps.job&&Math.hypot(P.x-gps.t.x,P.z-gps.t.z)<28){toast("ARRIVED",gps.label);clearGPS();return}
+  if(!gps.job&&Math.hypot(me.x-gps.t.x,me.z-gps.t.z)<28){toast("ARRIVED",gps.label);clearGPS();return}
   $("gpsTxt").textContent="GPS · "+(gps.remain>=1000?(gps.remain/1000).toFixed(1)+" km":Math.round(gps.remain/10)*10+" m")+" · "+gps.label;
 }
 /* ================================================================ MONEY, LEVEL, TOASTS */

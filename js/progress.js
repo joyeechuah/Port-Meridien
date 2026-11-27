@@ -330,7 +330,8 @@ function jobTick(dt){
   // Walking and sailing must keep a courier's deadline running, but the parked car is not
   // making a delivery by itself. P stays at the car while FOOT/BOAT are elsewhere.
   if(FOOT.on||BOAT.on){job.near=false;jobHUD();return}
-  const t=jobTarget(),d=Math.hypot(P.x-t.x,P.z-t.z),kph=kphNow();
+  // (the car's whole speed: kphNow is the forward part, so sliding sideways at 70 km/h counted as stopped; Codex's audit)
+  const t=jobTarget(),d=Math.hypot(P.x-t.x,P.z-t.z),kph=Math.hypot(P.vx,P.vz)*3.6;
   if(d<JOB_R&&kph<JOB_KPH){
     const J=job.def;job.stop++;
     if(job.stop>=J.stops.length){jobEnd("completed");return}
@@ -417,8 +418,9 @@ function cupBlocked(cls){
 }
 function cupStart(cls){
   const C=cupOf(cls);if(!C||cupBlocked(cls))return false;
-  const c=champOf(cls);if(c.r>=3){c.r=0;c.pts=[];c.d=[]}
-  persist();openIntro(evById(C.ev[c.r]),{cls,round:c.r});return true;
+  // (a finished cup's last result stays until its first round starts: js/play.js startEvent)
+  const c=champOf(cls),fresh=c.r>=3;
+  persist();openIntro(evById(C.ev[fresh?0:c.r]),{cls,round:fresh?0:c.r,fresh});return true;
 }
 // after a cup round: its points, and at the third round whether the cup is won (the prize is paid the first time)
 // The prize scales with the easiest race round, as each round's own reward does (a cup won on EASY used to pay
@@ -432,6 +434,10 @@ function cupScore(cup,place,diff){
   else rows.push(["Cup over",total+" points, "+CUP_WIN+" needed to win"]);
   return{rows,prize,next};
 }
+// the prize the cups screen shows: at the easiest of the races driven so far and the difficulty set now (a fresh cup on
+// HARD showed the NORMAL prize, as no round had been scored yet; Codex's audit)
+function cupPreview(c,C){const p=(c.r<3?c.d||[]:[]).filter(x=>x!==null&&x!==undefined).map(x=>DIFFS[x].pay);p.push(DIFFS[save.diff].pay);
+  return Math.round(C.prize*Math.min(...p)/100)*100}
 function cupPay(c){const p=(c.d||[]).filter(x=>x!==null&&x!==undefined).map(x=>DIFFS[x].pay);return p.length?Math.min(...p):1}
 // ---- the championships screen, from the pause menu
 function renderCups(){
@@ -442,7 +448,7 @@ function renderCups(){
     const t=document.createElement("div"),k=document.createElement("i"),b=document.createElement("b"),sp=document.createElement("span");
     k.textContent=C.cls+" CUP"+(c.won?" · WON":"");b.textContent=C.ev.map(id=>evById(id).name).join(" · ");
     const st=c.r>0&&c.r<3?"Round "+(c.r+1)+" of 3 · "+cupTotal(c)+" points so far":c.r>=3?"Last time: "+cupTotal(c)+" points"+(cupTotal(c)>=CUP_WIN?", won":", "+CUP_WIN+" needed"):"Win with "+CUP_WIN+" of 30 points";
-    sp.textContent=(why&&!busy?why+" · ":"")+st+" · prize "+fmtCr(Math.round(C.prize*Math.min(cupPay(c.r<3?c:{d:[]}),DIFFS[save.diff].pay)/100)*100)+" CR at "+DIFFS[save.diff].n+(c.won?" (paid)":"");
+    sp.textContent=(why&&!busy?why+" · ":"")+st+" · prize "+fmtCr(cupPreview(c,C))+" CR at "+DIFFS[save.diff].n+(c.won?" (paid)":"");
     t.append(k,b,sp);row.appendChild(t);
     const g=document.createElement("button");g.className="mbtn"+(why?"":" pri");g.textContent=c.r>0&&c.r<3?"ROUND "+(c.r+1):c.r>=3?"AGAIN":"START";g.disabled=!!why;g.setAttribute("aria-label",g.textContent+" "+C.cls+" Cup");
     g.onclick=()=>{if(cupBlocked(C.cls))return;cupsClose();show("pause",false);cupStart(C.cls)};row.appendChild(g);list.appendChild(row);

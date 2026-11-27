@@ -297,8 +297,8 @@ function photoDayClean(raw){
 function skillPhoto(){
   const today=Math.floor(Date.now()/86400000),record=save.photoDay;
   if(today>record.day){record.day=today;record.count=0}else if(today<record.day)record.day=today;
-  if(record.count>=(hasTrait("shutterbug")?6:5))return;
-  record.count++;skillAward("photography",10);persist();
+  if(record.count>=(hasTrait("shutterbug")?6:5))return false;
+  record.count++;skillAward("photography",10);persist();return true;
 }
 function workClean(w){
   const valid=w&&typeof w==="object"&&!Array.isArray(w)&&w.v===1;

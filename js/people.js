@@ -695,7 +695,8 @@ function footUpdate(dt){
   // doing when you got out, however far you walked), and the district and the clock keep up with you
   audioUpd(0,0,0,0,0,0,0,0);
   FOOT.hudT-=dt;if(FOOT.hudT<=0){FOOT.hudT=.4;$("zone").textContent=zoneAt(FOOT.x,FOOT.z);hudClock()}
-  placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
+  // the GPS follows you on foot too (it stood still while you walked: the drive's update never ran)
+  placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);updateGPS(dt);drawMini();
 }
 /* ================================================================ POLICE
    Two patrol cars drive with the traffic. Commit a crime where one of them can see it and you are wanted: one star,

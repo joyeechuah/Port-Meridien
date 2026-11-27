@@ -17,7 +17,7 @@ const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3)
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
 function setState(s){if(typeof partyLeft==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyLeft();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
-  if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"||s==="INTRO"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
+  if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
@@ -121,6 +121,9 @@ function copDrop(t){
     if(Math.hypot(p.x-P.x,p.z-P.z)<12||TRAFFIC.some(o=>o!==t&&o.e&&Math.hypot(o.wx-p.x,o.wz-p.z)<8))continue;
     t.s=s;copPose(t,0);return true}
   if(typeof copPlace==="function"&&copPlace(t,170,340)){copPose(t,0);return true}
+  // nowhere at all: it's stood down (the chase sends another), not left where you've been set down, inside your car
+  // (Codex's audit)
+  if(typeof copStandDown==="function")copStandDown(t);
   return false}
 function resetToRoad(fade){
   const go=()=>{const nr=nearestRoadGlobal(P.x,P.z,true);if(!nr)return;const f=fwdOf(P.h);placeOnRoad(nr,f.x*nr.dx+f.z*nr.dz>=0?1:-1);

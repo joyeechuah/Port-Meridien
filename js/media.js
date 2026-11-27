@@ -446,7 +446,10 @@ function photoCapture(){
         const src=renderer.domElement;c=document.createElement("canvas");c.width=src.width;c.height=src.height;
         const x=c.getContext("2d");if(!x)throw new Error("no 2D canvas");x.drawImage(src,0,0);
       }finally{if(raise){renderer.setPixelRatio(live);renderer.setSize(W,H,false);renderer.render(scene,camera)}}
-      c.toBlob(b=>{if(PH.busy!==capture){res(false);return}if(!b){fail(new Error("the browser returned no image"));return}PH.busy=false;photoShotShow(b);if(!tabIdle){const paid=wantEvent("photo");skillPhoto();if(paid)persist()}res(true)},"image/png");
+      c.toBlob(b=>{if(PH.busy!==capture){res(false);return}if(!b){fail(new Error("the browser returned no image"));return}PH.busy=false;photoShotShow(b);if(!tabIdle){const paid=wantEvent("photo");
+        // one write for the photo: Photography's (with the want in it), or the want's when the day's XP is used up (it wrote
+        // twice; Codex's audit)
+        if(!skillPhoto()&&paid)persist()}res(true)},"image/png");
     }catch(err){fail(err)}
   });
 }
