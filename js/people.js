@@ -358,12 +358,48 @@ function houseUse(p,it){
 }
 // the door opens for someone on foot near it, inside or out
 const houseDoorNear=()=>FOOT.on&&!BOAT.on&&(state==="DRIVE"||state==="PAUSE")&&(()=>{const l=houseLocal(FOOT.x,FOOT.z);return Math.abs(l.x)<10&&l.z>-9&&l.z<9})();
-// the camera while you're in the house: inside its walls and under its ceiling, and under the room upstairs while
-// you're below it
-function houseCam(px,py,pz){
-  const l=houseLocal(px,pz),lx=clamp(l.x,-22.2,22.2),lz=clamp(l.z,.7,29.2),up=FOOT.y-gY>2.6;
-  const top=!up&&lx>.2&&lz>18.6?gY+4.4:gY+9.6;
-  return[HOUSE.x+lz,Math.min(py,top),HOUSE.z-lx];
+// Clip the whole sight line, including the interpolated camera position on a turn.
+const houseCamBoxes=[];
+function houseCam(eye,lens,lift=true){
+  if(!houseCamBoxes.length){
+    // The shell, real stair treads, posts, handrail and slab are individual boxes.
+    // The merged decorative trim spans the whole room and has no solid interior.
+    for(const mesh of HOUSE_MESHES)if(mesh!==doorMesh&&mesh.geometry.type==="BoxGeometry"){
+      mesh.updateMatrixWorld(true);
+      houseCamBoxes.push(new THREE.Box3().setFromObject(mesh));
+    }
+  }
+  const ray=new THREE.Ray(eye,lens.clone().sub(eye).normalize()),hit=new V3();
+  let reach=eye.distanceTo(lens);
+  const clip=(r,box)=>{
+    if(r.intersectBox(box,hit)){
+      const d=r.origin.distanceTo(hit);
+      // Leave room for the near plane. With the walker close to a wall, keep
+      // a fraction of the available length instead of collapsing onto the eye.
+      reach=Math.min(reach,Math.max(d*.18,d-.5));
+    }
+  };
+  for(const box of houseCamBoxes)clip(ray,box);
+  const box=new THREE.Box3();
+  doorMesh.updateMatrixWorld(true);clip(ray,box.setFromObject(doorMesh));
+  // Work in each occupied bay's rotated frame. Its occupant (and shape)
+  // can change when a player buys, sells or switches cars.
+  for(const id of save.owned){
+    const c=carMeshes[id];if(!c||!c.G.visible||c===pc)continue;
+    const inverse=new THREE.Matrix4().makeRotationY(-c.G.rotation.y);
+    const r=ray.clone();r.origin.sub(c.G.position).applyMatrix4(inverse);r.direction.transformDirection(inverse);
+    const shape=PROF[c.shape];
+    box.min.set(-shape.w/2-.12,0,shape.rear-.12);box.max.set(shape.w/2+.12,shape.roof+.12,shape.front+.12);
+    clip(r,box);
+  }
+  ray.at(reach,lens);
+  if(lift&&reach<1.6){
+    // Beside a car or against the rail a very short horizontal boom would put
+    // the lens inside the walker. Rise on this side of the obstruction instead.
+    lens.y+=2.4*(1-reach/1.6);
+    return houseCam(eye,lens,false);
+  }
+  return lens;
 }
 function footGround(x,z,y){
   if(houseIn(x,z)){const l=houseLocal(x,z);return gY+houseFloor(l.x,l.z,(y===undefined?gY:y)-gY)}
@@ -570,12 +606,22 @@ function carClearY(x,z){
 // behind and above the walker, coming in closer when a wall or tree is in the way, and over a car standing there
 function footCam(dt,snap){
   FOOT.cy+=wrapA(FOOT.h-FOOT.cy)*(snap?1:1-Math.exp(-dt*5));
-  const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),back=boomClear(FOOT.x,FOOT.z,fx,fz,3.9),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
-  const inside=houseIn(FOOT.x,FOOT.z);
-  let px=FOOT.x-fx*back,pz=FOOT.z-fz*back,py=Math.max(FOOT.y+2.05+(3.9-back)*.2,inside?-1e9:camFloor(px,pz,p),carClearY(px,pz));
-  if(inside)[px,py,pz]=houseCam(px,py,pz);
-  const k=snap?1:1-Math.exp(-dt*10);
-  FOOT.cp.lerp(new V3(px,py,pz),k);FOOT.cl.lerp(new V3(FOOT.x+fx*2.3,FOOT.y+1.1,FOOT.z+fz*2.3),k);
+  const fx=Math.sin(FOOT.cy),fz=Math.cos(FOOT.cy),p={x:FOOT.x,y:FOOT.y,z:FOOT.z};
+  const l=houseLocal(p.x,p.z),edge=Math.max(Math.abs(l.x)-23.6,-l.z,l.z-30,0);
+  // Across the driveway the same open doorway remains visible from either side.
+  const outside=clamp((edge-1)/4,0,1),back=3.9+(boomClear(p.x,p.z,fx,fz,3.9)-3.9)*outside;
+  const px=p.x-fx*back,pz=p.z-fz*back,base=p.y+2.05+(3.9-back)*.2;
+  const ground=outside?Math.max(base,camFloor(px,pz,p)):base;
+  const py=Math.max(base+(ground-base)*outside,carClearY(px,pz));
+  const k=snap?1:1-Math.exp(-dt*10),eye=new V3(p.x,p.y+1.1,p.z);
+  FOOT.cp.lerp(new V3(px,py,pz),k);
+  if(edge<5){
+    // Preserve the chase lens's half-metre clearance along the side walls.
+    // A fixed setback along an oblique ray leaves less room perpendicular to the wall.
+    if(houseIn(p.x,p.z))FOOT.cp.z=HOUSE.z-clamp(houseLocal(FOOT.cp.x,FOOT.cp.z).x,-22.2,22.2);
+    houseCam(eye,FOOT.cp);
+  }
+  FOOT.cl.lerp(new V3(p.x+fx*2.3*outside,eye.y,p.z+fz*2.3*outside),k);
   camera.position.copy(FOOT.cp);camera.lookAt(FOOT.cl);
   camera.fov+=(60-camera.fov)*(snap?1:1-Math.exp(-dt*5));camera.updateProjectionMatrix();
 }
