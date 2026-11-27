@@ -152,7 +152,8 @@ function frame(ts){
   fishT+=wdt;
   for(const f of fishes){const ph=fishT*.5+f.ph;f.g.position.copy(gW(12+Math.sin(ph)*7.5,f.zc,f.yc+Math.sin(fishT*.9+f.ph*1.7)*.5));f.g.rotation.y=f.yaw+(Math.cos(ph)>0?0:Math.PI)}
   if(aquaLight)aquaLight.intensity=1.2+Math.sin(fishT*2)*.2;
-  const wantOpen=state==="EXIT"?1:0;doorOpen+=(wantOpen-doorOpen)*Math.min(1,dt*1.6);
+  // (and for you on foot, near it inside or out: js/people.js houseDoorNear)
+  const wantOpen=state==="EXIT"||houseDoorNear()?1:0;doorOpen+=(wantOpen-doorOpen)*Math.min(1,dt*1.6);
   if(doorMesh)doorMesh.position.y=gY+3.3+doorOpen*6.3;
   if(state==="GARAGE"||state==="LOAD")garageCam(dt);
   else if(state==="ARRIVAL"){
