@@ -74,11 +74,13 @@ test("photo reset clears the terrain and deck and preserves the SUV framing", as
     }
     const foot = PH.dist; FOOT.on = false; BOAT.on = true;
     Object.assign(BOAT, { x: BOAT.home[0], z: BOAT.home[1], h: -Math.PI * .82 + .85 });
-    const p = frame();
-    return { suv, foot, boat: PH.dist, clearance, overDeck: onPier(p.x,p.z), deck: p.y - PIER.y, sea: p.y };
+    const p = frame(), to = phTarget(), f = (PIER.y - p.y) / (to.y - p.y);
+    // (this angle's camera stood over the deck, which was then between it and the boat: the view comes from the other side)
+    const hidden = f > 0 && f < 1 && onPier(p.x + f * (to.x - p.x), p.z + f * (to.z - p.z));
+    return { suv, foot, boat: PH.dist, clearance, hidden, deck: p.y - PIER.y, sea: p.y };
   });
   expect(r.suv).toBeCloseTo(8.28); expect(r.foot).toBe(4.2); expect(r.boat).toBe(9.5);
-  expect(r.clearance).toBeGreaterThan(.34); expect(r.overDeck).toBe(true);
+  expect(r.clearance).toBeGreaterThan(.34); expect(r.hidden).toBe(false);
   expect(r.deck).toBeGreaterThan(.35); expect(r.sea).toBeGreaterThan(.5);
 });
 

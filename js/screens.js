@@ -110,6 +110,18 @@ function fadeThen(ms,fn){
   setState("FADE");$("fade").style.opacity=1;
   setTimeout(()=>{if(tabIdle)return;fn();$("fade").style.opacity=0;if(state==="FADE")setState("DRIVE")},ms);
 }
+// where a chasing police car goes when you're set down beside it: 25 m back along its road (or further back, or as far
+// ahead), on the road itself and a car's length clear of you and of every other car; with nowhere clear, it's put out of
+// sight as a new one would be. It was clamped to the road's end, which could leave it inside you, and set down on
+// whatever car stood 25 m back (Codex's review of #140)
+function copDrop(t){
+  const at=s=>{const q=edgePos(t.e,s),ux=q.dx*t.dir,uz=q.dz*t.dir;return{x:q.x-uz*t.offCur,z:q.z+ux*t.offCur}};
+  t.v=0;
+  for(const k of[25,35,45,60])for(const sg of[-1,1]){const s=t.s+sg*k*t.dir;if(s<0||s>t.e.len)continue;const p=at(s);
+    if(Math.hypot(p.x-P.x,p.z-P.z)<12||TRAFFIC.some(o=>o!==t&&o.e&&Math.hypot(o.wx-p.x,o.wz-p.z)<8))continue;
+    t.s=s;copPose(t,0);return true}
+  if(typeof copPlace==="function"&&copPlace(t,170,340)){copPose(t,0);return true}
+  return false}
 function resetToRoad(fade){
   const go=()=>{const nr=nearestRoadGlobal(P.x,P.z,true);if(!nr)return;const f=fwdOf(P.h);placeOnRoad(nr,f.x*nr.dx+f.z*nr.dz>=0?1:-1);
     // a traffic car where you are set down goes elsewhere: you used to land on top of one now and then, and the
@@ -118,7 +130,7 @@ function resetToRoad(fade){
     for(const t of TRAFFIC)if(t.e&&Math.abs(t.wx-P.x)<14&&Math.abs(t.wz-P.z)<14){
       // (one off the road first rejoins the nearest: its road and place were still where it had left the road, so it was
       // put back there, which could be 160 m away or more)
-      if(t.chase){if(t.free&&typeof copRejoin==="function")copRejoin(t);t.s=clamp(t.s-25*t.dir,0,t.e.len);t.v=0;copPose(t,0);continue}
+      if(t.chase){if(t.free&&typeof copRejoin==="function")copRejoin(t);copDrop(t);continue}
       t.e=null;t.c.G.visible=false;t.wx=t.wz=1e6;t.lost=!spawnTraffic(t,220,560,true)}
     snapCam()};
   if(!fade){go();return}

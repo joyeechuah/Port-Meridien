@@ -793,7 +793,8 @@ function padScroll(g,dt=1/60){
 }
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
-  if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GP.index=null;GO.stick[0]=GO.stick[1]=0;return}
+  // (and the pause menu's scroll clock starts again: reconnected in a screen of the pause menu, the first move jumped)
+  if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GP.index=null;GP.t=0;GO.stick[0]=GO.stick[1]=0;return}
   const ax=g.axes[0]||0,b=i=>g.buttons[i]||{pressed:false,value:0},v=i=>{const q=b(i);return typeof q.value==="number"&&q.value>0?q.value:q.pressed?1:0};
   GP.on=true;GP.steer=Math.abs(ax)<.12?0:Math.sign(ax)*(Math.abs(ax)-.12)/.88;GP.gas=v(7);GP.brake=v(6);GP.hb=b(0).pressed;GP.rear=b(4).pressed;GP.fire=b(5).pressed;
   // buttons pressed since the last frame
