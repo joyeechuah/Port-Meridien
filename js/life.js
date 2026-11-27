@@ -555,6 +555,8 @@ function sleepReason(){
 }
 let sleepNoticeTimer=0;
 function sleepNotice(message){
+  // on foot in the house the garage's line isn't on screen: a message instead (refusals said nothing there)
+  if(state!=="GARAGE"){toast("SLEEP",message,/^\d\d:\d\d/.test(message)?"gold":"bad");return}
   const notice=$("sleepNotice");notice.textContent=message;clearTimeout(sleepNoticeTimer);
   sleepNoticeTimer=setTimeout(()=>{notice.textContent=""},3200);
 }
@@ -930,19 +932,21 @@ function partyAtHome(){
     !(GUEST.who&&!GUEST.done)&&!(typeof clOverlayOpen==="function"&&clOverlayOpen());
 }
 function partyCanHost(){return partyAtHome()&&NS.t>=homeUntil.party}
+// the friend following you about (js/life.js RIDE): with you already, so not a guest
+const partyWith=id=>typeof RIDE!=="undefined"&&!!RIDE.p&&!!RIDE.who&&RIDE.who.id===id;
 function partyInvite(ids){
   if(!partyCanHost()||PARTY.active||!Array.isArray(ids)||ids.length>3||
     new Set(ids).size!==ids.length||ids.some(id=>!Number.isInteger(id)||!PEOPLE[id]))return [];
   const replies=ids.map(id=>{
-    const who=PEOPLE[id],r=rel(id),friend=r.n>0&&r.f>=RIDE_AT,accepted=friend&&r.f>=PARTY_RSVP[who.trait][0];
-    return {id,accepted,reason:accepted?PARTY_RSVP[who.trait][1]:friend?PARTY_NO[who.trait]:"Become Friends first."};
+    const who=PEOPLE[id],r=rel(id),friend=r.n>0&&r.f>=RIDE_AT,here=partyWith(id),accepted=friend&&!here&&r.f>=PARTY_RSVP[who.trait][0];
+    return {id,accepted,reason:here?"I'm right here with you!":accepted?PARTY_RSVP[who.trait][1]:friend?PARTY_NO[who.trait]:"Become Friends first."};
   });
   PARTY.ids=replies.filter(r=>r.accepted).map(r=>r.id);
   return replies;
 }
 function partyStart(){
   if(!partyCanHost()||PARTY.active)return false;
-  PARTY.ids=PARTY.ids.filter(id=>rel(id).n>0&&rel(id).f>=PARTY_RSVP[PEOPLE[id].trait][0]);
+  PARTY.ids=PARTY.ids.filter(id=>rel(id).n>0&&rel(id).f>=PARTY_RSVP[PEOPLE[id].trait][0]&&!partyWith(id));
   if(!PARTY.ids.length)return false;
   PARTY.active=true;return true;
 }
@@ -960,6 +964,9 @@ function partyScore(){
   return clamp(25+5*traits.length+Math.floor(comfort*.3)+3*charisma+mix,0,100);
 }
 function partyClear(){PARTY.active=false;PARTY.ids=[]}
+// leaving home with a party on, any way (walking out, driving off, a race or a cup from the pause menu, the map's
+// travel): it's over, and you're told (only walking out used to say so; the guests otherwise vanished without a word)
+function partyLeft(){const on=PARTY.active&&PARTY.ids.length>0;partyClear();if(on)toast("PARTY OVER","You left, so your guests went home")}
 // (ending one needs only that you're home: a wait arriving from another device mid-party left SEE THEM OFF doing
 // nothing, as starting's gate includes the wait)
 function partyEnd(){
@@ -989,7 +996,8 @@ function partySync(s=state){
   for(const p of seats.slice(0,PARTY.ids.length)){const r=homeRect(p.id,p.x,p.z,p.r);for(let x=r.x;x<r.x+r.w;x++)for(let z=r.z;z<r.z+r.d;z++)taken.push({x,z})}
   PARTY.ids.forEach((id,i)=>{const h=.94+rnd(id,38)*.12;let M=PARTY_M.get(id);if(!M){M=pedModel(id,h,pedLook(id));PARTY_M.set(id,M)}M.seat=seats[i]||null;guestPlace(M,h,M.seat,taken)});
 }
-const partyFriends=()=>PEOPLE.filter(p=>rel(p.id).n>0&&rel(p.id).f>=RIDE_AT);
+// (not the friend following you about: they're with you already, and were drawn twice, following and at the party)
+const partyFriends=()=>PEOPLE.filter(p=>rel(p.id).n>0&&rel(p.id).f>=RIDE_AT&&!partyWith(p.id));
 // THROW A PARTY in the garage (where HANG OUT goes for a single guest, so the two never show together); SEE THEM OFF
 // once it's on; and while the last one's wait runs, how long is left
 function partyButton(s=state){
@@ -1014,7 +1022,7 @@ function partyPanelClose(){show("party",false);$("gui").inert=false;try{$(state=
 // ends the party, as leaving the garage screen does
 function partyAbout(){
   if(!PARTY.active||state!=="DRIVE")return;
-  if(!partyHome()){const n=PARTY.ids.length;partyClear();partySync();if(n)toast("PARTY OVER","You left, so your guests went home");return}
+  if(!partyHome()){partyLeft();partySync();return}
   if(PARTY_M.size<PARTY.ids.length)partySync();
 }
 // the Friends who can be asked: up to three chosen; choosing again after the replies means sending again

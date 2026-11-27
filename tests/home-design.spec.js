@@ -196,4 +196,34 @@ test.describe("design your home", () => {
     await page.mouse.move(4, 4);
     expect(await game.eval(() => ({ at: __T.HV.at, ghost: __T.HV.ghost.visible }))).toEqual({ at: null, ghost: false });
   });
+  test("BUY: a chosen piece previews on a free spot, the arrow keys move it, BUY places it; no mouse needed", async ({ game, page }) => {
+    await game.open();
+    await design(game, page);
+    await expect(page.locator("#hdBuy")).toBeDisabled();
+    await page.locator("#hdg_seating").click();
+    await card(page, "Harbour sofa").click();
+    await expect(page.locator("#hdBuy")).toHaveText("BUY · 1,200 CR");
+    await expect(page.locator("#hdBuy")).toBeEnabled();
+    const at0 = await game.eval(() => ({ ...__T.HV.at, ghost: __T.HV.ghost.visible }));
+    expect(at0.ghost).toBe(true);
+    // an arrow moves the preview a square, in the direction it points on screen
+    const screenX = (a) => game.eval((a) => __T.hvSpot("sofa", a.x, a.z, 0).project(__T.camera).x, a);
+    await page.keyboard.press("ArrowRight");
+    const at1 = await game.eval(() => ({ ...__T.HV.at }));
+    expect(Math.abs(at1.x - at0.x) + Math.abs(at1.z - at0.z)).toBe(1);
+    expect(await screenX(at1)).toBeGreaterThan(await screenX(at0));
+    await page.locator("#hdBuy").click();
+    const r = await game.eval(() => ({ items: __T.save.home.items, cr: __T.save.cr, next: { ...__T.HV.at } }));
+    expect(r.items).toEqual([{ id: "sofa", x: at1.x, z: at1.z, r: 0 }]);
+    expect(r.cr).toBe(120000 - 1200);
+    // the preview moves on to the next free spot, so BUY again buys a second one beside it
+    expect(r.next).not.toEqual({ x: at1.x, z: at1.z });
+    await page.locator("#hdBuy").click();
+    expect(await game.eval(() => __T.save.home.items.length)).toBe(2);
+    // a placed piece picked: MOVE HERE
+    await page.keyboard.press("Escape");
+    await game.eval(() => { __T.HV.pick = 0; __T.HV.at = null; __T.hvMarks(); });
+    await expect(page.locator("#hdBuy")).toHaveText("MOVE HERE");
+    await expect(page.locator("#hdBuy")).toBeDisabled();
+  });
 });
