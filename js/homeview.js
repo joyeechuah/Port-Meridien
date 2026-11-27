@@ -211,7 +211,7 @@ function hvAim(cx,cy){
   if(!p)return{hit};const l=hvLocal(p),fx=(l.x-HOME_ORIGIN.x)/HOME_CELL,fz=(l.z-HOME_ORIGIN.z)/HOME_CELL;
   if(fx<0||fz<0||fx>HOME_COLS||fz>HOME_ROWS)return{hit};
   const id=HV.sel||(HV.pick>=0?save.home.items[HV.pick].id:"stool"),r=HV.sel?HV.r:HV.pick>=0?save.home.items[HV.pick].r:0,q=homeRect(id,0,0,r);
-  return{hit,cell:{x:clamp(Math.round(fx-q.w/2),0,HOME_COLS-q.w),z:clamp(Math.round(fz-q.d/2),0,HOME_ROWS-q.d)}};
+  return{hit,raw:{x:fx,z:fz},cell:{x:clamp(Math.round(fx-q.w/2),0,HOME_COLS-q.w),z:clamp(Math.round(fz-q.d/2),0,HOME_ROWS-q.d)}};
 }
 // a tap or a click in the room. With a piece from the catalogue, a click or a touch puts it there to look at; a second on
 // the same spot, or BUY, buys it (a click used to buy at once, while the help said to press BUY; Codex's audit). With
@@ -223,10 +223,12 @@ function hvTap(cx,cy,touch){
   // off the floor: a touch waiting for its second tap is cancelled too, or a later single tap on that cell would buy
   if(!a.cell){HV.tap=null;if(!a.hit){HV.pick=-1;HV.at=HV.pin=null;hvMsg("");hvMarks()}return}
   if(!HV.sel&&HV.pick<0){hvMsg("Choose a piece below, or tap one in the room");return}
-  HV.at=a.cell;HV.pin={...a.cell};
-  if(!(HV.tap&&HV.tap.x===a.cell.x&&HV.tap.z===a.cell.z)){HV.tap=a.cell;
-    hvMsg((touch?"Tap":"Click")+" again or press "+(HV.sel?"BUY to buy it":"MOVE HERE to move it")+" here");hvMarks();return}
-  HV.tap=null;hvCommit();
+  // the second click or tap anywhere on the piece shown confirms it there (the same cell exactly was asked for, and a
+  // few pixels on, or the camera still settling, gave the next one along)
+  const id=HV.sel||save.home.items[HV.pick].id,r=HV.sel?HV.r:save.home.items[HV.pick].r,q=homeRect(id,0,0,r),T=HV.tap;
+  if(T&&a.raw.x>=T.x&&a.raw.x<T.x+q.w&&a.raw.z>=T.z&&a.raw.z<T.z+q.d){HV.at={...T};HV.tap=null;hvCommit();return}
+  HV.at=a.cell;HV.pin={...a.cell};HV.tap=a.cell;
+  hvMsg((touch?"Tap":"Click")+" again or press "+(HV.sel?"BUY to buy it":"MOVE HERE to move it")+" here");hvMarks();
 }
 function hvCommit(){
   const c=HV.at;if(!c)return;

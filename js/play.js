@@ -334,6 +334,9 @@ function finishEvent(tx){
   const best=save.rec[E.id];const isRec=!best||t<best;if(isRec)save.rec[E.id]=t;
   // a record time trial run becomes the ghost (the last sample is the line itself)
   if(isRec&&ev.rec&&ev.rec.length>=8&&ev.rec.length<12000){ev.rec.push(+P.x.toFixed(1),+P.z.toFixed(1),+P.h.toFixed(2),+E.route.len.toFixed(1));save.ghost[E.id]={c:curCar().id,t,d:ev.rec}   /* a taken car's ghost is kept as the model it borrows: its made-up id means nothing after a reload, and the ghost was dropped */}
+  // a record with no recording to keep (the recorder full, a run of five minutes or more) takes the old ghost away: it
+  // raced the slower record's line against the new best time (Codex's audit)
+  else if(isRec&&save.ghost&&save.ghost[E.id])delete save.ghost[E.id];
   rows.unshift(["Your time",fmtT(t)]);rows.push(["Best",fmtT(save.rec[E.id])+(isRec?"  · new record":"")],["Reward",rew?"+"+fmtCr(rew)+" CR":"none"]);
   if(cupRows)rows.push(...cupRows.rows);
   // finishing is fun, wherever you came (js/life.js); quitting isn't
@@ -374,7 +377,8 @@ function openIntro(E,cup){
     b.setAttribute("aria-pressed",k===save.diff?"true":"false");b.setAttribute("aria-label","Difficulty "+d.n+", rewards ×"+d.pay);b.onclick=()=>setDiff(k);dz.appendChild(b)});
   introE=E;introCup=cup||null;setState("INTRO");audioOn(false);$("intro").classList.remove("hide");
 }
-function setDiff(k){if(!introE||introE.type!=="race")return;save.diff=clamp(k,0,2);persist();openIntro(introE,introCup)}
+// (the one already chosen, or past either end, changes nothing and writes nothing; Codex's audit)
+function setDiff(k){if(!introE||introE.type!=="race")return;const d=clamp(k,0,2);if(d===save.diff)return;save.diff=d;persist();openIntro(introE,introCup)}
 let introE=null,introCup=null;
 
 /* ================================================================ SPEED RADARS */
@@ -623,7 +627,9 @@ const MV={z:1,cx:0,cz:0,s:1,ox:0,oy:0};
 function mapBase(){const w=innerWidth,h=innerHeight,side=w>700?250:0;return{w,h,side,s0:Math.min((w-side)/(MAPX*1.7),h/(MAPX*1.7)),ox:side+(w-side)/2,oy:h/2}}
 function mapToWorld(sx,sy){return{x:(sx-MV.ox)/MV.s+MV.cx,z:(sy-MV.oy)/MV.s+MV.cz}}
 function mapZoomAt(f,sx,sy){const before=mapToWorld(sx,sy);MV.z=clamp(MV.z*f,1,10);const b=mapBase();MV.s=b.s0*MV.z;const after=mapToWorld(sx,sy);MV.cx+=before.x-after.x;MV.cz+=before.z-after.z;clampMap()}
-function clampMap(){const lim=MAPX*.95;MV.cx=clamp(MV.cx,-lim,lim);MV.cz=clamp(MV.cz,-lim,lim)}
+// as far out as the boat can go, not just the island: ME on a boat in the outer water centred the map over a kilometre
+// short of it, off screen (Codex's audit)
+function clampMap(){const lim=Math.max(MAPX*.95,typeof BOAT_V!=="undefined"?BOAT_V.edge:0);MV.cx=clamp(MV.cx,-lim,lim);MV.cz=clamp(MV.cz,-lim,lim)}
 function mapMarkers(){
   const hm=gW(0,-8);
   /** @type {any[]} */

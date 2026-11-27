@@ -28,7 +28,9 @@ function audioInit(){
   }catch(e){AC=null}
 }
 // wake the audio clock: "suspended" here, or "interrupted" on an iPhone after a call, Siri or an alarm
-function acResume(){if(tabIdle||!AC||AC.state==="running"||AC.state==="closed")return;try{const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
+// (not while the tab is hidden: a transition finishing then woke the sound the tab's hiding had put to sleep; Codex's
+// audit. Coming back to the tab resumes it)
+function acResume(){if(tabIdle||document.hidden||!AC||AC.state==="running"||AC.state==="closed")return;try{const p=AC.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
 function audioOn(on){if(!AU)return;if(on)acResume();AU.master.gain.setTargetAtTime(on&&save.sound?1:0,AC.currentTime,.12)}
 // surf: 0 on asphalt, 1 on the gravel verge, 2 on grass and dirt
 // vol: how much of the engine is heard (0 with the engine off, on foot). wash: water along a boat's hull
@@ -194,6 +196,11 @@ function musicInit(){if(MUSIC||!AC)return;try{
 const SONG_RETRY=[3,10,30];
 function songFail(S,why){S.st="failed";S.err=why;S.bytes=null;S.tries=(S.tries||0)+1;
   S.retryAt=S.tries<=SONG_RETRY.length?performance.now()+SONG_RETRY[S.tries-1]*1000:null}
+// back online: a song that failed for want of a connection (or timed out) is tried again at the next ask, its tries
+// started afresh; one whose retries had run out stayed silent for good (Codex's audit). One the server refused, or
+// that wouldn't decode, still waits as before
+addEventListener("online",()=>{for(const n of Object.keys(SONGS)){const S=SONGS[n];
+  if(S.st==="failed"&&(S.err==="network"||S.err==="timeout")){S.st=null;S.err=null;S.tries=0;S.retryAt=null}}});
 // for the ?perf panel: each song's state, and why it failed
 function musicState(){return Object.keys(SONGS).map(n=>{const S=SONGS[n];return n+" "+(S.st||"-")+(S.st==="failed"&&S.err?":"+S.err+(S.retryAt!=null?" r"+S.tries+"/"+SONG_RETRY.length:""):"")}).join("\n      ")}   // one song a line: three on one line were wider than a phone
 function songFetch(n){const S=SONGS[n];
@@ -458,8 +465,18 @@ function photoShotShow(blob){
   $("phImg").src=url;const dl=$("phDl");dl.href=url;dl.setAttribute("download",name);
   let canShare=false;try{canShare=isTouch&&!!navigator.canShare&&navigator.canShare({files:[new File([blob],name,{type:"image/png"})]})}catch(_){}
   show("phShare",canShare);show("phShot",true);$("photo").classList.add("shot");
+  // the camera's controls under it are out of reach of Tab, and the keyboard starts on DOWNLOAD (Tab used to reach
+  // them through the picture; Codex's audit)
+  phShotInert(true);try{$("phDl").focus({preventScroll:true})}catch(_){}
 }
-function photoShotClose(){if(PH.shot){URL.revokeObjectURL(PH.shot.url);PH.shot=null}$("phImg").removeAttribute("src");show("phShot",false);$("photo").classList.remove("shot")}
+const phShotInert=on=>{for(const id of ["phPad","phTop","phLow"])$(id).inert=on};
+function photoShotClose(){const was=!!PH.shot;if(PH.shot){URL.revokeObjectURL(PH.shot.url);PH.shot=null}$("phImg").removeAttribute("src");show("phShot",false);$("photo").classList.remove("shot");
+  phShotInert(false);if(was&&state==="PHOTO")try{$("phSnap").focus({preventScroll:true})}catch(_){}}
+// Tab and Shift+Tab go round the picture's buttons while it's open
+addEventListener("keydown",e=>{if(e.key!=="Tab"||$("phShot").classList.contains("hide"))return;
+  const bs=[...$("phShot").querySelectorAll("a,button")].filter(b=>b.offsetParent&&!(/** @type {HTMLButtonElement} */(b).disabled));if(!bs.length)return;
+  const i=bs.indexOf(/** @type {HTMLElement} */(document.activeElement));e.preventDefault();
+  bs[(i<0?0:i+(e.shiftKey?-1:1)+bs.length)%bs.length].focus()},true);
 $("phBack").onclick=photoShotClose;
 // Inside the Claude artifact viewer a plain download link is blocked, so the save goes through the viewer's own prompt.
 let phSaver=null;

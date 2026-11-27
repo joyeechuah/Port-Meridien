@@ -497,7 +497,8 @@ function needsTip(){
 function traitLoss(k){
   if(k==="hunger"&&hasTrait("foodie")||k==="social"&&hasTrait("outgoing"))return 1.15;
   if(k==="energy"&&FOOT.on&&!BOAT.on&&hasTrait("athletic"))return .9;
-  if(k==="fun"&&hasTrait("homebody"))return 1.1; // needsTick runs only in DRIVE
+  // away from home only (needsTick runs only in DRIVE): walking about the house it drained Fun faster too (Codex's audit)
+  if(k==="fun"&&hasTrait("homebody"))return typeof homeOnFoot==="function"&&homeOnFoot()?1:1.1;
   return 1;
 }
 function needsTick(dt){

@@ -9,7 +9,7 @@ test("a patrol outside the rear wall cannot arrest a walker upstairs", async ({g
     const t=TRAFFIC.find(c=>c.cop), e=EDGES.find(e=>e.len>100);
     for(const c of TRAFFIC)if(c!==t)c.chase=false;
     Object.assign(t,{e,chase:true,wx:patrol.x,wz:patrol.z});
-    COPNAV={};copNavT=100;WANTED.lvl=1;WANTED.caughtT=COP_V.caughtT-.01;
+    COPNAV=copNav();copNavT=100;WANTED.lvl=1;WANTED.caughtT=COP_V.caughtT-.01;
     const credits=save.cr;copUpdate(.02);
     return {stars:WANTED.lvl,fine:credits-save.cr,upstairs:FOOT.y-gY};
   });

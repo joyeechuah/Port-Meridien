@@ -200,11 +200,13 @@ test.describe("design your home", () => {
     await ptr("pointerup", 4, p);
     await ptr("pointerdown", 5, p);
     expect(await ptr("pointerup", 5, p)).toEqual({ tap: false, n: 1, cr: cr0 - 160 });
-    // the mouse: a preview over the floor, and none once it's past the room's edge
+    // the mouse: a preview that follows it over the floor, and back where the piece was put once it's past the room's
+    // edge (on the way to BUY it used to go, and BUY went grey)
+    const pin = await game.eval(() => ({ ...__T.HV.pin }));
     await page.mouse.move(q.x, q.y);
     expect(await game.eval(() => !!__T.HV.at && __T.HV.ghost.visible)).toBe(true);
     await page.mouse.move(4, 4);
-    expect(await game.eval(() => ({ at: __T.HV.at, ghost: __T.HV.ghost.visible }))).toEqual({ at: null, ghost: false });
+    expect(await game.eval(() => ({ at: __T.HV.at, ghost: __T.HV.ghost.visible }))).toEqual({ at: pin, ghost: true });
   });
   test("BUY: a chosen piece previews on a free spot, the arrow keys move it, BUY places it; no mouse needed", async ({ game, page }) => {
     await game.open();

@@ -18,7 +18,21 @@ const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.b
 function setState(s){if(typeof partyLeft==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyLeft();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
-function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick")syncArrivalClock()}
+function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick"){syncArrivalClock();clInert()}}
+// while the cloud save's dialog (or its chooser) is open, everything behind it is out of reach of Tab, and closing it
+// puts the keyboard back where it was (Tab used to walk on into the garage's buttons; Codex's audit). What was inert
+// already stays so afterwards
+const CL_INERT=new Map();let clFocusWas=/** @type {HTMLElement|null} */ (null);
+function clInert(){
+  const on=!$("cloud").classList.contains("hide")||!$("cloudPick").classList.contains("hide");
+  if(on&&!CL_INERT.size){const a=/** @type {HTMLElement} */ (document.activeElement);clFocusWas=a&&a!==document.body&&!a.closest("#cloud,#cloudPick")?a:null}
+  for(const el of /** @type {HTMLElement[]} */ ([...document.body.children])){if(el.id==="cloud"||el.id==="cloudPick"||el.tagName==="SCRIPT")continue;
+    if(on){if(!CL_INERT.has(el)){CL_INERT.set(el,el.inert);el.inert=true}}else if(CL_INERT.has(el)){el.inert=!!CL_INERT.get(el);CL_INERT.delete(el)}}
+  if(!on&&clFocusWas){const f=clFocusWas;clFocusWas=null;if(f.isConnected&&f.offsetParent)try{f.focus({preventScroll:true})}catch(e){}}
+}
+// where the car's name starts in the garage's bottom bar, for the car arrows above it on a phone (index.html #gpick)
+{const top=()=>{const g=document.getElementById("gbar"),n=g&&g.querySelector(".cname");if(n&&n.offsetParent)document.documentElement.style.setProperty("--gbar-top",Math.round(n.getBoundingClientRect().top)+"px")};
+  if(window.ResizeObserver){const g=document.getElementById("gbar");if(g)new ResizeObserver(top).observe(g)}addEventListener("resize",top)}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
 
@@ -31,10 +45,15 @@ function carLights(){
   headLight=new THREE.SpotLight(0xfff4dc,0,150,.62,.55,1);headLight.target=new THREE.Object3D();fillLight=new THREE.PointLight(0xdfe6ff,0,14,1.4);
   scene.add(headLight);scene.add(headLight.target);scene.add(fillLight);
 }
+// the damage each of your cars has this session, while you drive another: swapping at the Auto Gallery and back
+// repaired a car for nothing (Codex's audit). Going home repairs them all, as before
+const CAR_DMG=new Map();
 function attachCar(id,temp){
-  if(id!==curId){if(pc)showDamageSmoke(pc,0);P.damage=P.damageT=0;repairWarnLevel=0}
+  const swap=id!==curId;
+  if(swap){if(pc)showDamageSmoke(pc,0);if(curId&&save.owned.includes(curId))CAR_DMG.set(curId,P.damage||0);P.damage=P.damageT=0;repairWarnLevel=0}
   curId=id;if(!temp&&!STREET.has(id))save.cur=id;   // a taken car is never the car the save names as yours (ending a test drive begun in one used to store its made-up id)
   pc=getCar(id);pc.G.visible=true;
+  if(swap&&save.owned.includes(id)&&CAR_DMG.get(id)){P.damage=CAR_DMG.get(id);repairWarnLevel=damageWarnTier(P.damage);showDamageSmoke(pc,P.damage)}
   carLights();
   pc.G.add(headLight);pc.G.add(headLight.target);headLight.position.set(0,.7,pc.front_z+.35);headLight.target.position.set(0,-.6,30);
   // behind the car at about its own height, between it and the chase camera: keeps the car readable at
@@ -102,6 +121,9 @@ function placeOnRoad(nr,dirSign){
   const ux=nr.dx*dirSign,uz=nr.dz*dirSign,off=RT[nr.e.type].lanes[0]*SIDE();
   P.x=nr.x-uz*off;P.z=nr.z+ux*off;P.h=Math.atan2(ux,uz);P.vx=P.vz=P.vy=0;P.r=0;P.steer=0;P.steerS=0;P.air=false;
   P.ty=surfH(P.x,P.z);P.y=P.ty;P.pitch=0;P.roll=0;streakReset();autoHold=true;
+  // set down, not driven there: the passport's 25 m of driving starts again (a short reset beside a landmark found it
+  // without any; Codex's audit)
+  if(typeof PZ!=="undefined"){PZ.driven=0;PZ.lx=null}
 }
 // fade to black and run fn in the dark. Meanwhile the game is in state FADE, which takes no input and
 // moves nothing, so a key or tap in that half second can't open a menu over it or start something twice
@@ -392,7 +414,7 @@ function goGarage(fromFade){
   const doIt=()=>{
     const repaired=(testDrive?testDrive.damage:P.damage)>0;
     endEvent();if(testDrive)finishTestDrive(false);streetReset();if(repaired){wantEvent("repair");skillAward("handiness",15)}
-    P.damage=P.damageT=0;repairWarnLevel=0;if(pc)showDamageSmoke(pc,0);
+    P.damage=P.damageT=0;repairWarnLevel=0;if(pc)showDamageSmoke(pc,0);CAR_DMG.clear();
     // going home ends a contract; the garage hides the HUD, so the message waits for the next drive
     if(job&&jobEnd("abandoned"))jobNotices.push(["CONTRACT ABANDONED","You went home, so it ended without a reward"]);
     setState("GARAGE");audioOn(false);
