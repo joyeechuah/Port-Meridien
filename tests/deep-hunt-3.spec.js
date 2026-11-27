@@ -149,7 +149,8 @@ test("a party ended by leaving home any other way than walking out says so too",
     __at(19, 27, Math.PI);
     PARTY.ids = [PEOPLE[0].id]; partyStart(); partySync();
     document.getElementById("toasts").innerHTML = "";
-    setState("INTRO");
+    // driving off (an event's intro from the house no longer ends it: you're still at home until it starts)
+    setState("EXIT");
     return { active: PARTY.active, toasts: document.getElementById("toasts").textContent };
   });
   expect(r.active).toBe(false);

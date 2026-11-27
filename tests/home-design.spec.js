@@ -20,7 +20,7 @@ async function design(game, page) {
 const card = (page, name) => page.locator("#hdList .hdc", { hasText: name });
 
 test.describe("design your home", () => {
-  test("a click on the floor buys and places the chosen piece where you clicked, drawn on the mezzanine and kept after a reload", async ({ game, page }) => {
+  test("a click on the floor shows the chosen piece there and BUY buys it, drawn on the mezzanine and kept after a reload", async ({ game, page }) => {
     await game.open();
     await design(game, page);
     expect(await game.eval(() => ({ on: __T.HV.on, roofsHidden: __T.HV.roofs.length > 0 && __T.HV.roofs.every((m) => !m.visible), grid: __T.HV.grid.visible }))).toEqual({ on: true, roofsHidden: true, grid: true });
@@ -29,6 +29,11 @@ test.describe("design your home", () => {
     const at = await cellPoint(game, 10, 8);
     await page.mouse.move(at.x, at.y);
     await page.mouse.click(at.x, at.y);
+    // one click only shows it there (a click used to buy at once, while the help said to press BUY)
+    expect(await game.eval(() => ({ n: __T.save.home.items.length, cr: __T.save.cr }))).toEqual({ n: 0, cr: 120000 });
+    await expect(page.locator("#hdMsg")).toHaveText("Click again or press BUY to buy it here");
+    // the mouse on its way to BUY leaves the floor: the piece stays where it was clicked
+    await page.locator("#hdBuy").click();
     const r = await game.eval(() => {
       const T = __T,
         p = T.save.home.items[0],
@@ -50,7 +55,10 @@ test.describe("design your home", () => {
     await page.locator("#hdg_seating").click();
     await card(page, "Harbour sofa").click();
     let at = await cellPoint(game, 10, 8);
+    // a second click on the same spot buys it, as BUY does
     await page.mouse.click(at.x, at.y);
+    await page.mouse.click(at.x, at.y);
+    expect(await game.eval(() => __T.save.home.items.length)).toBe(1);
     // let go of the catalogue piece, then click the sofa to pick it
     await page.keyboard.press("Escape");
     const mid = await game.eval(() => {
@@ -68,6 +76,7 @@ test.describe("design your home", () => {
     await page.locator("#hdg_decor").click();
     await card(page, "Floor lamp").click();
     at = await cellPoint(game, 20, 0);
+    await page.mouse.click(at.x, at.y);
     await page.mouse.click(at.x, at.y);
     expect(await game.eval(() => __T.save.home.items.length)).toBe(0);
     await expect(page.locator("#hdMsg")).toHaveText("It doesn't fit there");
@@ -92,6 +101,7 @@ test.describe("design your home", () => {
     await card(page, "Kitchen fridge").click();
     const at = await cellPoint(game, 30, 16);
     await page.mouse.click(at.x, at.y);
+    await page.locator("#hdBuy").click();
     await page.locator("#hdDone").click();
     await expect(page.locator("#gSnack")).toBeVisible();
     await design(game, page);
@@ -190,11 +200,13 @@ test.describe("design your home", () => {
     await ptr("pointerup", 4, p);
     await ptr("pointerdown", 5, p);
     expect(await ptr("pointerup", 5, p)).toEqual({ tap: false, n: 1, cr: cr0 - 160 });
-    // the mouse: a preview over the floor, and none once it's past the room's edge
+    // the mouse: a preview that follows it over the floor, and back where the piece was put once it's past the room's
+    // edge (on the way to BUY it used to go, and BUY went grey)
+    const pin = await game.eval(() => ({ ...__T.HV.pin }));
     await page.mouse.move(q.x, q.y);
     expect(await game.eval(() => !!__T.HV.at && __T.HV.ghost.visible)).toBe(true);
     await page.mouse.move(4, 4);
-    expect(await game.eval(() => ({ at: __T.HV.at, ghost: __T.HV.ghost.visible }))).toEqual({ at: null, ghost: false });
+    expect(await game.eval(() => ({ at: __T.HV.at, ghost: __T.HV.ghost.visible }))).toEqual({ at: pin, ghost: true });
   });
   test("BUY: a chosen piece previews on a free spot, the arrow keys move it, BUY places it; no mouse needed", async ({ game, page }) => {
     await game.open();

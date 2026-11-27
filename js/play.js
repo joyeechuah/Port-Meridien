@@ -160,6 +160,12 @@ function rivalModel(cd,key){
   return m;
 }
 function startEvent(E,cup){
+  // out of the boat or off your feet only now, as you agree to race: the intro used to end them as it opened, so
+  // cancelling it from the room upstairs left you in the car outside (Codex's audit)
+  if(BOAT.on&&typeof boatEnd==="function")boatEnd();
+  if(FOOT.on&&typeof footEnd==="function")footEnd();
+  // a cup played again begins afresh here, not as its intro opens: cancelling AGAIN wiped the last result
+  if(cup&&cup.fresh){const c=champOf(cup.cls);c.r=0;c.pts=[];c.d=[];persist()}
   // a friend with you gets out here first, as one won't get in during a race or a time trial (js/life.js rideWhy). They
   // used to stay in the seat for the whole race, or, still walking to the car, be brought to the grid and get in there
   if(typeof RIDE!=="undefined"&&RIDE.p&&typeof rideEnd==="function")rideEnd("out");
@@ -197,7 +203,8 @@ function updateEvent(dt){
     locked=true;P.vx*=.9;P.vz*=.9;
     const c=Math.ceil(-ev.t);$("count").classList.remove("hide");$("count").textContent=c>0?c:"GO";
     if(c!==ev.last){ev.last=c;beep(c>0?520:880)}
-    if(ev.t>=0){ev.phase="run";locked=false;setTimeout(()=>$("count").classList.add("hide"),600)}
+    // (this event's GO only: one ended and another started within the 600 ms hid the new countdown; Codex's audit)
+    if(ev.t>=0){ev.phase="run";locked=false;const e=ev;setTimeout(()=>{if(ev===e||!ev)$("count").classList.add("hide")},600)}
   }
   let tr=trackRoute(R,P.x,P.z,ev.hint);
   // strayed beyond the local search (a long detour): look along the whole route, but never past the next
@@ -307,7 +314,7 @@ function updateEvent(dt){
   else ghostHide();
   // over the line, the panel holds the time and place you finished with
   const tt=ev.fin?ev.fin.t:ev.t;
-  $("evPos").textContent=E.type==="race"?(ev.fin?ev.fin.pos:pos)+"/"+(ev.ai.length+1):(tt<ev.tg.gold?"GOLD":tt<ev.tg.silver?"SILVER":tt<ev.tg.bronze?"BRONZE":"--");
+  $("evPos").textContent=E.type==="race"?(ev.fin?ev.fin.pos:pos)+"/"+(ev.ai.length+1):(tt<=ev.tg.gold?"GOLD":tt<=ev.tg.silver?"SILVER":tt<=ev.tg.bronze?"BRONZE":"--");
   $("evTime").textContent=fmtT(Math.max(0,tt));
   $("evCp").textContent=ev.cp+"/"+cps.length;
 }
@@ -318,7 +325,8 @@ function finishEvent(tx){
     title=["1ST PLACE","2ND PLACE","3RD PLACE","4TH PLACE"][pos-1];rew=raceRewards(E,ev.diff)[pos-1]||0;
     rows.push(["Position",pos+" of 4"],["Difficulty",DIFFS[ev.diff].n]);
   }else{
-    const G=ev.tg;medal=t<G.gold?0:t<G.silver?1:t<G.bronze?2:3;title=["GOLD","SILVER","BRONZE","NO MEDAL"][medal];rew=E.rewards[medal]||0;
+    // (a time equal to the target shown earns it: it got the medal below; Codex's audit)
+    const G=ev.tg;medal=t<=G.gold?0:t<=G.silver?1:t<=G.bronze?2:3;title=["GOLD","SILVER","BRONZE","NO MEDAL"][medal];rew=E.rewards[medal]||0;
     rows.push(["Gold time",fmtT(G.gold)]);
   }
   if(E.type==="race"){rew=Math.round(rew*skillFactor("driving"));wantEvent("race");skillAward("driving",30)}
@@ -326,6 +334,9 @@ function finishEvent(tx){
   const best=save.rec[E.id];const isRec=!best||t<best;if(isRec)save.rec[E.id]=t;
   // a record time trial run becomes the ghost (the last sample is the line itself)
   if(isRec&&ev.rec&&ev.rec.length>=8&&ev.rec.length<12000){ev.rec.push(+P.x.toFixed(1),+P.z.toFixed(1),+P.h.toFixed(2),+E.route.len.toFixed(1));save.ghost[E.id]={c:curCar().id,t,d:ev.rec}   /* a taken car's ghost is kept as the model it borrows: its made-up id means nothing after a reload, and the ghost was dropped */}
+  // a record with no recording to keep (the recorder full, a run of five minutes or more) takes the old ghost away: it
+  // raced the slower record's line against the new best time (Codex's audit)
+  else if(isRec&&save.ghost&&save.ghost[E.id])delete save.ghost[E.id];
   rows.unshift(["Your time",fmtT(t)]);rows.push(["Best",fmtT(save.rec[E.id])+(isRec?"  · new record":"")],["Reward",rew?"+"+fmtCr(rew)+" CR":"none"]);
   if(cupRows)rows.push(...cupRows.rows);
   // finishing is fun, wherever you came (js/life.js); quitting isn't
@@ -366,7 +377,8 @@ function openIntro(E,cup){
     b.setAttribute("aria-pressed",k===save.diff?"true":"false");b.setAttribute("aria-label","Difficulty "+d.n+", rewards ×"+d.pay);b.onclick=()=>setDiff(k);dz.appendChild(b)});
   introE=E;introCup=cup||null;setState("INTRO");audioOn(false);$("intro").classList.remove("hide");
 }
-function setDiff(k){if(!introE||introE.type!=="race")return;save.diff=clamp(k,0,2);persist();openIntro(introE,introCup)}
+// (the one already chosen, or past either end, changes nothing and writes nothing; Codex's audit)
+function setDiff(k){if(!introE||introE.type!=="race")return;const d=clamp(k,0,2);if(d===save.diff)return;save.diff=d;persist();openIntro(introE,introCup)}
 let introE=null,introCup=null;
 
 /* ================================================================ SPEED RADARS */
@@ -412,16 +424,19 @@ function updateRadars(dt){
 const gps={t:null,route:null,label:"",timer:0,remain:0};
 function setGPS(x,z,label,forJob){gps.t={x,z};gps.label=label;gps.job=!!forJob;gps.timer=0;recalcGPS();if(gps.route&&!forJob)toast("GPS SET",label+" · "+(gps.route.len/1000).toFixed(1)+" km")}
 function clearGPS(){gps.t=null;gps.route=null;gps.job=false;$("gpsTxt").textContent=""}
-function recalcGPS(){if(!gps.t)return;gps.route=routeBetween(P.x,P.z,gps.t.x,gps.t.z)}
+// where the route starts: where you are, on foot too (a waypoint set while walking was routed from the parked car,
+// half a kilometre away; Codex's audit). A contract's stays with the car, which does the driving
+const gpsMe=()=>typeof FOOT!=="undefined"&&FOOT.on&&!BOAT.on&&!gps.job?FOOT:P;
+function recalcGPS(){if(!gps.t)return;const me=gpsMe();gps.route=routeBetween(me.x,me.z,gps.t.x,gps.t.z)}
 function updateGPS(dt){
   if(!gps.t||!gps.route){$("gpsTxt").textContent="";return}
   gps.timer-=dt;
-  const R=gps.route,n=R.pts.length;let bi=0,bd=1e9;
-  for(let i=0;i<Math.min(n,90);i++){const p=R.pts[i],d=(p.x-P.x)**2+(p.z-P.z)**2;if(d<bd){bd=d;bi=i}}
+  const R=gps.route,n=R.pts.length,me=gpsMe();let bi=0,bd=1e9;
+  for(let i=0;i<Math.min(n,90);i++){const p=R.pts[i],d=(p.x-me.x)**2+(p.z-me.z)**2;if(d<bd){bd=d;bi=i}}
   if(Math.sqrt(bd)>40&&gps.timer<=0){gps.timer=1.5;recalcGPS();return}
   if(bi>2){gps.route=makePath(R.pts.slice(bi))}
   gps.remain=gps.route.len;
-  if(!gps.job&&Math.hypot(P.x-gps.t.x,P.z-gps.t.z)<28){toast("ARRIVED",gps.label);clearGPS();return}
+  if(!gps.job&&Math.hypot(me.x-gps.t.x,me.z-gps.t.z)<28){toast("ARRIVED",gps.label);clearGPS();return}
   $("gpsTxt").textContent="GPS · "+(gps.remain>=1000?(gps.remain/1000).toFixed(1)+" km":Math.round(gps.remain/10)*10+" m")+" · "+gps.label;
 }
 /* ================================================================ MONEY, LEVEL, TOASTS */
@@ -612,7 +627,9 @@ const MV={z:1,cx:0,cz:0,s:1,ox:0,oy:0};
 function mapBase(){const w=innerWidth,h=innerHeight,side=w>700?250:0;return{w,h,side,s0:Math.min((w-side)/(MAPX*1.7),h/(MAPX*1.7)),ox:side+(w-side)/2,oy:h/2}}
 function mapToWorld(sx,sy){return{x:(sx-MV.ox)/MV.s+MV.cx,z:(sy-MV.oy)/MV.s+MV.cz}}
 function mapZoomAt(f,sx,sy){const before=mapToWorld(sx,sy);MV.z=clamp(MV.z*f,1,10);const b=mapBase();MV.s=b.s0*MV.z;const after=mapToWorld(sx,sy);MV.cx+=before.x-after.x;MV.cz+=before.z-after.z;clampMap()}
-function clampMap(){const lim=MAPX*.95;MV.cx=clamp(MV.cx,-lim,lim);MV.cz=clamp(MV.cz,-lim,lim)}
+// as far out as the boat can go, not just the island: ME on a boat in the outer water centred the map over a kilometre
+// short of it, off screen (Codex's audit)
+function clampMap(){const lim=Math.max(MAPX*.95,typeof BOAT_V!=="undefined"?BOAT_V.edge:0);MV.cx=clamp(MV.cx,-lim,lim);MV.cz=clamp(MV.cz,-lim,lim)}
 function mapMarkers(){
   const hm=gW(0,-8);
   /** @type {any[]} */

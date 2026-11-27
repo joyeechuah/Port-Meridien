@@ -236,6 +236,9 @@ function netAt(p,t){
     // getting in or out (or aboard): as they were until the moment it happened (the new state used to show at once, up
     // to a whole message early; Codex's review)
     if(a.m!==c.m)return k>=1?c:a;
+    // a jump no car could drive in the time between (map travel, going home, a missed message): there at once, not a
+    // glide across the island through the middle (Codex's audit). Faster than 120 m/s, with 80 m to spare
+    if(Math.hypot(c.x-a.x,c.z-a.z)>80+120*(B.t-A.t))return k>=1?c:a;
     return {...c,x:lerp(a.x,c.x,k),y:lerp(a.y,c.y,k),z:lerp(a.z,c.z,k),h:a.h+wrapA(c.h-a.h)*k,
       q:a.q&&c.q?(()=>{const q=new THREE.Quaternion(...a.q).slerp(new THREE.Quaternion(...c.q),k);return[q.x,q.y,q.z,q.w]})():c.q}}
   const L=b[b.length-1],ahead=Math.min(.4,Math.max(0,t-L.t)),d=L.d;

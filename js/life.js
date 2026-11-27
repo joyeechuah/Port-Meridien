@@ -497,7 +497,8 @@ function needsTip(){
 function traitLoss(k){
   if(k==="hunger"&&hasTrait("foodie")||k==="social"&&hasTrait("outgoing"))return 1.15;
   if(k==="energy"&&FOOT.on&&!BOAT.on&&hasTrait("athletic"))return .9;
-  if(k==="fun"&&hasTrait("homebody"))return 1.1; // needsTick runs only in DRIVE
+  // away from home only (needsTick runs only in DRIVE): walking about the house it drained Fun faster too (Codex's audit)
+  if(k==="fun"&&hasTrait("homebody"))return typeof homeOnFoot==="function"&&homeOnFoot()?1:1.1;
   return 1;
 }
 function needsTick(dt){
@@ -747,6 +748,9 @@ function rideEnd(why){
   const dest=RIDE.dest;Object.assign(RIDE,{p:null,who:null,st:"",dest:null,car:null});
   if(dest&&gps.t&&gps.label===dest.name&&!job)clearGPS();
   rideHud();
+  // the friendship the ride earned goes into the save now, however it ends (a drop-off you chose left it unsaved
+  // until the next write, and a reload lost it; Codex's audit)
+  if(typeof persist==="function")persist();
   const say=(t)=>toast(who.name.toUpperCase(),"“"+t+"”");
   if(why==="drop")say(riding?"Thanks for the ride!":"Another time, then.");
   else if(why==="out")say(riding?"Thanks for the ride!":"Another time, then.");
@@ -923,9 +927,10 @@ const PARTY_RSVP={
 const PARTY_NO={cheerful:"Maybe after we get to know each other.",joker:"Let's hang out another time.",
   chatty:"Let's talk a bit more first.",shy:"I'd rather know you better first.",
   grumpy:"I'm staying in tonight.",busy:"I can't clear my schedule."};
-// home, for a party: the garage screen, or walking about the house (and the pause menu, map or Photo Mode from
-// there). Parties used to need the garage screen
-const partyHome=(s=state)=>s==="GARAGE"||["DRIVE","PAUSE","MAP","PHOTO"].includes(s)&&typeof FOOT!=="undefined"&&FOOT.on&&!BOAT.on&&
+// home, for a party: the garage screen, or walking about the house (and the pause menu, map, Photo Mode or an event's
+// intro from there, and the fade back to the garage screen, which used to end it; Codex's audit). Parties used to need
+// the garage screen
+const partyHome=(s=state)=>s==="GARAGE"||["DRIVE","PAUSE","MAP","PHOTO","FADE","INTRO"].includes(s)&&typeof FOOT!=="undefined"&&FOOT.on&&!BOAT.on&&
   typeof houseIn==="function"&&houseIn(FOOT.x,FOOT.z);
 function partyAtHome(){
   return (typeof homeEditable==="function"&&homeEditable()||typeof homeOnFoot==="function"&&homeOnFoot())&&!document.hidden&&!WANTED.lvl&&

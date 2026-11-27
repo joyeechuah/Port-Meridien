@@ -538,6 +538,8 @@ function footBlocked(){
   if(testDrive)return "Return the test car first";
   if(kphNow()>FOOT_V.exitMax)return kphNow()>FOOT_V.stopMax?"Slow down first":"Stop the car first";
   if(P.water)return "Not in the water";
+  // (off the ground, a jump or a fall: you got out 2 m up and landed on the road; Codex's audit)
+  if(P.air)return "Wait until the car lands";
   return null;
 }
 // GET OUT while the car is still rolling (up to stopMax): it brakes itself to a stop and you get out then. It used to
@@ -651,11 +653,14 @@ function footUpdate(dt){
   updateTraffic(dt);jobTick(dt);   // a timed delivery's clock runs while you're out of the car too (it used to stop)
   if(FOOT.m&&FOOT.m.face)faceBlink(FOOT.m.face,dt);
   if(state!=="DRIVE")return;
-  const go=gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||kH());
+  // a panel open over you (the party's invitations, the kitchen's): no walking or turning behind it, tilt included (a
+  // tilted phone turned you round behind the invitations; Codex's audit)
+  const panel=typeof WORK!=="undefined"&&WORK.panel||typeof partyOpen==="function"&&partyOpen();
+  const go=panel?0:gasIn()>0?1:brakeIn()>0?-1:0,run=!locked&&(keys.shift||kH());
   // on a bench (js/life.js), walking or turning gets you up first
-  if(SIT.on&&(go||Math.abs(steerIn())>.3))sitEnd();
+  if(SIT.on&&!panel&&(go||Math.abs(steerIn())>.3))sitEnd();
   if(SIT.on&&!document.hidden)sitTick(dt);   // movement and danger interrupt the final fraction of a rest interval too
-  const still=TALK.p||SIT.on,want=still?0:go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
+  const still=TALK.p||SIT.on||panel,want=still?0:go>0?(run?FOOT_V.run:FOOT_V.walk):go<0?-FOOT_V.back:0;
   FOOT.v+=clamp(want-FOOT.v,-18*dt,12*dt);
   // right turns right, as in the car: the heading decreases (it was the wrong way round, on foot and on the boat)
   if(!still)FOOT.h=wrapA(FOOT.h-steerIn()*FOOT_V.turn*dt);
@@ -695,7 +700,8 @@ function footUpdate(dt){
   // doing when you got out, however far you walked), and the district and the clock keep up with you
   audioUpd(0,0,0,0,0,0,0,0);
   FOOT.hudT-=dt;if(FOOT.hudT<=0){FOOT.hudT=.4;$("zone").textContent=zoneAt(FOOT.x,FOOT.z);hudClock()}
-  placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);drawMini();
+  // the GPS follows you on foot too (it stood still while you walked: the drive's update never ran)
+  placeCarMesh(dt);showDamageSmoke(pc,P.damage||0,dt);footCam(dt);if(typeof updateGPS==="function")updateGPS(dt);drawMini();
 }
 /* ================================================================ POLICE
    Two patrol cars drive with the traffic. Commit a crime where one of them can see it and you are wanted: one star,
@@ -915,7 +921,10 @@ function copUpdate(dt){
   else{W.evadeT+=dt;if(W.evadeT>=copLoseT()){copClear();toast("LOST THEM","The police have stopped looking for you","gold");return}}
   // caught: one beside you while you're stopped (or on foot); the boat is out of their reach
   const still=BOAT.on?false:FOOT.on?true:Math.hypot(P.vx,P.vz)<2;
-  if(still&&near<COP_V.caught)W.caughtT+=dt;else W.caughtT=Math.max(0,W.caughtT-dt);
+  // (not through the house's walls: a patrol car outside the back wall arrested you in the room upstairs; an officer
+  // on foot comes in for you. Codex's audit)
+  const indoors=FOOT.on&&!BOAT.on&&typeof houseIn==="function"&&houseIn(FOOT.x,FOOT.z);
+  if(still&&!indoors&&near<COP_V.caught)W.caughtT+=dt;else W.caughtT=Math.max(0,W.caughtT-dt);
   if(W.caughtT>=COP_V.caughtT){copCaught();return}
   if(copOfficer(dt,ch,still))return;
   copCarFire(dt,ch);
@@ -1173,8 +1182,9 @@ function kitTick(dt){
   for(const k of KITS){
     if(k.back>0){k.back-=dt;k.G.visible=k.back<=0;continue}
     k.G.rotation.y+=dt*1.5;k.G.position.y=footGround(k.x,k.z)+.8+Math.sin(copClock*2+k.x)*.08;
-    if(!BOAT.on&&state==="DRIVE"&&H.hp<H.max&&H.hp>0&&Math.hypot(me.x-k.x,me.z-k.z)<reach){H.hp=Math.min(H.max,H.hp+50);k.back=120;k.G.visible=false;
-      toast("FIRST AID","+50 health · this one is back in 2 minutes","gold")}}
+    if(!BOAT.on&&state==="DRIVE"&&H.hp<H.max&&H.hp>0&&Math.hypot(me.x-k.x,me.z-k.z)<reach){const was=H.hp;H.hp=Math.min(H.max,H.hp+50);k.back=120;k.G.visible=false;
+      // (what it gave: at 99 it said +50; Codex's audit)
+      toast("FIRST AID","+"+Math.round(H.hp-was)+" health · this one is back in 2 minutes","gold")}}
 }
 function hurt(n){
   const H=HEALTH;if(H.hp<=0||n<=0)return;workCancel();H.hp=Math.max(0,H.hp-n);H.calm=0;H.hurtT=.5;

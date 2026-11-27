@@ -680,10 +680,13 @@ test.describe("police", () => {
       F.y = T.footGround(F.x, F.z);
       F.h = F.cy = Math.atan2(ax, az);
       // (the car is stood down; if the chase goes on, it can be called back somewhere out of sight, and that can be near
-      // where it stood, which failed about one run in six when this checked how far it had moved: so it checks the car
-      // was taken off the road on some frame)
+      // where it stood, which failed about one run in six when this checked how far it had moved. Looking for it off the
+      // road on some frame missed it too, about one run in ten, when it was stood down and sent out again within the same
+      // frame: so the stand-down itself is counted)
       let stoodDown = false;
-      for (let i = 0; i < 60 * 3; i++) { T.driveUpdate(1 / 60); if (!cop.e) stoodDown = true; }
+      const standDown = window.copStandDown;
+      window.copStandDown = function (t) { if (t === cop) stoodDown = true; return standDown.apply(this, arguments); };
+      try { for (let i = 0; i < 60 * 3; i++) T.driveUpdate(1 / 60); } finally { window.copStandDown = standDown; }
       return { locked: true, hit, watched, after: { on: O.on, shown: O.m.G.visible, carGone: stoodDown || Math.hypot(cop.wx - cx, cop.wz - cz) > 50, pool: O.pool.visible } };
     }, spot);
     expect(r.locked).toBe(true);

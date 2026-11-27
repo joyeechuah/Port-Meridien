@@ -297,8 +297,8 @@ function photoDayClean(raw){
 function skillPhoto(){
   const today=Math.floor(Date.now()/86400000),record=save.photoDay;
   if(today>record.day){record.day=today;record.count=0}else if(today<record.day)record.day=today;
-  if(record.count>=(hasTrait("shutterbug")?6:5))return;
-  record.count++;skillAward("photography",10);persist();
+  if(record.count>=(hasTrait("shutterbug")?6:5))return false;
+  record.count++;skillAward("photography",10);persist();return true;
 }
 function workClean(w){
   const valid=w&&typeof w==="object"&&!Array.isArray(w)&&w.v===1;
@@ -407,9 +407,10 @@ try{
   // class championships, by class: rounds driven (0 to 3), the points from each, and whether the cup was ever won
   {const c=save.champ&&typeof save.champ==="object"&&!Array.isArray(save.champ)?save.champ:{},o={};
    for(const k of ["A1","A2","A3","A4","A5","A6","A7"]){const v=c[k];if(!v||typeof v!=="object")continue;
-     const pts=Array.isArray(v.pts)?v.pts.filter(x=>[0,3,4,6,10].includes(x)).slice(0,3):[];
-     // the difficulty of each race round (null for a time trial), which scales the prize
-     const d=Array.isArray(v.d)?v.d.slice(0,pts.length).map(x=>x===0||x===1||x===2?x:null):[];while(d.length<pts.length)d.push(null);
+     // each round's points with the difficulty of its race (null for a time trial), which scales the prize: kept as
+     // pairs, so a round dropped as damaged takes its own difficulty with it (the next round was given it; Codex's audit)
+     const pts=[],d=[],raw=Array.isArray(v.pts)?v.pts:[],rd=Array.isArray(v.d)?v.d:[];
+     for(let i=0;i<raw.length&&pts.length<3;i++){if(![0,3,4,6,10].includes(raw[i]))continue;pts.push(raw[i]);const x=rd[i];d.push(x===0||x===1||x===2?x:null)}
      o[k]={r:pts.length,pts,d,won:v.won===true}}
    save.champ=o}
   // Island Passport: landmarks found, by stable id (ids not in this version are kept, so nothing is lost), and the one-time bonus
