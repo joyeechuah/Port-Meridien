@@ -1106,7 +1106,12 @@ function pedRotate(){
     pedTurn++;here.add(id);if(id===p.pid)continue;
     if(p.mad)pedMad.add(p.pid);
     scene.remove(p.m.G);p.m.face.m.dispose();
-    p.m=pedModel(id,.94+rnd(id,38)*.12);p.pid=id;p.mad=pedMad.delete(id);p.hitAt=undefined}
+    p.m=pedModel(id,.94+rnd(id,38)*.12);p.pid=id;p.mad=pedMad.delete(id);p.hitAt=undefined;
+    // the bubble over their head moves to the newcomer, hidden till they've something to say: it stayed on the one who
+    // left, out of the scene, so the newcomer's reactions never showed. Nor does the newcomer start knocked down, as the
+    // one who left was (on LOW, where nobody lies down for long, they took it over; Codex's review)
+    if(p.emo){p.m.G.add(p.emo.sp);p.emo.sp.visible=false;p.emo.t=p.emo.T}
+    if(p.st==="down"){p.st="idle";p.t=1.5;p.v=0;p.out=false;p.downT=0}}
 }
 function buildPeds(){
   const xs=[560,620,690,760],o=PED_V.line,B=/** @type {any[]} */ ([]);

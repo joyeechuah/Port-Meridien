@@ -66,3 +66,9 @@ test("account restore retries its own snapshot and advances the revision only af
     else expect(g.CL.pick.cloud).toEqual(cloud);
   }
 });
+
+test("a valid generation past the signed integer boundary continues increasing", () => {
+  const g = game(Infinity);
+  vm.runInContext("SAVE.gen = 2 ** 31; persist()", g);
+  expect(JSON.parse(g.store.pm).gen).toBe(2 ** 31 + 1);
+});

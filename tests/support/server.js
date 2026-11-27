@@ -36,12 +36,17 @@ function relay(req, res, code) {
     return;
   }
   if (req.method !== "POST") return res.writeHead(405).end();
-  let body = "";
+  // the bytes, put together and read as UTF-8 once they've all come: read chunk by chunk, a character whose bytes
+  // were split between two chunks came out as two broken ones ("Inês" as "In��s"; Codex's review)
+  const parts = [];
+  let size = 0;
   req.on("data", (c) => {
-    body += c;
-    if (body.length > 4096) req.destroy();
+    parts.push(c);
+    size += c.length;
+    if (size > 4096) req.destroy();
   });
   req.on("end", () => {
+    const body = Buffer.concat(parts).toString("utf8");
     try {
       JSON.parse(body);
     } catch {

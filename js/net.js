@@ -22,7 +22,9 @@ function netNewCode(){const a=new Uint32Array(4);crypto.getRandomValues(a);retur
 const netCodeOf=s=>String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,4);
 // a name: letters, digits, spaces and a few marks, at most 12 characters; blank is "Player"
 // (in one Unicode form, NFC: a pasted "Inês" spelt as e plus a combining accent lost its accent and read "Ines")
-const netName=s=>String(s||"").normalize("NFC").replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim().slice(0,12);
+// (and cut at a whole character: 12 UTF-16 units, as the room's rules count, without splitting a character beyond the
+// first 65,536 in two, which left half of it behind; Codex's review)
+const netName=s=>{let o="";for(const ch of String(s||"").normalize("NFC").replace(/[^\p{L}\p{N} .'_-]/gu,"").replace(/\s+/g," ").trim()){if(o.length+ch.length>12)break;o+=ch}return o};
 const netMyName=()=>netName(save.nick)||"Player";
 
 /* ---------- the two ways to reach the others ---------- */
@@ -161,7 +163,10 @@ function netState(){
 }
 function netSend(force){
   if(!NET.room||!NET.tx)return;
-  const d=netState(),key=JSON.stringify(d);
+  // (away whenever the tab is hidden, as the hiding itself says: a send meanwhile, a join finishing in a tab in the
+  // background, say, said "driving" again straight after; Codex's review)
+  const d=netState();if(document.hidden)d.m=3;
+  const key=JSON.stringify(d);
   if(!force&&key===NET.sent&&NET.beatT<NET.BEAT)return;
   NET.sent=key;NET.beatT=0;d.t=Date.now();NET.tx.put(d);
 }
@@ -182,7 +187,12 @@ function netGot(uid,d){
   if(!NET_OK(d)||(!NET.room&&!NET.joining))return;
   d=Object.assign({},d,{q:NET_Q(d.q)});
   let p=NET.peers.get(uid);const now=performance.now()/1000;
-  if(!p){if(NET.peers.size>=NET.MAX-1)return;p={uid,buf:[],model:null,key:"",tag:null,name:"",phase:0,seen:now,shown:false,lost:false};NET.peers.set(uid,p);
+  if(!p){
+    // a full room on the local relay: someone gone quiet for good (their browser closed with no goodbye, and the relay has
+    // no seats to empty) makes way for the player it has just let in, who was otherwise never seen (Codex's review)
+    if(NET.peers.size>=NET.MAX-1&&netLocal()){const old=[...NET.peers.values()].filter(q=>now-q.seen>NET.STALE).sort((a,b)=>a.seen-b.seen)[0];
+      if(old){if(typeof netGone==="function")netGone(old.uid);else NET.peers.delete(old.uid)}}
+    if(NET.peers.size>=NET.MAX-1)return;p={uid,buf:[],model:null,key:"",tag:null,name:"",phase:0,seen:now,shown:false,lost:false};NET.peers.set(uid,p);
     // whoever was already there when I joined "is here"; anyone after that "joined"
     toast(netName(d.n).toUpperCase()||"A FRIEND",now-NET.at<3?"is in the room":"joined the room","gold")}
   p.seen=now;p.buf.push({t:now,d});if(p.buf.length>12)p.buf.shift();
@@ -223,7 +233,9 @@ function netAt(p,t){
   const b=p.buf;if(!b.length)return null;
   if(t<=b[0].t)return b[0].d;
   for(let i=b.length-1;i>0;i--)if(b[i-1].t<=t){const A=b[i-1],B=b[i];if(t>B.t)break;const k=(t-A.t)/Math.max(1e-3,B.t-A.t),a=A.d,c=B.d;
-    if(a.m!==c.m)return c;
+    // getting in or out (or aboard): as they were until the moment it happened (the new state used to show at once, up
+    // to a whole message early; Codex's review)
+    if(a.m!==c.m)return k>=1?c:a;
     return {...c,x:lerp(a.x,c.x,k),y:lerp(a.y,c.y,k),z:lerp(a.z,c.z,k),h:a.h+wrapA(c.h-a.h)*k,
       q:a.q&&c.q?(()=>{const q=new THREE.Quaternion(...a.q).slerp(new THREE.Quaternion(...c.q),k);return[q.x,q.y,q.z,q.w]})():c.q}}
   const L=b[b.length-1],ahead=Math.min(.4,Math.max(0,t-L.t)),d=L.d;

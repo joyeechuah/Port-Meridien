@@ -97,3 +97,12 @@ test("Free spirit increases the paid reward and preserves the second reroll acro
   expect(run("wantsReroll()")).toBe(true);g.remote=g.save.wants;g.save.wants=first;
   expect(run("wantsSync(remote)")).toBe(true);expect(run("save.wants=wantsClean(save.wants);wantsReroll()")).toBe(false);
 });
+
+test("a reroll day left ahead by a clock put back while playing frees the next day's reroll", () => {
+  const { g, run } = game();
+  g.save.wants.day = 20005;   // rerolled on a clock five days fast, which has since been put right
+  expect(run("wantsReroll()")).toBe(false);   // today's is used, as a reload would say
+  g.Date.now = () => 20001 * 86400000;
+  expect(run("wantsReroll()")).toBe(true);
+  expect(g.save.wants.day).toBe(20001);
+});
