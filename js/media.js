@@ -345,7 +345,7 @@ function photoReset(){if(!pc)return;
   // from the other side when the pier's deck stands between the lens and what you're on (beside the pier, facing back
   // along it, the camera looked at the deck's top instead of the boat; Codex's review of #140)
   if(phDeckHides(PH.yaw)){const other=2*(boat?BOAT.h:foot?FOOT.h:P.h)-PH.yaw+2*Math.PI;if(!phDeckHides(other))PH.yaw=other}
-  phSync()}
+  phSync();if(foot&&houseIn(FOOT.x,FOOT.z)&&PH.on)photoFrame(0)}
 // whether the pier's deck is between the camera at this angle (as photoFrame places it) and what it looks at
 function phDeckHides(yaw){
   if(typeof PIER==="undefined"||typeof onPier!=="function")return false;
@@ -396,7 +396,14 @@ function photoFrame(dt){
   const x=t.x+Math.sin(PH.yaw)*cp*PH.dist,z=t.z+Math.cos(PH.yaw)*cp*PH.dist;
   // never under the ground, or under the sea's surface
   const y=Math.max(t.y+Math.sin(PH.pitch)*PH.dist,Math.max(meshH(x,z),surfH(x,z))+.35,.5);
-  camera.position.set(x,y,z);camera.lookAt(t);camera.fov=PH.fov;camera.updateProjectionMatrix();
+  if(FOOT.on&&!BOAT.on&&houseIn(t.x,t.z)){
+    const l=houseLocal(t.x,t.z),up=FOOT.y-gY>=5.2&&l.x>=.5&&l.z>=19;
+    const dest=houseLocal(x,z);
+    const lens=gW(clamp(dest.x,up?.5:-22.7,up?21.5:22.7),clamp(dest.z,up?19:.3,29.7),
+      Math.max(up?5.65:.35,t.y-gY+Math.sin(PH.pitch)*PH.dist));
+    camera.position.copy(houseCam(t,lens));
+  }else camera.position.set(x,y,z);
+  camera.lookAt(t);camera.fov=PH.fov;camera.updateProjectionMatrix();
   // lights that normally follow the drive: on for a night look, as they would be
   if(headLight){headLight.intensity=night*4.6;fillLight.intensity=night*.9}pc.tailM.color.setHex(night>.3?0xd01800:0x9a0e00);
 }
