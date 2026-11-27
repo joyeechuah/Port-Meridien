@@ -341,7 +341,18 @@ function photoLookSet(i){
 // went by the parked car's heading and size on foot and aboard, so RESET could frame you from any side
 function photoReset(){if(!pc)return;
   const boat=typeof BOAT!=="undefined"&&BOAT.on,foot=!boat&&typeof FOOT!=="undefined"&&FOOT.on;
-  PH.yaw=(boat?BOAT.h:foot?FOOT.h:P.h)+Math.PI*.82;PH.pitch=.22;PH.dist=boat?9.5:foot?4.2:7.2*(pc.shape==="suv"?1.15:1);PH.fov=50;phSync()}
+  PH.yaw=(boat?BOAT.h:foot?FOOT.h:P.h)+Math.PI*.82;PH.pitch=.22;PH.dist=boat?9.5:foot?4.2:7.2*(pc.shape==="suv"?1.15:1);PH.fov=50;
+  // from the other side when the pier's deck stands between the lens and what you're on (beside the pier, facing back
+  // along it, the camera looked at the deck's top instead of the boat; Codex's review of #140)
+  if(phDeckHides(PH.yaw)){const other=2*(boat?BOAT.h:foot?FOOT.h:P.h)-PH.yaw+2*Math.PI;if(!phDeckHides(other))PH.yaw=other}
+  phSync()}
+// whether the pier's deck is between the camera at this angle (as photoFrame places it) and what it looks at
+function phDeckHides(yaw){
+  if(typeof PIER==="undefined"||typeof onPier!=="function")return false;
+  const t=phTarget(),cp=Math.cos(PH.pitch),x=t.x+Math.sin(yaw)*cp*PH.dist,z=t.z+Math.cos(yaw)*cp*PH.dist,
+    y=Math.max(t.y+Math.sin(PH.pitch)*PH.dist,Math.max(meshH(x,z),surfH(x,z))+.35,.5),f=(PIER.y-y)/(t.y-y);
+  return f>0&&f<1&&onPier(x+f*(t.x-x),z+f*(t.z-z));
+}
 function photoEnter(){
   if(PH.on||!pc||(state!=="DRIVE"&&state!=="PAUSE"))return false;
   PH.prev=state;

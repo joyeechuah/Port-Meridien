@@ -793,7 +793,8 @@ function padScroll(g,dt=1/60){
 }
 function pollPad(){
   let g=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const x of l)if(x&&x.connected){g=x;break}}catch(e){}
-  if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GP.index=null;GO.stick[0]=GO.stick[1]=0;return}
+  // (and the pause menu's scroll clock starts again: reconnected in a screen of the pause menu, the first move jumped)
+  if(!g){GP.on=false;GP.steer=GP.gas=GP.brake=0;GP.hb=GP.rear=GP.fire=false;GP.prev.length=0;GP.index=null;GP.t=0;GO.stick[0]=GO.stick[1]=0;return}
   const ax=g.axes[0]||0,b=i=>g.buttons[i]||{pressed:false,value:0},v=i=>{const q=b(i);return typeof q.value==="number"&&q.value>0?q.value:q.pressed?1:0};
   GP.on=true;GP.steer=Math.abs(ax)<.12?0:Math.sign(ax)*(Math.abs(ax)-.12)/.88;GP.gas=v(7);GP.brake=v(6);GP.hb=b(0).pressed;GP.rear=b(4).pressed;GP.fire=b(5).pressed;
   // buttons pressed since the last frame
@@ -1206,7 +1207,7 @@ const TRAFFIC=[];let TEDGES=[],TEDGE_CUM=[],bubbleT=0;
 // were hard to drive through without hitting one (about 7 within 150 m, against 3 to 5 on open roads). townN is the count
 // within TOWN_R of you, kept up to date every half second
 const TOWN_CAP=isTouch?3:5,TOWN_R=200;let townN=0;
-const nearTown=t=>!!t.e&&t.e.type==="town"&&Math.abs(t.wx-P.x)<TOWN_R&&Math.abs(t.wz-P.z)<TOWN_R;
+const nearTown=t=>!t.free&&!!t.e&&t.e.type==="town"&&Math.abs(t.wx-P.x)<TOWN_R&&Math.abs(t.wz-P.z)<TOWN_R;
 const TCOLS=[0xe8e8e6,0xbfc3c8,0x2d2f33,0x7a1f1f,0x2b4a7a,0xd9cfb8,0x5d6b4a,0xa0a4a8,0x1f1f22,0xc9b27a,0x8a2c2c,0xf0f0f0];
 function initTraffic(){
   TEDGES=EDGES.filter(e=>e.type!=="drive"&&e.len>24);let c=0;TEDGE_CUM=TEDGES.map(e=>c+=e.len);
@@ -1241,6 +1242,7 @@ function spawnTraffic(t,dmin,dmax,avoidView){
       if(behind.adj.length>2&&(dir>0?s:e.len-s)<12)continue}
     // never on top of another car
     if(TRAFFIC.some(o=>o!==t&&o.e&&Math.abs(o.wx-p.x)<14&&Math.abs(o.wz-p.z)<14))continue;
+    if(t.cop)t.free=false;   // successful road placement also ends free driving after a wreck
     t.e=e;t.lost=false;t.s=s;t.dir=dir;t.lane=Math.floor(Math.random()*2);setLane(t);t.v=t.base;t.stopT=0;t.pa=null;
     t.damage=t.damageT=0;showDamageSmoke(t.c,0);
     // where it stands now and which way it faces, so a car placed next in the same frame sees it, and nothing reads
@@ -1254,7 +1256,7 @@ function spawnTraffic(t,dmin,dmax,avoidView){
 // at the start of an event: every car driving against the race on its route goes somewhere else, out of sight
 // (a car with nowhere to go for now tries again every half second)
 function clearOncoming(){
-  for(const t of TRAFFIC){if(!t.e||!oncoming(t.e,t.dir))continue;
+  for(const t of TRAFFIC){if(t.free||!t.e||!oncoming(t.e,t.dir))continue;
     t.e=null;t.c.G.visible=false;t.wx=t.wz=1e6;
     t.lost=!spawnTraffic(t,220,560,true)}
 }
@@ -1263,7 +1265,7 @@ function clearOncoming(){
 // to pass where it would join
 function exitsAt(t,node){
   const opts=node.adj.filter(a=>a.e!==t.e&&a.e.type!=="drive"&&!oncoming(a.e,a.end==="a"?1:-1));
-  const free=opts.filter(a=>{const d2=a.end==="a"?1:-1,s0=d2>0?0:a.e.len;if(TRAFFIC.some(o=>o!==t&&o.e===a.e&&o.dir===d2&&(o.s-s0)*d2<9))return false;
+  const free=opts.filter(a=>{const d2=a.end==="a"?1:-1,s0=d2>0?0:a.e.len;if(TRAFFIC.some(o=>o!==t&&!o.free&&o.e===a.e&&o.dir===d2&&(o.s-s0)*d2<9))return false;
     if(ev&&ev.ai.length){const q=edgePos(a.e,s0);if(ev.ai.some(r=>Math.hypot(r.x-q.x,r.z-q.z)<16))return false}
     return true});
   return{opts,free};

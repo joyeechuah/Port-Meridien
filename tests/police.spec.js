@@ -679,9 +679,12 @@ test.describe("police", () => {
       F.z = O.z + (az / L) * 200;
       F.y = T.footGround(F.x, F.z);
       F.h = F.cy = Math.atan2(ax, az);
-      for (let i = 0; i < 60 * 3; i++) T.driveUpdate(1 / 60);
-      // (the car is stood down; if the chase goes on, it can be called back somewhere out of sight)
-      return { locked: true, hit, watched, after: { on: O.on, shown: O.m.G.visible, carGone: !cop.e || Math.hypot(cop.wx - cx, cop.wz - cz) > 50, pool: O.pool.visible } };
+      // (the car is stood down; if the chase goes on, it can be called back somewhere out of sight, and that can be near
+      // where it stood, which failed about one run in six when this checked how far it had moved: so it checks the car
+      // was taken off the road on some frame)
+      let stoodDown = false;
+      for (let i = 0; i < 60 * 3; i++) { T.driveUpdate(1 / 60); if (!cop.e) stoodDown = true; }
+      return { locked: true, hit, watched, after: { on: O.on, shown: O.m.G.visible, carGone: stoodDown || Math.hypot(cop.wx - cx, cop.wz - cz) > 50, pool: O.pool.visible } };
     }, spot);
     expect(r.locked).toBe(true);
     expect(r.hit).toEqual({ down: true, out: true });

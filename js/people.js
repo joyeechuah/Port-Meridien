@@ -1382,14 +1382,34 @@ function boatPlace(dt){
 // it than you are now). The boats cruising round the island sail their loop through anything in the way: one passing
 // through yours used to leave it unable to move or even turn until it had gone, as every spot within 9 m was refused,
 // the one you were in included. Now you can always move away from a boat, never closer
+// (and its hull, outboard included, never further into the pier or another boat's hull than it already is: three points
+// down the middle and 9 m between centres let the square stern 5 cm into the deck, touch a 17 m yacht's stern at
+// 11.7 m, and swing through a yacht's side on the spot; Codex's review of #140. Already in contact, it can still
+// move or turn out)
 function boatBlock(x,z,h){
   if(Math.hypot(x,z)>BOAT_V.edge)return "edge";
-  const fx=Math.sin(h),fz=Math.cos(h),r=BOAT_V.r,ks=[-BOAT_V.half+r,0,BOAT_V.half-r];
-  for(const k of ks){const px=x+fx*k,pz=z+fz*k;if(px>PIER.x0-r&&px<PIER.x1+r&&pz>PIER.z0-r&&pz<PIER.z1+r)return "pier"}
-  for(const k of ks)if(meshH(x+fx*k,z+fz*k)>BOAT_V.depth)return "shallow";
-  for(const b of BOATS){const d=Math.hypot(b.x-x,b.z-z);if(d<9&&d<Math.hypot(b.x-BOAT.x,b.z-BOAT.z)-1e-6)return "boat"}
+  const me=boatFoot(x,z,h),now=boatFoot(BOAT.x,BOAT.z,BOAT.h),deeper=f=>{const p=footPen(me,f);return p>1e-6&&p>footPen(now,f)+1e-6};
+  if(deeper(PIER_FOOT))return "pier";
+  const fx=Math.sin(h),fz=Math.cos(h),r=BOAT_V.r;
+  for(const k of[-BOAT_V.half+r,0,BOAT_V.half-r])if(meshH(x+fx*k,z+fz*k)>BOAT_V.depth)return "shallow";
+  for(const b of BOATS){const d=Math.hypot(b.x-x,b.z-z);if(d<9&&d<Math.hypot(b.x-BOAT.x,b.z-BOAT.z)-1e-6)return "boat";
+    if(d<30&&deeper(harbourFoot(b)))return "boat"}
   return "";
 }
+// footprints on the water, as rectangles: a centre, two unit axes and their half-lengths. The motorboat's runs from the
+// outboard's leg (3.61 m aft) to the bow (3.23 m ahead) and 1.18 m either side of its gunwale
+function boatFoot(x,z,h){const fx=Math.sin(h),fz=Math.cos(h),off=-.19;return{x:x+fx*off,z:z+fz*off,a:[[fx,fz,3.42],[fz,-fx,1.18]]}}
+const PIER_FOOT={x:(PIER.x0+PIER.x1)/2,z:(PIER.z0+PIER.z1)/2,a:[[1,0,(PIER.x1-PIER.x0)/2],[0,1,(PIER.z1-PIER.z0)/2]]};
+// a harbour boat's: its hull's bounds as drawn (turned to its heading, as js/world.js updateSea turns it), the pointed
+// bow taken as square
+function harbourFoot(b){const g=b.m.geometry;if(!g.boundingBox)g.computeBoundingBox();const bb=g.boundingBox,t=b.yaw+Math.PI,s=Math.sin(t),c=Math.cos(t),
+  lx=(bb.min.x+bb.max.x)/2,lz=(bb.min.z+bb.max.z)/2;
+  return{x:b.x+c*lx+s*lz,z:b.z-s*lx+c*lz,a:[[s,c,(bb.max.z-bb.min.z)/2],[c,-s,(bb.max.x-bb.min.x)/2]]}}
+// how far two footprints overlap (0 apart): the least overlap along any of their four sides' directions
+function footPen(A,B){let pen=Infinity;
+  for(const[ux,uz]of[...A.a,...B.a]){const span=F=>F.a.reduce((s,[ax,az,hl])=>s+Math.abs(ax*ux+az*uz)*hl,0),d=Math.abs((B.x-A.x)*ux+(B.z-A.z)*uz),o=span(A)+span(B)-d;
+    if(o<=0)return 0;if(o<pen)pen=o}
+  return pen}
 const boatFree=(x,z,h)=>!boatBlock(x,z,h);
 // what you're told on running into each (the pier and other boats used to be "too shallow" too)
 const BOAT_SAY=/** @type {Object<string,[string,string]>} */ ({edge:["OPEN SEA","Nothing out there: turn back towards the island"],shallow:["TOO SHALLOW","The boat needs deeper water"],
