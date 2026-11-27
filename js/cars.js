@@ -748,7 +748,9 @@ function cullParked(){const near=Math.hypot(camera.position.x-HOUSE.x,camera.pos
   save.owned.forEach((id,i)=>{const c=carMeshes[id];if(c&&c!==pc&&i<SPOTS.length&&!LEFT.some(l=>l.id===id))c.G.visible=near});
   // and your home's furniture and finishes, now that you can walk up to the room (they were only drawn in the garage, so
   // the room stood empty, its furniture there to bump into all the same)
-  if(typeof HV!=="undefined"&&HV.root&&state!=="EXIT"&&state!=="LOAD")HV.root.visible=near}
+  if(typeof HV!=="undefined"&&HV.root&&state!=="EXIT"&&state!=="LOAD")HV.root.visible=near;
+  // and a friend you've asked over, in the room (js/life.js guestAbout)
+  if(typeof guestAbout==="function"&&state!=="EXIT"&&state!=="LOAD")guestAbout(near)}
 function parkAll(except){
   leftClear();   // cars left out in the world: yours go back to their bays, taken ones are gone
   for(const id in carMeshes)if(!save.owned.includes(id)&&id!==except)carMeshes[id].G.visible=false;

@@ -317,7 +317,7 @@ const HOUSE_WALLS=[
   [-23.6,-22.75,-.6,30.6,-9,99],[22.75,23.6,-.6,30.6,-9,99],[-23.6,23.6,29.75,30.6,-9,99],   // the sides and the back
   [-23.6,-7,-.6,.25,-9,99],[7,23.6,-.6,.25,-9,99],                                              // the front, either side of the door
   [3,21,27.8,29.75,-9,2.6],                                                                     // the aquarium, under the room upstairs
-  [-3.45,-3.2,19,28,.55,99],[-3.45,0,27.95,30,.55,99],[0,.5,18.8,26.5,.55,99],                 // the stairs' open sides, and past the top step
+  [-3.45,-3.2,19,28,.55,99],[-3.45,0,27.95,30,.55,99],[0,.5,18.8,27,.55,99],                 // the stairs' open sides (onto the room only from the last steps, where the step up is no taller than a kerb), and past the top step
   [.5,21.5,18.8,19.3,2.6,99],[21.5,22.75,19,29.75,2.6,99]];                                      // upstairs: the railing, the gap by the wall
 // a point pushed clear of them, r round it, for someone standing at height y
 function houseClear(x,z,y,r){
@@ -331,6 +331,30 @@ function houseClear(x,z,y,r){
   if(h>2.6&&typeof homeRect==="function"&&save.home)for(const p of save.home.items){const q=homeRect(p.id,p.x,p.z,p.r),x0=HOME_ORIGIN.x+q.x*HOME_CELL,z0=HOME_ORIGIN.z+q.z*HOME_CELL;
     push(x0,x0+q.w*HOME_CELL,z0,z0+q.d*HOME_CELL)}
   return[HOUSE.x+lz,HOUSE.z-lx];
+}
+// the way for someone following you about the house when you're on the other floor: by the stairs, up or down, a
+// step at a time (straight at you, they pressed into the stairs' side below the room and stayed there)
+function houseWay(x,z,y){
+  if(!FOOT.on||!houseIn(x,z)||!houseIn(FOOT.x,FOOT.z))return null;
+  const up=FOOT.y-gY>2.6,h=y-gY,l=houseLocal(x,z),stair=l.x>=-3.25&&l.x<=0&&l.z>=18.5&&l.z<=27.95,at=(lx,lz)=>{const p=gW(lx,lz);return{x:p.x,z:p.z,stop:.2}};
+  if(up)return stair?(l.z<26.9?at(-1.6,27.5):at(1.6,27.4)):h>2.6?null:at(-1.6,19);
+  return stair?at(-1.6,17.5):h>2.6?at(-1.2,27.4):null;
+}
+// what a piece of furniture does when you walk up to it: the prompt and its action (null for one that does nothing)
+const HOUSE_SEATS=new WeakMap();
+function houseUse(p,it){
+  if(it.effect==="rest"){const e=needOf("energy");
+    if(typeof sleepNight==="function"&&sleepNight())return{t:"Sleep until 07:00 · energy "+e,a:needsSleep};
+    return{t:e>=100?"Energy full":NS.t<NS.restAt?"Rested · energy "+e:"Rest · energy "+e,a:needsRest}}
+  if(it.effect==="snack"||it.effect==="play"){const k=it.effect==="snack"?"hunger":"fun",v=needOf(k),wait=NS.t<homeUntil[it.effect];
+    return{t:v>=100?(k==="hunger"?"Not hungry":"Fun full"):wait?(it.effect==="snack"?"Snack again soon":"Play again soon"):(it.effect==="snack"?"Snack":"Play")+" · "+k+" "+v,a:()=>homeUse(it.effect)}}
+  if(it.group==="seating"){
+    // a seat to sit on, as on the fountain's benches: you face the way it faces, a little forward of its middle
+    let b=HOUSE_SEATS.get(p);
+    if(!b){const q=homeRect(p.id,p.x,p.z,p.r),th=gYaw-p.r*Math.PI/2,c=gW(HOME_ORIGIN.x+(q.x+q.w/2)*HOME_CELL,HOME_ORIGIN.z+(q.z+q.d/2)*HOME_CELL);
+      b={x:c.x-Math.sin(th)*.2,z:c.z-Math.cos(th)*.2,a:th,y:gY+HOME_ORIGIN.y+(GUEST_SEAT[p.id]||.48)};HOUSE_SEATS.set(p,b)}
+    return{t:"Sit on the "+it.name.toLowerCase(),a:()=>sitDown(b)}}
+  return null;
 }
 // the door opens for someone on foot near it, inside or out
 const houseDoorNear=()=>FOOT.on&&!BOAT.on&&(state==="DRIVE"||state==="PAUSE")&&(()=>{const l=houseLocal(FOOT.x,FOOT.z);return Math.abs(l.x)<10&&l.z>-9&&l.z<9})();
@@ -364,7 +388,10 @@ function footClear(x,z,y){
   if(houseIn(x,z,1)){const yy=y===undefined?gY:y;
     // your cars in their bays, on the floor
     if(yy-gY<2.6)save.owned.forEach((id,i)=>{const c=carMeshes[id];if(c&&c!==pc&&i<SPOTS.length&&c.G.visible){const q=c.G.position,t=c.G.rotation.y;box(q.x,q.z,1,2.35,Math.cos(t),Math.sin(t))}});
-    [x,z]=houseClear(x,z,yy,r)}
+    [x,z]=houseClear(x,z,yy,r);
+    // a friend standing in the room (one on a seat is inside the seat already)
+    if(typeof GUEST!=="undefined"&&GUEST.m&&GUEST.m.G.visible&&!GUEST.seat){const q=GUEST.m.G.position,dx=x-q.x,dz=z-q.z,d=Math.hypot(dx,dz),pen=r+.3-d;
+      if(Math.abs(q.y-yy)<1.5&&pen>0&&d>1e-4){x+=dx/d*pen;z+=dz/d*pen}}}
   return[x,z];
 }
 /* ---------- taking cars: any traffic car that has stopped, and the cars you've left standing ---------- */
@@ -435,6 +462,16 @@ function footTarget(){
   // are after you
   for(const b of QUAY.benches)see(b.x,b.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:"Sit on the bench",a:()=>sitDown(b)});
   const K=QUAY.kitchen;if(K)see(K.x,K.z,WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:kitchenText(),a:needsEat});
+  // in the room upstairs: what your furniture is for, within a metre of it, and a friend you've asked over
+  if(typeof homeOnFoot==="function"&&homeOnFoot()&&FOOT.y-gY>2.6){
+    const l=houseLocal(FOOT.x,FOOT.z);
+    for(const p of save.home.items){const it=homeById.get(p.id),act=houseUse(p,it);if(!act)continue;
+      const q=homeRect(p.id,p.x,p.z,p.r),x0=HOME_ORIGIN.x+q.x*HOME_CELL,z0=HOME_ORIGIN.z+q.z*HOME_CELL,
+        d=Math.hypot(Math.max(x0-l.x,0,l.x-(x0+q.w*HOME_CELL)),Math.max(z0-l.z,0,l.z-(z0+q.d*HOME_CELL)));
+      if(d<=1&&d<bd){bd=d;best=act}}
+    if(typeof GUEST!=="undefined"&&GUEST.m&&GUEST.m.G.visible&&!GUEST.done){const q=GUEST.m.G.position,d=Math.hypot(FOOT.x-q.x,FOOT.z-q.z)-.6;
+      if(Math.abs(q.y-FOOT.y)<1.5&&d<=1.2&&d<bd){bd=d;best={t:"Hang out · "+GUEST.who.name,a:()=>{guestHangOut()}}}}
+  }
   // in the house, with nothing else in reach: the garage screen (your cars, your home, rest)
   if(!best&&houseIn(FOOT.x,FOOT.z))best=WANTED.lvl?{t:"Lose the police first",a:wantedBlock}:{t:"Garage · your cars and your home",a:()=>goGarage(false)};
   return best;
