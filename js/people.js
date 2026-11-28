@@ -1005,11 +1005,12 @@ function copOfficer(dt,ch,still,indoors=false){
   const level=Math.abs((me.y===undefined?O.y:me.y)-O.y)<1.5;
   O.ph+=O.v*dt*3.3;const sw=Math.sin(O.ph)*Math.min(.9,O.v*.3),G=O.m.G;
   G.position.set(O.x,O.y,O.z);G.rotation.y=O.h;O.m.legs[0].rotation.x=sw;O.m.legs[1].rotation.x=-sw;O.m.arms[0].rotation.x=-sw*.8;O.m.arms[1].rotation.x=sw*.8;
+  // (cover checked at their height, as the pistol's is: up in the room it was the ground floor's walls)
   // at three stars or more an officer fires at you while you're on foot, from within 20 m with a clear line: about
   // one shot in three hits at 10 m, fewer further off, 10 health a hit (the violence setting changes how hits look,
   // not the rules)
   O.shootT=(O.shootT||0)-dt;
-  if(WANTED.lvl>=3&&FOOT.on&&level&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6)){
+  if(WANTED.lvl>=3&&FOOT.on&&level&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6,O.y)){
     O.shootT=1.2;gunMuzzle(O.x+Math.sin(O.h)*.5,O.y+1.35,O.z+Math.cos(O.h)*.5);gunSound();
     if(Math.random()<Math.max(.08,.45-dMe*.015))hurt(10)}
   // caught: they have hold of you (on foot), or are at your door while you sit still
