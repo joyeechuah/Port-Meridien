@@ -195,12 +195,16 @@ function musicInit(){if(MUSIC||!AC)return;try{
 // a song that fails to load (or to decode) is tried again 3, 10 and 30 s later; S.err says why it failed
 const SONG_RETRY=[3,10,30];
 function songFail(S,why){S.st="failed";S.err=why;S.bytes=null;S.tries=(S.tries||0)+1;
-  S.retryAt=S.tries<=SONG_RETRY.length?performance.now()+SONG_RETRY[S.tries-1]*1000:null}
+  S.retryAt=S.tries<=SONG_RETRY.length?performance.now()+SONG_RETRY[S.tries-1]*1000:null;
+  if(S.online){S.online=false;if(why==="network"||why==="timeout"){S.tries=0;S.retryAt=performance.now()}}}
 // back online: a song that failed for want of a connection (or timed out) is tried again at the next ask, its tries
 // started afresh; one whose retries had run out stayed silent for good (Codex's audit). One the server refused, or
 // that wouldn't decode, still waits as before
 addEventListener("online",()=>{for(const n of Object.keys(SONGS)){const S=SONGS[n];
-  if(S.st==="failed"&&(S.err==="network"||S.err==="timeout")){S.st=null;S.err=null;S.tries=0;S.retryAt=null}}});
+  if(S.st==="failed"&&(S.err==="network"||S.err==="timeout")){S.st=null;S.err=null;S.tries=0;S.retryAt=null}
+  // (one still loading, its request sent before the connection came back, starts afresh if that request fails: it was
+  // left failed for good; Codex's audit)
+  else if(S.st==="loading")S.online=true}});
 // for the ?perf panel: each song's state, and why it failed
 function musicState(){return Object.keys(SONGS).map(n=>{const S=SONGS[n];return n+" "+(S.st||"-")+(S.st==="failed"&&S.err?":"+S.err+(S.retryAt!=null?" r"+S.tries+"/"+SONG_RETRY.length:""):"")}).join("\n      ")}   // one song a line: three on one line were wider than a phone
 function songFetch(n){const S=SONGS[n];
@@ -402,7 +406,8 @@ function photoFrame(dt){
   const t=phTarget(),cp=Math.cos(PH.pitch);
   const x=t.x+Math.sin(PH.yaw)*cp*PH.dist,z=t.z+Math.cos(PH.yaw)*cp*PH.dist;
   // never under the ground, or under the sea's surface
-  const y=Math.max(t.y+Math.sin(PH.pitch)*PH.dist,Math.max(meshH(x,z),surfH(x,z))+.35,.5);
+  // (nor under the pier's deck: a low orbit beside it put the lens beneath the boards; Codex's audit)
+  const y=Math.max(t.y+Math.sin(PH.pitch)*PH.dist,Math.max(meshH(x,z),surfH(x,z))+.35,.5,typeof onPier==="function"&&onPier(x,z)?PIER.y+.35:-1e9);
   if(FOOT.on&&!BOAT.on&&houseIn(t.x,t.z)){
     const l=houseLocal(t.x,t.z),up=FOOT.y-gY>=5.2&&l.x>=.5&&l.z>=19;
     const dest=houseLocal(x,z);

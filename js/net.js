@@ -37,21 +37,23 @@ const netMyName=()=>netName(save.nick)||"Player";
 // database does that last one itself. The connection is only open while in a room (the free plan allows 100 at once)
 function netFirebase(){
   let auth=null,db=null,room=null,live=null,seat=-1,uid="",on=null,online=false,last=null,moving=null,dead=false;
-  const at=()=>room.child(String(seat)),quiet=p=>p.catch(()=>{});
+  const at=(r=room,s=seat)=>r?r.child(String(s)):null,quiet=p=>p?p.catch(()=>{}):Promise.resolve();
   const denied=e=>/permission/i.test(e&&(e.code||e.message)||"");
   // who sits in each seat (null: free), and the seat to take: the one I still hold (just after a reload the database
   // may not have emptied it yet), or the first free one
-  const seats=()=>room.once("value").then(s=>[0,1,2,3].map(i=>{const v=s.child(String(i)).val();return v&&typeof v.uid==="string"?v.uid:null}));
+  const seats=(r=room)=>!r||dead?Promise.reject(new Error("closed")):r.once("value").then(s=>[0,1,2,3].map(i=>{const v=s.child(String(i)).val();return v&&typeof v.uid==="string"?v.uid:null}));
   const pick=t=>t.indexOf(uid)>=0?t.indexOf(uid):t.indexOf(null);
-  const write=d=>at().set(Object.assign({},d,{uid}));
+  const write=(d,ref=at())=>!ref||dead?Promise.reject(new Error("closed")):ref.set(Object.assign({},d,{uid}));
   // sit in seat i, and only then ask the database to empty it if the connection drops: asked before, a seat someone
   // else was quicker to would be emptied under them
-  const take=(i,d)=>{seat=i;return write(d).then(()=>at().onDisconnect().remove()).then(()=>{if(dead)quiet(at().remove())},e=>{seat=-1;throw e})};
+  const take=(i,d)=>{const r=room,ref=at(r,i);if(!ref||dead)return Promise.reject(new Error("closed"));seat=i;
+    return write(d,ref).then(()=>dead?quiet(ref.remove()):ref.onDisconnect().remove().then(()=>{if(dead)return quiet(ref.remove())}),e=>{if(seat===i)seat=-1;throw e})};
   // back online after a drop: the database may have emptied my seat meanwhile, so sit in it again, or in another if
   // someone has taken it (and cancel the request to empty the old one, which is theirs now)
-  const reseat=()=>{if(moving||!last||dead)return;
-    moving=write(last).then(()=>at().onDisconnect().remove(),e=>{if(!denied(e))throw e;
-        return quiet(at().onDisconnect().cancel()).then(seats).then(t=>{const i=pick(t);if(i<0)throw new Error("full");return take(i,last)})})
+  const reseat=()=>{if(moving||!last||dead||!room||seat<0)return;
+    const r=room,ref=at(r,seat);
+    moving=write(last,ref).then(()=>dead?quiet(ref.remove()):ref.onDisconnect().remove(),e=>{if(dead)return;if(!denied(e))throw e;
+        return quiet(ref.onDisconnect().cancel()).then(()=>seats(r)).then(t=>{if(dead)return;const i=pick(t);if(i<0)throw new Error("full");return take(i,last)})})
       .catch(e=>{if(!dead){console.warn("Play together: lost my seat ("+e.message+")");on.lost()}}).then(()=>{moving=null})};
   return{
     connect(){
@@ -69,18 +71,22 @@ function netFirebase(){
         // someone sat down in that seat a moment before me: look again
         return take(i,last=on.first()).catch(e=>{if(denied(e)&&n<3)return sit(n+1);throw e})});
       return sit(0).then(()=>{
+        if(dead||!room)return;
         online=true;
         // the others, by seat: a seat's player is told apart from whoever sat there before
         const who=new Map(),got=s=>{const d=s.val();if(!d||typeof d.uid!=="string")return;const was=who.get(s.key);
           if(was&&was!==d.uid&&was!==uid)on.leave(was);who.set(s.key,d.uid);if(d.uid!==uid)on.state(d.uid,d)};
         room.on("child_added",got);room.on("child_changed",got);
         room.on("child_removed",s=>{const was=who.get(s.key);who.delete(s.key);if(was&&was!==uid)on.leave(was)});
-        live=db.ref(".info/connected");live.on("value",s=>{const was=online;online=s.val()===true;if(online&&!was)reseat()});
+        live=db.ref(".info/connected");live.on("value",s=>{if(dead)return;const was=online;online=s.val()===true;if(online&&!was)reseat()});
       })},
     // nothing is queued while the connection is down (a minute offline would be hundreds of stale positions); a send
     // refused because the seat has gone to someone else moves me to another
-    put(d){last=d;if(!online||moving||seat<0||dead)return;write(d).catch(e=>{if(denied(e))reseat();else console.warn("Play together: couldn't send ("+e.message+")")})},
-    close(){dead=true;if(live)live.off();if(room)room.off();if(room&&seat>=0)quiet(at().remove());if(db)db.goOffline();live=room=null;seat=-1}
+    put(d){last=d;if(!online||moving||seat<0||dead)return;write(d).catch(e=>{if(dead)return;if(denied(e))reseat();else console.warn("Play together: couldn't send ("+e.message+")")})},
+    close(){dead=true;const r=room,s=seat,d=db;if(live)live.off();if(r)r.off();live=room=null;seat=-1;
+      const done=()=>{if(d&&!NET.tx)d.goOffline()};
+      if(r&&s>=0){let off=false;const fin=()=>{if(off)return;off=true;done()};quiet(r.child(String(s)).remove()).then(fin);setTimeout(fin,1500)}
+      else done()}
   };
 }
 // on this computer, through the relay in the game's own test server (npm start, tests/support/server.js): who's
@@ -151,7 +157,8 @@ addEventListener("pagehide",()=>{if(NET.room&&NET.tx){try{NET.tx.close()}catch(e
 /* ---------- what I send ---------- */
 // m: 0 driving, 1 on foot, 2 on the boat, 3 away (in the garage, the dealership or another screen)
 function netState(){
-  const r=(v,k)=>Number.isFinite(v)?Math.round(v*k)/k:0,a=activePlayer(),out=state==="DRIVE"||state==="PAUSE"||state==="MAP"||state==="PHOTO";
+  // (a hidden tab is away, from the first message on: a join while hidden published you driving; Codex's audit)
+  const r=(v,k)=>Number.isFinite(v)?Math.round(v*k)/k:0,a=activePlayer(),out=!(typeof document!=="undefined"&&document.hidden)&&(state==="DRIVE"||state==="PAUSE"||state==="MAP"||state==="PHOTO");
   const d={n:netMyName(),o:save.outfit,m:3,x:0,y:0,z:0,h:0,v:0};
   if(!out||!pc)return d;
   if(BOAT.on){d.m=2;d.y=r(BOAT.m.position.y,100);d.v=r(BOAT.v||0,10)}
@@ -195,7 +202,11 @@ function netGot(uid,d){
     if(NET.peers.size>=NET.MAX-1)return;p={uid,buf:[],model:null,key:"",tag:null,name:"",phase:0,seen:now,shown:false,lost:false};NET.peers.set(uid,p);
     // whoever was already there when I joined "is here"; anyone after that "joined"
     toast(netName(d.n).toUpperCase()||"A FRIEND",now-NET.at<3?"is in the room":"joined the room","gold")}
-  p.seen=now;p.buf.push({t:now,d});if(p.buf.length>12)p.buf.shift();
+  p.seen=now;
+  // (an older message arriving after a newer one is dropped: it moved them back; Codex's audit)
+  const last=p.buf.length?p.buf[p.buf.length-1].d:null;
+  if(last&&Number.isFinite(d.t)&&Number.isFinite(last.t)&&d.t<last.t)return;
+  p.buf.push({t:now,d});if(p.buf.length>12)p.buf.shift();
   const name=netName(d.n)||"Friend";if(name!==p.name){p.name=name;netTag(p)}
   if(!$("play").classList.contains("hide"))netRender();
 }

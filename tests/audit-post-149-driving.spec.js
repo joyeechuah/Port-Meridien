@@ -115,10 +115,13 @@ test("map travel does not teleport a friend who was still walking to the car", a
     openMap(); fastTravel(pick);
     await new Promise(resolve => setTimeout(resolve, 500));
     rideTick(1 / 60);
-    return { atEvent: Math.hypot(P.x - pick.x, P.z - pick.z) < 20, moved: Math.hypot(p.x - before.x, p.z - before.z) };
+    // (PEDS[0] may never have been placed yet, at 0,0: once you're near Old Quay it's drawn on its own pavement, so how
+    // far it moved isn't the measure. Left behind, they're not brought to the event: the ride is over and they're far off)
+    return { atEvent: Math.hypot(P.x - pick.x, P.z - pick.z) < 20, riding: !!RIDE.p, toCar: Math.hypot(p.x - P.x, p.z - P.z), moved: Math.hypot(p.x - before.x, p.z - before.z) };
   });
   expect(result.atEvent).toBe(true);
-  expect(result.moved).toBeLessThan(10);
+  expect(result.riding).toBe(false);
+  expect(result.toCar).toBeGreaterThan(100);
 });
 
 test("the first frame of a race countdown applies the grid lock before controls", async ({ game }) => {

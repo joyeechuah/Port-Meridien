@@ -701,7 +701,7 @@ palmFrond.computeVertexNormals();
 const inTown=(x,z)=>x>548&&x<772&&z>-132&&z<202;
 function pine(x,z,y,s){vegPine(x,z,y,s)}
 function olive(x,z,y,s){vegOlive(x,z,y,s)}
-function palm(x,z,y,s){const t=tileOf(x,z).solid,a=rnd(x,z)*TAU,dx=Math.sin(a),dz=Math.cos(a);
+function palm(x,z,y,s,out){const t=out||tileOf(x,z).solid,a=rnd(x,z)*TAU,dx=Math.sin(a),dz=Math.cos(a);
   let px=x,pz=z,py=y;
   for(let k=0;k<5;k++){const lean=.05+k*.06,L=1.9*s;const cx=px+dx*Math.sin(lean)*L/2,cz=pz+dz*Math.sin(lean)*L/2,cy=py+Math.cos(lean)*L/2;
     t.push({g:GEO.palmSeg,m:mat(cx,cy,cz,a,s,L,s,lean),c:0x8a6c4a});px+=dx*Math.sin(lean)*L;pz+=dz*Math.sin(lean)*L;py+=Math.cos(lean)*L}
@@ -1097,9 +1097,10 @@ function buildScenery(){
   lampMat=new THREE.MeshBasicMaterial({color:0x9e9e94});
   for(const t of tiles.values()){
     if(t.solid.length){const m=new THREE.Mesh(merge(t.solid),solidM);m.castShadow=true;m.receiveShadow=true;scene.add(m)}
-    if(t.town.length){const m=new THREE.Mesh(merge(t.town),townMat);m.castShadow=true;m.receiveShadow=true;scene.add(m)}
+    if(t.town.length){const m=new THREE.Mesh(merge(t.town),townMat);m.castShadow=true;m.receiveShadow=true;scene.add(m);for(const it of t.town)if(it.g)it.g.dispose()}
     if(t.glow.length)scene.add(new THREE.Mesh(merge(t.glow),lampMat));
   }
+  tiles.clear();
 }
 // a pool of warm light on the ground under every lamp: a soft additive patch that follows the surface,
 // faded in at dusk (applyDayNight sets its opacity)
@@ -1225,7 +1226,9 @@ function buildHouse(){
   selSpot=new THREE.SpotLight(0xfff1d6,1.1,22,.5,.6);scene.add(selSpot);scene.add(selSpot.target);
   SPOTS.forEach((s,i)=>{const hit=new THREE.Mesh(B(3.4,2.4,5.6),new THREE.MeshBasicMaterial({visible:false}));hit.position.copy(gW(s[0],s[1],1.1));hit.rotation.y=gYaw+Math.PI+s[2];hit.userData.slot=i;scene.add(hit);pickers.push(hit)});
   // palms around the house, collision for the whole building and the pool
-  [[-28,-4],[-40,-4],[28,-6],[-30,26]].forEach(([x,z])=>{const p=gW(x,z);palm(p.x,p.z,gY,1.1)});
+  const hPalms=[];
+  [[-28,-4],[-40,-4],[28,-6],[-30,26]].forEach(([x,z])=>{const p=gW(x,z);palm(p.x,p.z,gY,1.1,hPalms)});
+  if(hPalms.length){const pm=new THREE.Mesh(merge(hPalms),new THREE.MeshLambertMaterial({vertexColors:true}));pm.castShadow=true;pm.receiveShadow=true;scene.add(pm)}
   const c=gW(0,15);HOUSE_BOX=addBox(c.x,c.z,23.6,15.6,gYaw);
   const pl=gW(-34,12);addBox(pl.x,pl.z,9,4.5,gYaw);
 }
@@ -1369,7 +1372,7 @@ function grassTex(){
 const grassT={value:0};
 // bushes and grass the car drives into are flattened (crushed), not driven through
 const CRUSH=new Map(),CRC=4,crushM4=new THREE.Matrix4(),crushP=new V3(),crushQ=new THREE.Quaternion(),crushS=new V3();
-function crushAdd(m,i,x,z,r,grass){const k=Math.floor(x/CRC)+","+Math.floor(z/CRC);let a=CRUSH.get(k);if(!a)CRUSH.set(k,a=[]);a.push({m,i,x,z,r,grass,done:false})}
+function crushAdd(m,i,x,z,r,grass,shadow=false){const k=Math.floor(x/CRC)+","+Math.floor(z/CRC);let a=CRUSH.get(k);if(!a)CRUSH.set(k,a=[]);a.push({m,i,x,z,r,grass,shadow:!!shadow,done:false})}
 let brushT=0;
 function updateCrush(dt){
   brushT-=dt;const sp=Math.hypot(P.vx,P.vz);if(sp<1.5)return;
@@ -1381,7 +1384,7 @@ function updateCrush(dt){
       if(Math.abs(al)>2.3+c.r||Math.abs(ac)>1+c.r)continue;
       c.done=true;c.m.getMatrixAt(c.i,crushM4);crushM4.decompose(crushP,crushQ,crushS);
       crushS.set(crushS.x*1.15,crushS.y*(c.grass?.12:.16),crushS.z*1.15);crushP.y-=c.grass?.02:.08;crushM4.compose(crushP,crushQ,crushS);c.m.setMatrixAt(c.i,crushM4);
-      const r=touched.get(c.m)||[1e9,-1];touched.set(c.m,[Math.min(r[0],c.i),Math.max(r[1],c.i)]);if(!c.grass)bushes++}}
+      const r=touched.get(c.m)||[1e9,-1];touched.set(c.m,[Math.min(r[0],c.i),Math.max(r[1],c.i)]);if(!c.grass&&!c.shadow)bushes++}}
   for(const [m,[lo,hi]] of touched){m.instanceMatrix.updateRange.offset=lo*16;m.instanceMatrix.updateRange.count=(hi-lo+1)*16;m.instanceMatrix.needsUpdate=true}
   if(bushes){P.vx*=Math.pow(.97,bushes);P.vz*=Math.pow(.97,bushes);if(brushT<=0){brushT=.18;playBrush(Math.min(1,sp/20))}}
 }
@@ -1435,7 +1438,7 @@ function buildVegetation(){
     let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,z0=1e9,z1=-1e9;
     const crush=layer==="shrub"||layer==="grass";
     for(let i=0;i<n;i++){const o=i*10;m.setMatrixAt(i,mat(a[o],a[o+1],a[o+2],a[o+3],a[o+4],a[o+5],a[o+6],a[o+8],a[o+9]));m.setColorAt(i,col.setHex(a[o+7]));
-      if(crush)crushAdd(m,i,a[o],a[o+2],Math.max(a[o+4],a[o+6])*(layer==="grass"?.4:.75),layer==="grass");
+      if(crush)crushAdd(m,i,a[o],a[o+2],Math.max(a[o+4],a[o+6])*(layer==="grass"?.4:.75),layer==="grass",shadow);
       x0=Math.min(x0,a[o]);x1=Math.max(x1,a[o]);y0=Math.min(y0,a[o+1]);y1=Math.max(y1,a[o+1]+a[o+5]);z0=Math.min(z0,a[o+2]);z1=Math.max(z1,a[o+2])}
     // instanced meshes are culled by their geometry's sphere, so give each one the sphere of its own tile
     g.boundingSphere=new THREE.Sphere(new V3((x0+x1)/2,(y0+y1)/2,(z0+z1)/2),Math.hypot(x1-x0,y1-y0,z1-z0)/2+8);
@@ -1458,7 +1461,7 @@ function updateVegetation(dt){
   const cx=camera.position.x,cz=camera.position.z;
   for(const t of VTL.values()){const d=Math.hypot(t.cx-cx,t.cz-cz)-VT*.71;for(const m of t.M){const l=m.userData.layer;m.visible=l==="crownFar"?d>=VRANGE.crown&&d<VRANGE.crownFar:d<VRANGE[l]}}
   for(const t of GTL.values()){const d=Math.hypot(t.cx-cx,t.cz-cz)-GT*.71,v=d<VRANGE.grass;for(const m of t.M)m.visible=v}
-  const px=P.x,pz=P.z;for(const t of STL.values()){const v=Math.hypot(t.cx-px,t.cz-pz)-ST*.71<120;for(const m of t.M)m.visible=v}
+  const me=activePlayer(),px=me.x,pz=me.z;for(const t of STL.values()){const v=Math.hypot(t.cx-px,t.cz-pz)-ST*.71<120;for(const m of t.M)m.visible=v}
 }
 
 /* ================================================================ SEA
@@ -1759,6 +1762,7 @@ function buildRoadside(){
     if(t.wire.length){const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(t.wire,3));scene.add(new THREE.LineSegments(g,wireM))}
     if(t.glow.length)scene.add(new THREE.Mesh(merge(t.glow),lampMat));
   }
+  RTL.clear();
   buildLampPools();   // every street lamp is placed by now: town, highway and coast lamps, and the pole lights
 }
 function wallRun(pts,H){

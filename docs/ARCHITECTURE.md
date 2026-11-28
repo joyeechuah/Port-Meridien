@@ -17,7 +17,7 @@ Return to [README](../README.md) · Set up [Cloud Save](../CLOUD_SETUP.md).
 | Optional cloud backup | Firebase Auth + Firestore (disabled until configured) | `js/screens.js`, `firestore.rules`, `CLOUD_SETUP.md` |
 | Automation | Playwright / ESLint / GitHub Actions, including manual rendered-only runs | `tests/`, `playwright.config.js`, `.github/workflows/test.yml`, `.github/workflows/drawn-webgl.yml` |
 
-The production game is `index.html` (markup and styles) and nine classic scripts in `js/`, loaded in order and sharing one global scope: no framework, modules or bundler. [CODE_LAYOUT.md](CODE_LAYOUT.md) says what's in each file and the one rule the split brings. Search the section comments and functions listed below.
+The production game is `index.html` (markup and styles) and the classic scripts in `js/` (fourteen; `index.html` lists them), loaded in order and sharing one global scope: no framework, modules or bundler. [CODE_LAYOUT.md](CODE_LAYOUT.md) says what's in each file and the one rule the split brings. Search the section comments and functions listed below.
 
 ## Boot and the main loop
 
@@ -66,7 +66,7 @@ The first-version pedestrian states are walking, idling, waiting at a crossing a
 
 The local game save uses `localStorage` key `port-meridien-v1`, with sanitisation of loaded values. `persist()` saves locally and notifies the optional cloud layer of relevant changes. Runtime driving damage is not part of saved progress. Cloud metadata uses `port-meridien-cloud`. These keys are separate from White Isle Drive’s; there is no automatic import from that game.
 
-Cloud saving is currently disabled: all values in `FIREBASE_CONFIG` are empty and the entry buttons hide themselves. Port Meridien must use its own Firebase project, never White Isle Drive’s. If configured following `CLOUD_SETUP.md` (including the CSP changes), cloud saving becomes opt-in through `SAVE MY PROGRESS`. The Firebase libraries load only when that feature is used on an authorised host. Firestore stores a per-user document under `saves/{uid}`; `firestore.rules` restricts access to the signed-in owner and requires an incrementing revision number. When local and remote progress differ, the game asks the player which to keep rather than merging balances. Ghost replay data is intentionally excluded from cloud payloads to limit record size.
+Cloud saving is configured with Port Meridien's own Firebase project (never White Isle Drive's), set up following `CLOUD_SETUP.md`, and works only on the hosts in `CLOUD_HOSTS` (the game's GitHub Pages site); anywhere else, including the local test server, the panel says cloud saves work only on the game's site. It is opt-in through `SAVE MY PROGRESS`, and the Firebase libraries load only when that feature is used on an authorised host. Firestore stores a per-user document under `saves/{uid}`; `firestore.rules` restricts access to the signed-in owner and requires an incrementing revision number. When local and remote progress differ, the game asks the player which to keep rather than merging balances. Ghost replay data is intentionally excluded from cloud payloads to limit record size.
 
 `BroadcastChannel` named `port-meridien-tabs` (with a storage-event fallback using `port-meridien-tab`) prevents an older tab from continuing to overwrite a newer tab's progress. An inactive tab suspends relevant gameplay/audio and must not resume pending work.
 

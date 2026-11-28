@@ -15,7 +15,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(typeof partyLeft==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyLeft();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
+function setState(s){if(typeof partyOpen==="function"&&partyOpen()&&s!=="GARAGE"&&s!=="DRIVE"&&typeof partyPanelClose==="function")partyPanelClose();if(typeof partyLeft==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyLeft();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick"){syncArrivalClock();clInert()}}
@@ -26,13 +26,21 @@ const CL_INERT=new Map();let clFocusWas=/** @type {HTMLElement|null} */ (null);
 function clInert(){
   const on=!$("cloud").classList.contains("hide")||!$("cloudPick").classList.contains("hide");
   if(on&&!CL_INERT.size){const a=/** @type {HTMLElement} */ (document.activeElement);clFocusWas=a&&a!==document.body&&!a.closest("#cloud,#cloudPick")?a:null}
-  for(const el of /** @type {HTMLElement[]} */ ([...document.body.children])){if(el.id==="cloud"||el.id==="cloudPick"||el.tagName==="SCRIPT")continue;
+  // (the "playing in another tab" screen stands over the dialog: PLAY IN THIS TAB was made inert with the rest; Codex's
+  // audit)
+  for(const el of /** @type {HTMLElement[]} */ ([...document.body.children])){if(el.id==="cloud"||el.id==="cloudPick"||el.id==="tabIdle"||el.tagName==="SCRIPT")continue;
     if(on){if(!CL_INERT.has(el)){CL_INERT.set(el,el.inert);el.inert=true}}else if(CL_INERT.has(el)){el.inert=!!CL_INERT.get(el);CL_INERT.delete(el)}}
   if(!on&&clFocusWas){const f=clFocusWas;clFocusWas=null;if(f.isConnected&&f.offsetParent)try{f.focus({preventScroll:true})}catch(e){}}
 }
-// where the car's name starts in the garage's bottom bar, for the car arrows above it on a phone (index.html #gpick)
-{const top=()=>{const g=document.getElementById("gbar"),n=g&&g.querySelector(".cname");if(n&&n.offsetParent)document.documentElement.style.setProperty("--gbar-top",Math.round(n.getBoundingClientRect().top)+"px")};
-  if(window.ResizeObserver){const g=document.getElementById("gbar");if(g)new ResizeObserver(top).observe(g)}addEventListener("resize",top)}
+// on a phone held upright, the car arrows midway between the lowest pill on the right and the car's name (index.html
+// #gpick), checked each garage frame as pills come and go and the bar's height changes
+const GPICK_PILLS=["gMus","gCloud","gGun","gBedActions","gSnack","gPlay","gGuest","gParty"];let gpickWas="";
+function gpickPlace(){
+  if(!matchMedia("(max-width:560px) and (min-height:521px)").matches){if(gpickWas){gpickWas="";document.documentElement.style.removeProperty("--gpick-mid")}return}
+  const n=$("gbar").querySelector(".cname");if(!n||!n.offsetParent)return;
+  let low=0;for(const id of GPICK_PILLS){const e=$(id);if(e&&e.offsetParent){const b=e.getBoundingClientRect();if(b.height)low=Math.max(low,b.bottom)}}
+  const v=Math.round((low+n.getBoundingClientRect().top)/2)+"px";if(v!==gpickWas){gpickWas=v;document.documentElement.style.setProperty("--gpick-mid",v)}
+}
 function hudClock(){const h=Math.floor(save.tod),m=Math.floor((save.tod-h)*60);$("clock").textContent=(h<10?"0":"")+h+":"+(m<10?"0":"")+m}
 function hudOn(on){show("hud",on);show("chips",on);show("pads",on&&isTouch)}
 
@@ -130,7 +138,9 @@ function placeOnRoad(nr,dirSign){
 function fadeThen(ms,fn){
   if(tabIdle)return;
   setState("FADE");$("fade").style.opacity=1;
-  setTimeout(()=>{if(tabIdle)return;fn();$("fade").style.opacity=0;if(state==="FADE")setState("DRIVE")},ms);
+  // (a tab hidden meanwhile comes back to the pause menu, as hiding it while driving does: the fade went on into the
+  // drive unseen; Codex's audit)
+  setTimeout(()=>{if(tabIdle)return;fn();$("fade").style.opacity=0;if(state==="FADE"){setState("DRIVE");if(document.hidden)pauseOn()}},ms);
 }
 // where a chasing police car goes when you're set down beside it: 25 m back along its road (or further back, or as far
 // ahead), on the road itself and a car's length clear of you and of every other car; with nowhere clear, it's put out of
@@ -166,6 +176,11 @@ function fastTravel(m){
   closeMap();
   fadeThen(420,()=>{
     if(RIDE.dest)rideEnd("drop");   // a map jump cannot complete a requested lift
+    // a friend still walking over stays where they are (they caught you up at the far end of the island; Codex's audit)
+    else if(RIDE.p&&RIDE.st==="follow")rideEnd("stay");
+    // on foot or aboard, you're back in the car for the trip (with the car already at the spot, you stayed on foot
+    // where you were; Codex's audit)
+    if(typeof FOOT!=="undefined"&&FOOT.on)footEnd();if(typeof BOAT!=="undefined"&&BOAT.on)boatEnd();
     if(m.act==="home"){goGarage(true);return}
     if(m.act==="event"){const p=edgePos(m.E.route,6);P.x=p.x;P.z=p.z;P.h=Math.atan2(p.dx,p.dz)}
     else{P.x=m.x;P.z=m.z}
@@ -360,7 +375,8 @@ function custOpen(){
   goRelease();goSpin(false);goStage(true);
 }
 function custRender(){
-  const L=$("cuList"),d=cuDraft,top=L.scrollTop;L.innerHTML="";
+  // the option the keyboard was on keeps it in the new list (choosing one dropped the focus; Codex's audit)
+  const L=$("cuList"),d=cuDraft,top=L.scrollTop,fo=/** @type {HTMLElement} */ (document.activeElement),was=fo&&L.contains(fo)&&fo.tagName==="BUTTON"?fo.getAttribute("aria-label"):null;L.innerHTML="";
   for(const k of CU_ORDER){
     const O=MOD_OPTS[k];if((k==="livC"||k==="num")&&!(d.liv>0))continue;if(k==="num"&&d.liv!==3)continue;
     const sec=document.createElement("div");sec.className="cus";sec.dataset.k=k;
@@ -379,7 +395,8 @@ function custRender(){
       b.setAttribute("aria-label",O.n.toLowerCase()+": "+name.toLowerCase());b.setAttribute("aria-pressed",on?"true":"false");
       b.onclick=()=>{d[k]=i;custChange()};row.appendChild(b)});
     L.appendChild(sec)}
-  L.scrollTop=top;custFooter()}
+  L.scrollTop=top;custFooter();
+  if(was){const b=[...L.querySelectorAll("button")].find(x=>x.getAttribute("aria-label")===was);if(b)try{b.focus({preventScroll:true})}catch(e){}}}
 // the total, the message and APPLY, from the draft
 function custFooter(){const d=cuDraft,cost=modCost(cuBase,d),short=cost>save.cr;
   $("cuTotal").textContent=cost?fmtCr(cost)+" CR":"NO CHANGES";
@@ -625,11 +642,13 @@ function dealerCam(dt){
   camera.fov+=(48-camera.fov)*.1;camera.updateProjectionMatrix();
 }
 $("dBuy").onclick=()=>{const c=CARS[dSel];if(save.cr<c.price||save.owned.includes(c.id)||save.owned.length>=GARAGE_CAP)return;
-  save.owned.push(c.id);save.paint[c.id]=dPaint;earn(-c.price);getCar(c.id).paint(dPaint);parkAll(curId);
+  if(typeof CAR_DMG!=="undefined")CAR_DMG.delete(c.id);save.owned.push(c.id);save.paint[c.id]=dPaint;earn(-c.price);getCar(c.id).paint(dPaint);parkAll(curId);
   toast("PURCHASED",c.mk+" "+c.md+" is in your garage","gold");dPick(dSel)};
 $("dDrive").onclick=()=>{const c=CARS[dSel];if(!save.owned.includes(c.id))return;
   attachCar(c.id);parkAll(c.id);persist();dPick(dSel);toast("CAR SWAPPED",c.mk+" "+c.md)};
 $("dSell").onclick=()=>{const c=CARS[dSel];if(!save.owned.includes(c.id)||c.id===curId||save.owned.length<2)return;delete save.mods[c.id];
+  // (and its damage: bought back, it came with the old car's dents; Codex's audit)
+  if(typeof CAR_DMG!=="undefined")CAR_DMG.delete(c.id);
   // its models go too: kept, they still wore the old upgrades when you looked at it, test-drove it or bought it back
   for(const M of [carMeshes,showMeshes])if(M[c.id]){disposeHeroCar(M[c.id]);delete M[c.id]}
   // the sale's credits without driver XP: earn() counts every credit earned as XP, so buying and selling cars over
@@ -1053,8 +1072,11 @@ addEventListener("pointermove",e=>{if(GO.btn&&GO.btn.id===e.pointerId){GO.btn.x=
 ["pointerup","pointercancel","lostpointercapture"].forEach(t=>addEventListener(t,e=>{if(GO.btn&&GO.btn.id===/** @type {PointerEvent} */ (e).pointerId)GO.btn=null},true));
 addEventListener("blur",()=>{GO.btn=null});
 cv.addEventListener("wheel",e=>{if(state!=="GARAGE")return;e.preventDefault();GO.zoom=clamp(GO.zoom*Math.exp(e.deltaY*.0012),GO_Z[0],GO_Z[1]);GO.user=true},{passive:false});
-$("c").addEventListener("click",e=>{if(state!=="GARAGE"||cuOpen()||GO.moved>6)return;const i=hitSlot(e.clientX,e.clientY);if(i<0)return;if(i===gSel)goDrive();else gPick(i)});
-$("c").addEventListener("pointermove",e=>{if(state!=="GARAGE"||e.pointerType!=="mouse"||cuOpen())return;$("c").style.cursor=hitSlot(e.clientX,e.clientY)>=0?"pointer":"default"});
+// (not while designing your home: a click on the room's floor picked, or drove off in, the car parked under it; Codex's
+// audit)
+const gPickBlocked=()=>cuOpen()||(typeof HV!=="undefined"&&HV.on)||(typeof partyOpen==="function"&&partyOpen());
+$("c").addEventListener("click",e=>{if(state!=="GARAGE"||gPickBlocked()||GO.moved>6)return;const i=hitSlot(e.clientX,e.clientY);if(i<0)return;if(i===gSel)goDrive();else gPick(i)});
+$("c").addEventListener("pointermove",e=>{if(state!=="GARAGE"||e.pointerType!=="mouse"||gPickBlocked())return;$("c").style.cursor=hitSlot(e.clientX,e.clientY)>=0?"pointer":"default"});
 
 /* ================================================================ ONE GAME TAB AT A TIME
    Each tab holds its own copy of the save and writes all of it. Two tabs open at once would write over each other
@@ -1402,7 +1424,9 @@ function clPickShow(){if(!CL.pick)return;
   $("cpkP").textContent=ot?"This device's progress was last backed up to another Google account. Use it for this account too, or start new here. Starting new doesn't touch the other account's backup.":
     "This device and your Google account have different progress. The one you don't keep is replaced. Credits aren't added together.";
   $("cpkKeepDev").textContent=ot?"USE THIS DEVICE'S":"KEEP THIS DEVICE'S";$("cpkKeepAcc").textContent=ot?"START NEW":"KEEP THE ACCOUNT'S";
-  $("cpkDev").innerHTML=clRow(save,0,CL.pick.cloud);$("cpkAcc").innerHTML=ot?"<li>No progress saved yet</li>":clRow(CL.pick.cloud,clAt(CL.pick.doc),save);show("cloud",false);show("cloudPick",true)}
+  $("cpkDev").innerHTML=clRow(save,0,CL.pick.cloud);$("cpkAcc").innerHTML=ot?"<li>No progress saved yet</li>":clRow(CL.pick.cloud,clAt(CL.pick.doc),save);show("cloud",false);show("cloudPick",true);
+  // the keyboard starts on the first choice (it stayed behind the chooser; Codex's audit)
+  try{$("cpkKeepDev").focus({preventScroll:true})}catch(e){}}
 // a new game in this account: this device's save goes (its progress stays in the other account, up to its last backup)
 function clStartNew(doc){CL.applying=true;clearTimeout(CL.timer);CL.timer=0;
   try{localStorage.removeItem(SAVE_KEY)}catch(e){CL.applying=false;CL.pick={doc,cloud:null};clSet("error","This browser won't let the game start new progress.");return}
