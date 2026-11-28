@@ -89,6 +89,14 @@ body.touch #lhint{display:none}
 #gCloud:hover{border-color:#fff}
 #gGun{position:absolute;top:calc(144px + var(--st));right:calc(22px + var(--sr));pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
 #gGun:hover{border-color:#fff}
+/* On a phone, MUSIC, SAVE MY PROGRESS and the pistol go under one OPTIONS pill, opened over the others: down the right
+   they were eight pills, and the car arrows had to be moved about to stay clear of them. A wider screen shows them all */
+#gMore{display:none;pointer-events:auto;cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--ink)}
+#gMore::after{content:"";display:inline-block;width:5px;height:5px;margin-left:8px;border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+#gMore[aria-expanded="true"]::after{transform:translateY(1px) rotate(-135deg)}
+#gMore:hover{border-color:#fff}
+#garageOptions:has(#gCloud.warn) #gMore{border-color:var(--acc);color:var(--acc)}
+#gUtil{display:contents}
 #gui.designing>*:not(#hd):not(#gcr){display:none!important}
 #hd{position:absolute;left:max(14px,var(--sl));right:max(14px,var(--sr));bottom:calc(14px + var(--sb));max-width:980px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;backdrop-filter:blur(8px);pointer-events:auto;display:grid;gap:10px;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"h a" "g g" "l l"}
 .hdh{grid-area:h}.hdg{grid-area:g}.hdl{grid-area:l}.hda{grid-area:a}
@@ -268,8 +276,14 @@ body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px +
 /* a narrow phone has no room beside the credits: there it goes under them, and the pills below move down to make room */
 @media (max-width:560px){#gSave{position:absolute;top:calc(100% + 6px);right:0;margin:0}#gui:has(#gSave:not(.hide)) #garageOptions .pill{margin-top:30px}
   /* seven pills down the right (HANG OUT, with a friend over, the seventh) fit above the car arrows: 34 px apart */
-  #gCloud{top:calc(98px + var(--st))}#gGun{top:calc(132px + var(--st))}#gBedActions{top:calc(166px + var(--st))}
-  #gSnack{top:calc(200px + var(--st))}#gPlay{top:calc(234px + var(--st))}#gGuest,#gParty{top:calc(268px + var(--st))}}
+  #gMore{display:block;position:absolute;top:calc(64px + var(--st));right:calc(22px + var(--sr))}
+  #gUtil{display:none;position:absolute;top:calc(98px + var(--st));right:calc(22px + var(--sr));z-index:4;flex-direction:column;align-items:flex-end;gap:6px;
+    padding:8px;background:var(--panel2);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  #gMore[aria-expanded="true"]+#gUtil{display:flex}
+  #gui:has(#gSave:not(.hide)) #gUtil{margin-top:30px}
+  #gui #gUtil>.pill{position:static;margin:0}
+  /* under OPTIONS, the needs and company pills, 34 px apart */
+  #gBedActions{top:calc(98px + var(--st))}#gSnack{top:calc(132px + var(--st))}#gPlay{top:calc(166px + var(--st))}#gGuest,#gParty{top:calc(200px + var(--st))}}
 .saveWarn{background:rgba(10,22,31,.88);color:#ff8f82;border:1px solid #e2483d}.saveWarn.acct{color:#f2b33d;border-color:rgba(242,179,61,.55)}
 #damageHud.high{color:#f2b33d}
 #damageHud.critical{color:#ff8f82;border-color:#e2483d}
@@ -523,6 +537,11 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   /* (clear of the car arrows at the sides: with every pill on, the third row ran under the right one) */
   #garageOptions{position:absolute;top:calc(60px + var(--st));right:calc(74px + var(--sr));display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:min(480px,calc(100vw - 148px - var(--sl) - var(--sr)))}
   #gBedActions{position:static}#garageOptions .pill{position:static;min-height:36px}
+  /* OPTIONS in the row, its three under it */
+  #gMore{display:block}
+  #gUtil{display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:4;flex-direction:column;align-items:flex-end;gap:6px;
+    padding:8px;background:var(--panel2);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  #gMore[aria-expanded="true"]+#gUtil{display:flex}
 }
 /* photo mode: a gesture layer over the whole screen, the controls along the top and bottom edges */
 #photo{position:fixed;inset:0;z-index:58;pointer-events:none}
@@ -718,9 +737,12 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <div id="gtitle"><div class="k">HOME · EASTBANK HILLS · <span id="gcount"></span><span id="gcups"></span></div><div class="t">MY GARAGE</div><div id="ghint">Click a car to select it, click it again to drive</div></div>
   <div id="gcr" class="pill">Credits<b class="num" id="gcrv">0</b><button type="button" id="gSave" class="hide saveWarn" aria-live="polite">NOT SAVED</button></div>
   <div id="garageOptions">
-    <button id="gMus" class="pill">MUSIC: ON</button>
-    <button id="gCloud" class="pill">SAVE MY PROGRESS</button>
-    <button id="gGun" class="pill" aria-pressed="false">PISTOL: LEFT HERE</button>
+    <button id="gMore" class="pill" aria-expanded="false" aria-controls="gUtil">OPTIONS</button>
+    <div id="gUtil" role="group" aria-label="Garage options">
+      <button id="gMus" class="pill">MUSIC: ON</button>
+      <button id="gCloud" class="pill">SAVE MY PROGRESS</button>
+      <button id="gGun" class="pill" aria-pressed="false">PISTOL: LEFT HERE</button>
+    </div>
     <button id="gSnack" class="pill hide">SNACK</button>
     <button id="gPlay" class="pill hide">PLAY</button>
     <button id="gGuest" class="pill hide">HANG OUT</button>

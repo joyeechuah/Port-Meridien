@@ -132,7 +132,7 @@ While you're wanted, your house, the Auto Gallery, races, contracts, going home 
 
 ## The pistol and health
 
-Take the pistol from the garage with **PISTOL**, top right under MUSIC (it stays chosen until you change it). You can use it on foot and while driving outside races and test drives. You leave the house with 48 rounds.
+Take the pistol from the garage with **PISTOL**, top right under MUSIC (on a phone, both are under **OPTIONS**; it stays chosen until you change it). You can use it on foot and while driving outside races and test drives. You leave the house with 48 rounds.
 
 It locks onto the nearest target in front of you, shown by a red ring: a car, a police car, someone walking, or an officer. Walls and cars are cover. Fire with `G`, the **FIRE** pad, or the controller's right shoulder. A car stops after about nine hits; someone shot, an officer included, is knocked down and stays down while you're near or looking their way; once you've looked away they're gone (an officer's car with them), and people walk the town again later.
 

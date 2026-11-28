@@ -23,7 +23,7 @@ for (const [layout, width, height] of [
       await expect(page.locator("#gprev")).toBeInViewport({ ratio: 1 });
       if (height < 400) {
         const next = await page.locator("#gnext").boundingBox();
-        for (const id of ["#gGun", "#gRest"]) {
+        for (const id of ["#gMore", "#gRest"]) {
           const equipment = await page.locator(id).boundingBox();
           expect(equipment.y + equipment.height, `${id} clears the next-car touch target`).toBeLessThanOrEqual(next.y);
         }
