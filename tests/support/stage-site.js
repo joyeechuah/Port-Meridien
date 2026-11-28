@@ -1,13 +1,13 @@
 // `node tests/support/stage-site.js <dir>`: the files GitHub Pages publishes, copied into <dir> (default _site), with
 // each script tag in index.html stamped from the copied file's own bytes. The Pages workflow
-// (.github/workflows/pages.yml) runs it and publishes <dir>. The site is index.html, 404.html, js/ and audio/:
-// nothing else in the repository is served. Decided 24 Nov 2026 (docs/SCRIPT_RELEASES.md, option A): the stamps are
+// (.github/workflows/pages.yml) runs it and publishes <dir>. The site is index.html, 404.html, js/, audio/, fonts/ and
+// vendor/ (three.js): nothing else in the repository is served. Decided 24 Nov 2026 (docs/SCRIPT_RELEASES.md, option A): the stamps are
 // written here, on the published copy, so feature branches stop conflicting over them.
 const fs = require("fs");
 const path = require("path");
 const { ROOT, TAG, stampOf } = require("./source");
 
-const SITE = ["index.html", "404.html", "js", "audio"];
+const SITE = ["index.html", "404.html", "js", "audio", "fonts", "vendor"];
 
 // copies src's site into out and stamps it; returns the scripts in load order, or throws on anything wrong
 // It builds in a sibling directory and only then replaces out, so a run that fails (a missing file, a bad tag) leaves

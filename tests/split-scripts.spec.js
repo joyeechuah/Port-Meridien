@@ -8,7 +8,7 @@ const { scriptFiles } = require("./support/source");
 test("without the 3D engine the loading screen says so, and nothing else runs or reports an error", async ({ game, page }) => {
   await game.open({ instrument: false, autostart: false });
   // three.js fails to arrive: the browser reports the failed request, which is all it may report
-  await page.route("https://cdnjs.cloudflare.com/ajax/libs/three.js/**", (r) => r.abort("failed"));
+  await page.route("**/vendor/three.min.js", (r) => r.abort("failed"));
   game.allowErrors.push(/Failed to load resource/);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));

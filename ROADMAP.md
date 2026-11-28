@@ -1,15 +1,17 @@
 # Roadmap
 
-Each step ships as its own pull requests, with tests. Earlier steps are playable before later ones start.
+Each step ships as its own pull requests, with tests. Earlier steps are playable before later ones start. Statuses checked against `main` on 28 Nov 2026.
 
 | Step | What you can play | Status |
 | --- | --- | --- |
 | 0 | White Isle Drive's game under the new name, with its tests passing | Done |
 | 1 | A character who walks and runs in a first waterfront district, gets in and out of cars, takes any parked or traffic car, and sails a boat from the harbour | Done on the island: walking, taking cars, the boat and pier, the harbour lane, and the Old Quay district's six blocks. Not yet tested on a real phone |
 | 2 | The city at full size: more districts, pedestrians on the pavements | Started: people walk Old Quay's pavements and cross on its zebra crossings (first version), and anonymous walkers use the country roads' verges (docs/COUNTRY_WALKERS.md). More districts not started |
-| 3 | Police and a wanted level: patrol cars chase you, and losing them clears it | Done on the island: patrols, one to five stars, chases by car and on foot, fines, losing them. No roadblocks or arrest yet |
-| 4 | Weapons: pick up guns, shoot on foot, health, being arrested or taken out. One setting controls how violence is shown | First part done: the pistol on foot, health, knock-out, arrest, VIOLENCE and FLASHES settings (working decisions in `docs/STEP4_DECISIONS.md`). More weapons and shooting from vehicles not decided |
-| 5 | Life: the people of the city have names and personalities; you talk to them, make friends and enemies, and they remember you. Later: needs, moods, a home to run, a job | Started: talking to the people of Old Quay and friendships kept in the save; four needs and a mood, seen to at home, the fountain's benches, the Market Kitchen, races and company; friends who ride with you and ask for lifts (working decisions in `docs/LIFE_DESIGN.md` and `docs/LIFE_NEEDS_DESIGN.md`). Next: a paid shift at the Market Kitchen (`docs/LIFE_NEXT_DESIGN.md`) |
+| 3 | Police and a wanted level: patrol cars chase you, and losing them clears it | Done on the island: patrols, one to five stars, chases by car and on foot, fines, losing them, and being caught (step 4). No roadblocks yet |
+| 4 | Weapons: pick up guns, shoot on foot, health, being arrested or taken out. One setting controls how violence is shown | Both parts done: the pistol on foot, health, knock-out, arrest, VIOLENCE and FLASHES settings; then the police firing back, officers on foot at three stars and patrol cars at four (working decisions in `docs/STEP4_DECISIONS.md` and `docs/STEP4_PART2_QUESTIONS.md`). More weapons and shooting from vehicles not decided |
+| 5 | Life: the people of the city have names and personalities; you talk to them, make friends and enemies, and they remember you. Later: needs, moods, a home to run, a job | Done on the island: talking to the people of Old Quay, friendships, gifts and traits; four needs, moods and wants; skills, sleep and aspirations; the Market Kitchen career, five ranks of paid shifts (`docs/CAREERS.md`); a home to design and furnish (DESIGN HOME), friends over and parties (`docs/FRIENDS_OVER.md`, `docs/PARTIES.md`); friends who ride with you and ask for lifts (working decisions in `docs/LIFE_DESIGN.md`, `docs/LIFE_NEEDS_DESIGN.md` and `docs/LIFE_NEXT_DESIGN.md`). Next not decided |
+
+Also playable, outside the steps: PLAY TOGETHER rooms for up to four players, the contract career (`docs/CONTRACT_CAREER.md`), postcards (`docs/POSTCARDS.md`) and the class championships.
 
 ## How the new city arrives (decided 13 Nov 2026)
 
