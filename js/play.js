@@ -440,6 +440,11 @@ const gpsMe=()=>gps.job?P:typeof BOAT!=="undefined"&&BOAT.on?BOAT:typeof FOOT!==
 // (aboard, from the boat: a waypoint set at sea was routed from where the car was parked; Codex's audit)
 function recalcGPS(){if(!gps.t)return;const me=gpsMe();gps.route=routeBetween(me.x,me.z,gps.t.x,gps.t.z)}
 function updateGPS(dt){
+  // at sea, straight there: the roads' route from out on the water was a point on the shore, so the boat was always
+  // "off the route", the distance was never shown and a waypoint at sea was never reached (Gemini's audit)
+  if(gps.t&&!gps.job&&typeof BOAT!=="undefined"&&BOAT.on){const d=Math.hypot(BOAT.x-gps.t.x,BOAT.z-gps.t.z);gps.remain=d;
+    if(d<28){toast("ARRIVED",gps.label);clearGPS();return}
+    $("gpsTxt").textContent="GPS · "+(d>=1000?(d/1000).toFixed(1)+" km":Math.round(d/10)*10+" m")+" · "+gps.label;return}
   if(!gps.t||!gps.route){$("gpsTxt").textContent="";return}
   gps.timer-=dt;
   const R=gps.route,n=R.pts.length,me=gpsMe();let bi=0,bd=1e9;
@@ -473,7 +478,8 @@ function toast(t,sub,kind){
 function toastFit(){
   const box=$("toasts"),r=document.documentElement,kids=[...box.children];
   for(const c of kids)c.style.display="";
-  if(!kids.length||!matchMedia("(max-width:560px)").matches){r.style.setProperty("--tsx","0px");return}
+  // (the column under the speedometer only while the HUD is up: on the garage screen and the menus they keep their place)
+  if(!kids.length||$("hud").classList.contains("hide")||!matchMedia("(max-width:560px)").matches){r.style.setProperty("--tsx","0px");return}
   const on=e=>!e.classList.contains("hide")&&!e.classList.contains("off")&&e.getClientRects().length>0;
   const base=box.getBoundingClientRect().top-(parseFloat(r.style.getPropertyValue("--tsx"))||0);
   const col=box.getBoundingClientRect(),need=kids[0].getBoundingClientRect().height;

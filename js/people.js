@@ -934,7 +934,8 @@ function copUpdate(dt){
   if(copOfficer(dt,ch,still,indoors))return;
   copCarFire(dt,ch);
   // one that has fallen far behind is brought back nearer, out of sight
-  for(const t of ch)if(Math.hypot(t.wx-me.x,t.wz-me.z)>700&&!t.c.G.visible)copPlace(t,200,360);
+  // (not the car whose officer is out on foot: it was moved off with them still walking back to it; Gemini's audit)
+  for(const t of ch)if(t!==OFFICER.car&&Math.hypot(t.wx-me.x,t.wz-me.z)>700&&!t.c.G.visible)copPlace(t,200,360);
   wantedHud();
 }
 // The officer: gets out of a chasing car that has stopped within 45 m of you when it can get no nearer (you're off
@@ -981,7 +982,9 @@ function copOfficer(dt,ch,still,indoors=false){
   const tx=way?way.x:O.back?car.wx:me.x,tz=way?way.z:O.back?car.wz:me.z,dx=tx-O.x,dz=tz-O.z,d=Math.hypot(dx,dz);
   if(O.back&&d<1.9){copOfficerIn();return false}
   // the chase over and you long gone: back in the car without the walk
-  if(O.back&&!WANTED.lvl&&dMe>120){copOfficerIn();return false}
+  // (and while you're still wanted, once they're out of your sight: they walked all the way back, holding the car up;
+  // Gemini's audit)
+  if(O.back&&dMe>120&&(!WANTED.lvl||!pedSeen(O,me))){copOfficerIn();return false}
   const want=O.back&&!WANTED.lvl?OFF_V.walk:OFF_V.run;O.v+=clamp(want-O.v,-10*dt,6*dt);
   if(d>.05){
     // straight for you. A wall or fence in the way: round it, keeping to one side (the side with the way open
@@ -1009,7 +1012,7 @@ function copOfficer(dt,ch,still,indoors=false){
   // one shot in three hits at 10 m, fewer further off, 10 health a hit (the violence setting changes how hits look,
   // not the rules)
   O.shootT=(O.shootT||0)-dt;
-  if(WANTED.lvl>=3&&FOOT.on&&level&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6)){
+  if(WANTED.lvl>=3&&FOOT.on&&level&&!O.back&&dMe>2&&dMe<20&&O.shootT<=0&&gunClear(O.x,O.z,me.x,me.z,.6,O.y)){
     O.shootT=1.2;gunMuzzle(O.x+Math.sin(O.h)*.5,O.y+1.35,O.z+Math.cos(O.h)*.5);gunSound();
     if(Math.random()<Math.max(.08,.45-dMe*.015))hurt(10)}
   // caught: they have hold of you (on foot), or are at your door while you sit still
@@ -1027,7 +1030,8 @@ function copCarFire(dt,ch){
   const me=copMe(),near=ch.filter(t=>(t.damage||0)<100).map(t=>[t,Math.hypot(t.wx-me.x,t.wz-me.z)]).filter(a=>a[1]<30).sort((a,b)=>a[1]-b[1]).slice(0,2);
   for(const[t,d]of near){t.shootT=(t.shootT??.6)-dt;if(t.shootT>0)continue;t.shootT=1.5;
     // the line starts 3 m out of the police car's front, clear of its own body
-    const stop=FOOT.on?.6:2.8,ux=(me.x-t.wx)/d,uz=(me.z-t.wz)/d;if(d<4||!gunClear(t.wx+ux*3,t.wz+uz*3,me.x,me.z,stop))continue;
+    const stop=FOOT.on?.6:2.8,ux=(me.x-t.wx)/d,uz=(me.z-t.wz)/d;// (not at you on another floor: from the street they shot you up in the room through its floor; Gemini's audit)
+    const cy=surfH(t.wx,t.wz);if(d<4||Math.abs((me.y??cy)-cy)>2.5||!gunClear(t.wx+ux*3,t.wz+uz*3,me.x,me.z,stop,cy))continue;
     gunMuzzle(t.wx+Math.sin(t.yaw)*2.2,1.3+footGround(t.wx,t.wz),t.wz+Math.cos(t.yaw)*2.2);gunSound();
     if(Math.random()<Math.max(.08,.45-d*.015)){if(FOOT.on)hurt(8);else{P.damageT=0;damageVehicle(P,4+6/1.4);HEALTH.hurtT=.35}}}
 }
@@ -1101,9 +1105,12 @@ function initGun(){
 function pedKnock(p){p.st="down";p.t=6;p.v=0;p.out=save.violence>0;p.downT=0}
 const gunWant=()=>!locked&&(keys.g||pad.F||GP.fire);
 // whether a shot from (x0,z0) gets to (x1,z1) without a wall in the way (cars count as cover too)
+// (every 0.8 m up to the stop short of the target; closer than that, the point halfway: the first 0.8 m point could lie past
+// the target, so a wall behind you counted as cover; Gemini's audit)
 function gunClear(x0,z0,x1,z1,stop,y){
-  const d=Math.hypot(x1-x0,z1-z0),n=Math.max(1,Math.floor((d-stop)/.8));
-  for(let k=1;k<=n;k++){const t=k*.8/d,x=x0+(x1-x0)*t,z=z0+(z1-z0)*t,c=footClear(x,z,y);if(Math.hypot(c[0]-x,c[1]-z)>.05)return false}
+  const d=Math.hypot(x1-x0,z1-z0),n=Math.floor((d-stop)/.8),free=t=>{const x=x0+(x1-x0)*t,z=z0+(z1-z0)*t,c=footClear(x,z,y);return Math.hypot(c[0]-x,c[1]-z)<=.05};
+  if(n<1)return d-stop<=.05||free((d-stop)/2/d);
+  for(let k=1;k<=n;k++)if(!free(k*.8/d))return false;
   return true;
 }
 // the nearest target within 40 m and about 35 degrees of where you face, in a clear line. From the car, the shot
@@ -1129,7 +1136,8 @@ function gunSpark(x,y,z){const s=GUN.sparks.find(s=>s.t<=0)||GUN.sparks[0];s.t=.
 // a flash at a gun's muzzle: none with FLASHES OFF (Codex's review of #35: police and car shots still flashed).
 // Where a shot lands still shows; nothing else about the shot changes
 function gunMuzzle(x,y,z){if(save.flash)gunSpark(x,y,z)}
-function gunMark(x,z){if(save.violence<2)return;const k=GUN.marks.find(k=>k.t<=0)||GUN.marks[0];k.t=4;k.m.position.set(x,footGround(x,z)+.03,z);k.m.material.opacity=.7;k.m.visible=true}
+// (on the floor they stand on: up in the room the mark was on the garage floor below; Gemini's audit)
+function gunMark(x,z,y){if(save.violence<2)return;const k=GUN.marks.find(k=>k.t<=0)||GUN.marks[0];k.t=4;k.m.position.set(x,footGround(x,z,y)+.03,z);k.m.material.opacity=.7;k.m.visible=true}
 function gunSound(){if(!AU||!save.sound)return;const s=AC.createBufferSource();s.buffer=AU.buf;const f=AC.createBiquadFilter();f.type="bandpass";f.frequency.value=1500;f.Q.value=.6;
   const g=AC.createGain(),t=AC.currentTime;g.gain.setValueAtTime(.45,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);s.connect(f);f.connect(g);g.connect(AU.master);s.start(0,Math.random()*.5);s.stop(t+.18)}
 function gunFire(){
@@ -1147,8 +1155,8 @@ function gunFire(){
     // badly damaged: it stops where it is, out of the chase for good
     if((t.damage||0)>=100){t.stopT=1e6;t.v=0;if(t.cop){t.chase=false;t.offDuty=true}}
     seen(q.k==="cop"?"shootCop":"shoot",q.x,q.z)}
-  else if(q.k==="ped"){const p=q.o;pedKnock(p);gunMark(p.x,p.z);seen("shootPed",p.x,p.z);lifeHurt(p,25)}
-  else{const O=q.o;O.down=6;O.out=save.violence>0;O.downT=0;O.caughtT=0;gunMark(O.x,O.z);seen("shootCop",O.x,O.z)}
+  else if(q.k==="ped"){const p=q.o;pedKnock(p);gunMark(p.x,p.z,p.y);seen("shootPed",p.x,p.z);lifeHurt(p,25)}
+  else{const O=q.o;O.down=6;O.out=save.violence>0;O.downT=0;O.caughtT=0;gunMark(O.x,O.z,O.y);seen("shootCop",O.x,O.z)}
   return true;
 }
 // in the car, every frame: the lock ahead and firing (the pistol itself isn't seen). Not in a race or a test drive
@@ -1652,5 +1660,7 @@ function boatUpdate(dt){
   BOAT.hudT-=dt;if(BOAT.hudT<=0){BOAT.hudT=.25;$("zone").textContent="AT SEA · "+Math.round(Math.abs(BOAT.v)*1.944)+" KN";hudClock()}
   // the outboard: it idles at the mooring, rises with speed and throttle, and the hull washes through the water
   {const sp=Math.abs(BOAT.v);audioUpd(.1+sp/BOAT_V.top*.5,1,Math.max(go,bk*.5),0,0,0,0,.8,sp)}
+  // the route and the arrival at sea too (it was only kept up in the car and on foot; Gemini's audit)
+  if(typeof updateGPS==="function")updateGPS(dt);
   boatCam(dt);drawMini();
 }

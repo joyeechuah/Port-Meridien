@@ -20,37 +20,37 @@
               ".validate": "newData.isString() && newData.val().length <= 12"
             },
             "m": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3 && newData.val() % 1 === 0"
             },
             "c": {
               ".validate": "newData.isString() && newData.val().length <= 16"
             },
             "p": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 16777215"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 16777215 && newData.val() % 1 === 0"
             },
             "q": {
-              ".validate": "newData.hasChildren()",
+              ".validate": "newData.hasChildren(['0','1','2','3'])",
               "$i": {
-                ".validate": "$i.matches(/^[0-3]$/) && newData.isNumber()"
+                ".validate": "$i.matches(/^[0-3]$/) && newData.isNumber() && newData.val() >= -1.01 && newData.val() <= 1.01"
               }
             },
             "x": {
-              ".validate": "newData.isNumber()"
+              ".validate": "newData.isNumber() && newData.val() >= -6000 && newData.val() <= 6000"
             },
             "y": {
-              ".validate": "newData.isNumber()"
+              ".validate": "newData.isNumber() && newData.val() >= -60 && newData.val() <= 600"
             },
             "z": {
-              ".validate": "newData.isNumber()"
+              ".validate": "newData.isNumber() && newData.val() >= -6000 && newData.val() <= 6000"
             },
             "h": {
-              ".validate": "newData.isNumber()"
+              ".validate": "newData.isNumber() && newData.val() >= -100 && newData.val() <= 100"
             },
             "v": {
-              ".validate": "newData.isNumber()"
+              ".validate": "newData.isNumber() && newData.val() >= -200 && newData.val() <= 200"
             },
             "t": {
-              ".validate": "newData.isNumber()"
+              ".validate": "newData.isNumber() && newData.val() >= 0"
             },
             "$other": {
               ".validate": false

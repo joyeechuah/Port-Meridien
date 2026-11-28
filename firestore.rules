@@ -5,14 +5,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /saves/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow create, update: if request.auth != null && request.auth.uid == uid
+      // a player signed in with Google: Play together's anonymous sign-ins (the same project) can't keep saves here
+      function isSignedInOwner() {
+        return request.auth != null
+          && request.auth.uid == uid
+          && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      }
+      allow read, delete: if isSignedInOwner();
+      // the save's size in bytes (UTF-8), not characters; and the version and summary the game sends, of their types
+      allow create, update: if isSignedInOwner()
         && request.resource.data.keys().hasOnly(['save', 'v', 'summary', 'rev', 'at'])
-        && request.resource.data.save is string && request.resource.data.save.size() < 900000
+        && request.resource.data.save is string && request.resource.data.save.toUtf8().size() < 900000
+        && request.resource.data.v is int && request.resource.data.v >= 1 && request.resource.data.v <= 10
+        && request.resource.data.summary is map && request.resource.data.summary.keys().size() <= 12
         && request.resource.data.rev is int
         && request.resource.data.rev == (resource == null ? 1 : resource.data.rev + 1)
         && request.resource.data.at == request.time;
-      allow delete: if request.auth != null && request.auth.uid == uid;
     }
     match /{document=**} {
       allow read, write: if false;
