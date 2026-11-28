@@ -1089,7 +1089,7 @@ function tabStop(){if(tabIdle)return;tabIdle=true;if(state==="DRIVE")pauseOn();c
   if(typeof NET!=="undefined"&&(NET.tx||NET.room)&&typeof netLeave==="function")netLeave();
   if(AC){try{const p=AC.suspend();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
   // everything behind it out of reach of Tab (it only comes back with a reload; Gemini's audit)
-  for(const el of /** @type {HTMLElement[]} */ ([...document.body.children])){if(el.id!=="tabIdle"&&el.tagName!=="SCRIPT")el.inert=true}
+  if(typeof document!=="undefined")for(const el of /** @type {HTMLElement[]} */ ([...document.body.children])){if(el.id!=="tabIdle"&&el.tagName!=="SCRIPT")el.inert=true}
   show("tabIdle",true);try{$("tiHere").focus({preventScroll:true})}catch(e){}}
 // by BroadcastChannel; a browser without it gets a note in storage instead (the save stays the only key otherwise)
 function tabHello(){const m={t:"hello",id:TAB_ID};if(tabCh){tabCh.postMessage(m);return}try{localStorage.setItem(TAB_KEY,JSON.stringify(Object.assign({at:Date.now()},m)))}catch(e){}}

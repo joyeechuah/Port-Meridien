@@ -102,6 +102,7 @@ test.describe("step 4 part 2", () => {
         T.FOOT.on = true;
         T.FOOT.x = P.x - Math.cos(P.h) * 3;
         T.FOOT.z = P.z + Math.sin(P.h) * 3;
+        T.FOOT.y = T.footGround(T.FOOT.x, T.FOOT.z);   // (standing on the road: shots are only at you on the same level)
         cop.shootT = 0;
         run(1.4);
         out.fourFoot = H.hp;
@@ -140,6 +141,7 @@ test.describe("step 4 part 2", () => {
       T.FOOT.on = true;
       T.FOOT.x = T.P.x - Math.cos(T.P.h) * 3;
       T.FOOT.z = T.P.z + Math.sin(T.P.h) * 3;
+      T.FOOT.y = T.footGround(T.FOOT.x, T.FOOT.z);
       for (const c of cops) c.shootT = 0;
       Math.random = () => 0;
       try {

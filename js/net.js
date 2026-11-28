@@ -175,7 +175,7 @@ function netState(){
   else{d.m=0;d.y=r(pc.G.position.y,100);d.v=r(speedF(),10);d.c=STREET.has(curId)?STREET.get(curId).base:curCar().id;d.p=testDrive?testDrive.paint:paintOf(curId);const q=pc.G.quaternion;d.q=[q.x,q.y,q.z,q.w].map(v=>r(v,1000))}
   if(state!=="DRIVE")d.v=0;
   // (the heading as an angle from -pi to pi: the car's grows without limit as it turns, and the room's rules bound it)
-  d.x=r(a.x,100);d.z=r(a.z,100);d.h=r(wrapA(a.h||0),1000);
+  d.x=r(a.x,100);d.z=r(a.z,100);d.h=r(Math.atan2(Math.sin(a.h||0),Math.cos(a.h||0)),1000);
   return d;
 }
 function netSend(force){

@@ -37,7 +37,7 @@ test("returning to the garage from upstairs keeps an active party",async({game})
 test("replaying a finished cup and cancelling preserves the last result",async({game})=>{
   await game.open();await game.driveOut();
   const r=await game.eval(()=>{
-    save.champ.A1={r:3,pts:[10,10,10],d:[1,1,null],won:true};
+    save.champ.A1={r:3,pts:[10,10,10],d:[1,1,null],won:true};persist();
     pauseOn();cupsOpen();$("cpList").querySelector("button").click();
     const opened=state==="INTRO";$("iNo").click();
     return {opened,points:save.champ.A1.pts,disk:JSON.parse(localStorage.getItem(SAVE_KEY)).champ.A1.pts};
