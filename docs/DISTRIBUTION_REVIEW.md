@@ -61,7 +61,7 @@ The inspected baseline CARS array still names real manufacturers and models, inc
 
 Before a paid release, record source, creator, licence/permission, commercial-use scope and required attribution for vehicle branding/designs, music, fonts and third-party libraries. Use fictional vehicles/branding where appropriate, with a deliberate art review rather than only changing the displayed name. Platform rights rules remain relevant even for procedurally generated assets. [6,13]
 
-Current production code loads three.js and Google Fonts externally. A Poki build would need to address its external-request restriction. A downloadable edition should bundle required assets, include their notices and be tested offline where promised. An Android/iOS wrapper requires its own persistence, back-button, pause/resume, audio and purchase-restore validation; it is not included in this work.
+three.js and the fonts are served with the game (since 28 Nov 2026); Firebase is fetched from cdnjs only for cloud saves and Play together, so a Poki build would leave those out. A downloadable edition should bundle required assets, include their notices and be tested offline where promised. An Android/iOS wrapper requires its own persistence, back-button, pause/resume, audio and purchase-restore validation; it is not included in this work.
 
 The current README's no-analytics/no-accounts claims must be revisited if a release adds ads, checkout, accounts or a portal SDK. Describe what the game collects separately from what the hosting platform processes.
 
