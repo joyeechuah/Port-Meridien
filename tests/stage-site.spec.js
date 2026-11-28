@@ -11,7 +11,7 @@ const { SITE, stageSite } = require("./support/stage-site");
 const tmp = (name) => fs.mkdtempSync(path.join(os.tmpdir(), "pm-" + name + "-"));
 const stamped = (dir) => [...fs.readFileSync(path.join(dir, "index.html"), "utf8").matchAll(TAG)].map((m) => ({ rel: m[1], v: m[2] }));
 
-test("the published site is index.html, 404.html, js/ and audio/, each script stamped from its own bytes", () => {
+test("the published site is index.html, 404.html, js/, audio/, fonts/ and vendor/, each script stamped from its own bytes", () => {
   const out = tmp("site");
   const scripts = stageSite(ROOT, out);
   expect(fs.readdirSync(out).sort()).toEqual([...SITE].sort());

@@ -1,4 +1,4 @@
-# Publishes the game to GitHub Pages: the files players load (index.html, 404.html, js/ and audio/), with each script
+# Publishes the game to GitHub Pages: the files players load (index.html, 404.html, js/, audio/, fonts/ and vendor/), with each script
 # tag stamped from its file's contents by tests/support/stage-site.js (docs/SCRIPT_RELEASES.md, option A).
 # It runs on every push to main (the repository's index.html keeps fixed ?v=dev tags), and by hand: Actions → Pages →
 # Run workflow, to publish main again.

@@ -6,12 +6,12 @@ Updated 14 November 2026. Scope: runtime and tracked assets on the merged Port M
 
 | Asset | Exact use/source | Licence evidence | Release action |
 | --- | --- | --- | --- |
-| three.js r128 / 0.128.0 | `cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js`, index.html | Installed matching npm package LICENSE: MIT, copyright 2010–2021 three.js authors; [upstream](https://github.com/mrdoob/three.js/blob/r128/LICENSE) | Keep copyright and MIT text when bundling; retain SRI or verify a bundled copy. |
+| three.js r128 / 0.128.0 | `vendor/three.min.js` (copied from the npm package; byte-identical to cdnjs's r128, same SRI hash in index.html) | `vendor/three.LICENSE`: MIT, copyright 2010–2021 three.js authors; [upstream](https://github.com/mrdoob/three.js/blob/r128/LICENSE) | Bundled 28 Nov 2026. Keep the licence file beside it. |
 | Firebase 10.12.2 app compat | cdnjs, lazy cloud setup | Matching npm package declares Apache-2.0; [SDK licence](https://github.com/firebase/firebase-js-sdk/blob/master/LICENSE) also contains third-party notices | Preserve applicable licence/NOTICE content for the exact distributed bundle. Cloud disabled by empty configuration today. |
 | Firebase 10.12.2 auth compat | Same CDN/version | Same evidence | Same; service terms are separate from SDK licence. |
 | Firebase 10.12.2 firestore compat | Same CDN/version | Same evidence; upstream includes protobuf BSD notice | Check bundled third-party notices, not just package-level SPDX. |
-| Barlow 400/600/700 | Google Fonts CSS → fonts.gstatic.com | [Barlow Project OFL.txt](https://github.com/jpt/barlow/blob/main/OFL.txt), SIL OFL 1.1 | Include copyright and OFL when bundling. Current CSS request is not an immutable font binary pin; archive chosen WOFF2 files and hashes for downloadable release. |
-| Barlow Condensed 600/700/800 | Same Google Fonts request | Same family project, OFL 1.1 | Same. |
+| Barlow 400/600/700 | `fonts/barlow-*.woff2` and `fonts/fonts.css` (latin, latin-ext, vietnamese; from @fontsource/barlow 5.3.0) | `fonts/OFL.txt`: copyright 2017 The Barlow Project Authors, SIL OFL 1.1 | Bundled 28 Nov 2026; the WOFF2 files in the repository are the pinned binaries. |
+| Barlow Condensed 600/700/800 | `fonts/barlow-condensed-*.woff2` (from @fontsource/barlow-condensed 5.3.0) | Same family project, OFL 1.1 | Same. |
 | System fallback fonts | system-ui, -apple-system, Segoe UI, Arial Narrow, Arial, Helvetica, sans-serif; CSS and canvas text | Resolved from the user's device; no font files supplied by this repo | Do not copy OS font binaries into the release. Use licensed bundled Barlow for consistent downloadable rendering if needed. |
 
 MIT permits commercial distribution subject to its notice condition. OFL permits software bundling under its conditions, including retaining licence/copyright and not selling the font alone. Firebase's package declaration does not replace review of its embedded notices. Sources were checked alongside local dependency metadata; latest upstream Firebase licence is not proof of every historical bundle's exact contents.
