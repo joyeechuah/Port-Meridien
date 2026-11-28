@@ -243,6 +243,8 @@ function hvCommit(){
   hvMarks();
 }
 function hvTurn(){
+  // (turned, a piece waits for a new confirmation: a click from before paid for it facing the other way; Codex's audit)
+  HV.tap=null;
   if(HV.sel){HV.r=(HV.r+1)%4;hvMarks();return}
   if(HV.pick>=0){if(homeTurn(HV.pick)){homeBuild();hvMsg("Turned")}else hvMsg("No room to turn it here")}
   hvMarks();
@@ -290,7 +292,8 @@ function hvInit(){
   // A tap is one pointer going down and up in about the same place. A second finger on the glass cancels the tap in
   // progress and any touch waiting for its second, until every finger is off (a two-finger drag used to count: one
   // finger's release was measured from where the other went down, which could confirm a waiting touch and buy)
-  cv.addEventListener("pointerdown",e=>{if(!HV.on)return;e.stopImmediatePropagation();HV.ptrs.add(e.pointerId);
+  // (the main button only, with a mouse: two middle clicks bought a bed; Codex's audit)
+  cv.addEventListener("pointerdown",e=>{if(!HV.on)return;e.stopImmediatePropagation();if(e.pointerType==="mouse"&&e.button!==0)return;HV.ptrs.add(e.pointerId);
     try{cv.setPointerCapture(e.pointerId)}catch(err){}
     if(HV.ptrs.size>1){HV.down=null;HV.multi=true;if(HV.tap){HV.tap=null;hvMsg("");hvMarks()}return}
     HV.down={id:e.pointerId,x:e.clientX,y:e.clientY,touch:e.pointerType!=="mouse"}},true);

@@ -808,7 +808,8 @@ function pollPad(){
   // a stopped tab, or the cloud save's screens open: the garage view's stick stops too (it kept turning behind them)
   if(tabIdle||clOverlayOpen())GO.stick[0]=GO.stick[1]=0;
   if(tabIdle)return;
-  if(clOverlayOpen()){if(hit(1))clEscape();return}
+  // (the D-pad and A work its buttons too: only B did, so the chooser couldn't be answered; Codex's audit)
+  if(clOverlayOpen()){if(hit(1))clEscape();else if(typeof padIn==="function")padIn($($("cloudPick").classList.contains("hide")?"cloud":"cloudPick"),hit);return}
   if(WORK.panel){GP.steer=GP.gas=GP.brake=0;GP.fire=GP.hb=false;workPad(hit);return}
   // the party's invitations, opened on foot in the house: B closes them, and the walker stays put behind
   if(state==="DRIVE"&&typeof partyOpen==="function"&&partyOpen()){GP.steer=GP.gas=GP.brake=0;GP.fire=GP.hb=false;if(hit(1))partyPanelClose();else padIn($("party"),hit);return}
@@ -1216,7 +1217,7 @@ const TRAFFIC=[];let TEDGES=[],TEDGE_CUM=[],bubbleT=0;
 // were hard to drive through without hitting one (about 7 within 150 m, against 3 to 5 on open roads). townN is the count
 // within TOWN_R of you, kept up to date every half second
 const TOWN_CAP=isTouch?3:5,TOWN_R=200;let townN=0;
-const nearTown=t=>!t.free&&!!t.e&&t.e.type==="town"&&Math.abs(t.wx-P.x)<TOWN_R&&Math.abs(t.wz-P.z)<TOWN_R;
+const nearTown=t=>{const me=activePlayer();return !t.free&&!!t.e&&t.e.type==="town"&&Math.abs(t.wx-me.x)<TOWN_R&&Math.abs(t.wz-me.z)<TOWN_R};
 const TCOLS=[0xe8e8e6,0xbfc3c8,0x2d2f33,0x7a1f1f,0x2b4a7a,0xd9cfb8,0x5d6b4a,0xa0a4a8,0x1f1f22,0xc9b27a,0x8a2c2c,0xf0f0f0];
 function initTraffic(){
   TEDGES=EDGES.filter(e=>e.type!=="drive"&&e.len>24);let c=0;TEDGE_CUM=TEDGES.map(e=>c+=e.len);
@@ -1237,8 +1238,9 @@ function routeDirs(R){
 }
 const oncoming=(e,dir)=>!!evDirs&&evDirs.has(e)&&evDirs.get(e)!==dir;
 function spawnTraffic(t,dmin,dmax,avoidView){
+  const me=activePlayer();
   for(let k=0;k<50;k++){
-    const e=pickEdge(),s=Math.random()*e.len,p=edgePos(e,s),dx=p.x-P.x,dz=p.z-P.z,d=Math.hypot(dx,dz);
+    const e=pickEdge(),s=Math.random()*e.len,p=edgePos(e,s),dx=p.x-me.x,dz=p.z-me.z,d=Math.hypot(dx,dz);
     if(d<dmin||d>dmax)continue;
     if(e.type==="town"&&townN>=TOWN_CAP&&d<TOWN_R+150)continue;
     if(avoidView){const cf=new V3();camera.getWorldDirection(cf);if((dx*cf.x+dz*cf.z)/d>.2)continue}
@@ -1289,16 +1291,17 @@ function junction(t,node,over){
   // normally waits at the stop line when no way out is free (updateTraffic); one that got here anyway stops at the end
   if(!free.length){t.s=t.dir>0?t.e.len-.01:.01;t.v=0;return}
   // a town street near you that's full already: another way if there is one
-  let pick=free;if(townN>=TOWN_CAP&&Math.abs(t.wx-P.x)<TOWN_R&&Math.abs(t.wz-P.z)<TOWN_R){const o=free.filter(a=>a.e.type!=="town");if(o.length)pick=o}
+  const me=activePlayer();
+  let pick=free;if(townN>=TOWN_CAP&&Math.abs(t.wx-me.x)<TOWN_R&&Math.abs(t.wz-me.z)<TOWN_R){const o=free.filter(a=>a.e.type!=="town");if(o.length)pick=o}
   const a=pick[Math.floor(Math.random()*pick.length)];
   t.e=a.e;if(a.end==="a"){t.dir=1;t.s=Math.min(over,t.e.len)}else{t.dir=-1;t.s=Math.max(0,t.e.len-over)}
   setLane(t);
 }
 function updateTraffic(dt){
   bubbleT-=dt;const bubble=bubbleT<=0;if(bubble)bubbleT=.5;
-  if(bubble){townN=0;const cf=new V3();camera.getWorldDirection(cf);
+  if(bubble){townN=0;const me=activePlayer(),cf=new V3();camera.getWorldDirection(cf);
     for(const t of TRAFFIC){if(t.chase||!nearTown(t))continue;
-      const dx=t.wx-P.x,dz=t.wz-P.z,d=Math.hypot(dx,dz);
+      const dx=t.wx-me.x,dz=t.wz-me.z,d=Math.hypot(dx,dz);
       // one too many, and out of the camera's view (it never vanishes in front of you): it reappears somewhere else.
       // One in view stays until it leaves the view, so the cap is a target rather than a hard limit
       if(townN>=TOWN_CAP&&(dx*cf.x+dz*cf.z)/Math.max(d,1)<.2&&d>25){t.e=null;t.c.G.visible=false;t.wx=t.wz=1e6;t.lost=!spawnTraffic(t,220,560,true);if(!nearTown(t))continue}

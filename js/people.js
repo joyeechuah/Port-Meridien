@@ -9,7 +9,10 @@ let hudT=0,waterT=0;
 let padRevShown=false;
 function updateHUD(dt){
   const damage=$("damageHud"),amount=damagePct(),label="DAMAGE "+amount+"% · REPAIR";
-  if(damage.textContent!==label){damage.textContent=label;show("damageHud",amount>0);
+  // (shown or hidden every time, not only when the label changes: repaired and hit back to the same percentage before
+  // the HUD caught up, the chip stayed hidden; Codex's audit)
+  show("damageHud",amount>0);
+  if(damage.textContent!==label){damage.textContent=label;
     damage.classList.toggle("high",amount>=60);damage.classList.toggle("critical",amount>=90);
     damage.setAttribute("aria-label","Vehicle damage "+amount+" percent. Open repair options.");}
   const cd=curCar(),vF=speedF(),kph=Math.abs(vF)*3.6,gi=gearInfo(kph,cd.top,vF<-.5);
@@ -536,18 +539,20 @@ function footTarget(){
 function footBlocked(){
   if(ev)return "Finish or quit the event first";
   if(testDrive)return "Return the test car first";
-  if(kphNow()>FOOT_V.exitMax)return kphNow()>FOOT_V.stopMax?"Slow down first":"Stop the car first";
+  if(carKph()>FOOT_V.exitMax)return carKph()>FOOT_V.stopMax?"Slow down first":"Stop the car first";
   if(P.water)return "Not in the water";
   // (off the ground, a jump or a fall: you got out 2 m up and landed on the road; Codex's audit)
   if(P.air)return "Wait until the car lands";
   return null;
 }
+// how fast the car is going, sideways included (kphNow is the forward part only: a 72 km/h slide read as stopped)
+function carKph(){return Math.hypot(P.vx||0,P.vz||0)*3.6}
 // GET OUT while the car is still rolling (up to stopMax): it brakes itself to a stop and you get out then. It used to
 // say "Stop the car first" and do nothing, at 11 km/h too (Jo Yee's video, 24 Nov 2026)
 function footStopTick(dt){
   FOOT.stop=Math.max(0,FOOT.stop-dt);
   if(state!=="DRIVE"||FOOT.on||BOAT.on){FOOT.stop=0;return}
-  if(kphNow()<=FOOT_V.exitMax){FOOT.stop=0;footExit()}
+  if(Math.hypot(P.vx||0,P.vz||0)*3.6<=FOOT_V.exitMax){FOOT.stop=0;footExit()}
 }
 function footExit(){
   if(state!=="DRIVE"||FOOT.on||BOAT.on)return false;
@@ -926,7 +931,7 @@ function copUpdate(dt){
   const indoors=FOOT.on&&!BOAT.on&&typeof houseIn==="function"&&houseIn(FOOT.x,FOOT.z);
   if(still&&!indoors&&near<COP_V.caught)W.caughtT+=dt;else W.caughtT=Math.max(0,W.caughtT-dt);
   if(W.caughtT>=COP_V.caughtT){copCaught();return}
-  if(copOfficer(dt,ch,still))return;
+  if(copOfficer(dt,ch,still,indoors))return;
   copCarFire(dt,ch);
   // one that has fallen far behind is brought back nearer, out of sight
   for(const t of ch)if(Math.hypot(t.wx-me.x,t.wz-me.z)>700&&!t.c.G.visible)copPlace(t,200,360);
@@ -937,12 +942,12 @@ function copUpdate(dt){
 // you're caught when they reach you, on foot, or reach your door while you sit still. Get back on the move, get
 // more than 48 m away, keep away for 25 s, or leave them going round walls for 15 s without getting nearer, and they go back to the car, which then carries on.
 // One officer at a time
-function copOfficer(dt,ch,still){
+function copOfficer(dt,ch,still,indoors=false){
   if(OFFICER.m&&OFFICER.m.face)faceBlink(OFFICER.m.face,dt);
   const O=OFFICER,me=copMe(),car=O.car;
   if(!O.on){
     if(BOAT.on||!(FOOT.on||still)||!WANTED.seen)return false;
-    const t=ch.find(t=>t.v<.4&&t.e&&copClock-(t.offAt??-99)>12&&Math.hypot(t.wx-me.x,t.wz-me.z)>COP_V.caught&&Math.hypot(t.wx-me.x,t.wz-me.z)<OFF_V.reach);
+    const t=ch.find(t=>{const d=Math.hypot(t.wx-me.x,t.wz-me.z);return t.v<.4&&t.e&&copClock-(t.offAt??-99)>12&&(indoors||d>COP_V.caught)&&d<OFF_V.reach});
     if(!t)return false;
     // out of the door on the side nearer you
     const rx=Math.cos(t.yaw),rz=-Math.sin(t.yaw),sd=((me.x-t.wx)*rx+(me.z-t.wz)*rz)>=0?1:-1,c=footClear(t.wx+rx*sd*1.6,t.wz+rz*sd*1.6);
@@ -1014,7 +1019,7 @@ function copOfficer(dt,ch,still){
   return false;
 }
 // the officer back in their car (or gone, if the car has been taken off the road), and the car free to drive again
-function copOfficerIn(){const O=OFFICER;if(O.car)O.car.stopT=0;O.on=false;O.car=null;O.back=false;O.m.G.visible=false;O.down=0;O.out=false;if(O.pool)O.pool.visible=false}
+function copOfficerIn(){const O=OFFICER;if(O.car&&(O.car.damage||0)<100)O.car.stopT=0;O.on=false;O.car=null;O.back=false;O.m.G.visible=false;O.down=0;O.out=false;if(O.pool)O.pool.visible=false}
 // At four stars or more the two nearest chasing police cars within 30 m, with a clear line to you, fire every 1.5 s:
 // in your car a hit damages the car (6), on foot it hurts you (8). Never at sea, never from a wrecked car
 function copCarFire(dt,ch){
@@ -1096,9 +1101,9 @@ function initGun(){
 function pedKnock(p){p.st="down";p.t=6;p.v=0;p.out=save.violence>0;p.downT=0}
 const gunWant=()=>!locked&&(keys.g||pad.F||GP.fire);
 // whether a shot from (x0,z0) gets to (x1,z1) without a wall in the way (cars count as cover too)
-function gunClear(x0,z0,x1,z1,stop){
+function gunClear(x0,z0,x1,z1,stop,y){
   const d=Math.hypot(x1-x0,z1-z0),n=Math.max(1,Math.floor((d-stop)/.8));
-  for(let k=1;k<=n;k++){const t=k*.8/d,x=x0+(x1-x0)*t,z=z0+(z1-z0)*t,c=footClear(x,z);if(Math.hypot(c[0]-x,c[1]-z)>.05)return false}
+  for(let k=1;k<=n;k++){const t=k*.8/d,x=x0+(x1-x0)*t,z=z0+(z1-z0)*t,c=footClear(x,z,y);if(Math.hypot(c[0]-x,c[1]-z)>.05)return false}
   return true;
 }
 // the nearest target within 40 m and about 35 degrees of where you face, in a clear line. From the car, the shot
@@ -1117,7 +1122,7 @@ function gunPick(){
   for(const q of list){const dx=q.x-F.x,dz=q.z-F.z,d=Math.hypot(dx,dz);if(d<.8||d>GUN.range)continue;
     if(house&&(houseIn(F.x,F.z)||houseIn(q.x,q.z))){const y=at(q);if(Number.isFinite(y)&&Math.abs(y-(F.y-1.3))>2.5)continue}
     const a=Math.acos(clamp((dx*fx+dz*fz)/d,-1,1));if(a>GUN.cone)continue;
-    const sc=d+a*25;if(sc<bs&&gunClear(F.x,F.z,q.x,q.z,q.stop)){bs=sc;best=q}}
+    const sc=d+a*25;if(sc<bs&&gunClear(F.x,F.z,q.x,q.z,q.stop,F.y-(typeof FOOT!=="undefined"&&FOOT.on?1.3:1.1))){bs=sc;best=q}}
   return best;
 }
 function gunSpark(x,y,z){const s=GUN.sparks.find(s=>s.t<=0)||GUN.sparks[0];s.t=.12;s.m.position.set(x,y,z);s.m.visible=true}
@@ -1133,7 +1138,8 @@ function gunFire(){
   const F=gunFrom(),q=GUN.lock;
   if(!FOOT.on)gunMuzzle(F.x,F.y,F.z);   // from the car: the flash at the bonnet
   if(!q){const x=F.x+Math.sin(F.h)*25,z=F.z+Math.cos(F.h)*25;gunSpark(x,footGround(x,z)+.2,z);crime("fire",F.x,F.z);return true}
-  gunSpark(q.x,q.y+(q.k==="car"||q.k==="cop"?0:.1),q.z);
+  const by=q.k==="car"||q.k==="cop"?surfH(q.x,q.z):q.o.y;
+  gunSpark(q.x,by+q.y+(q.k==="car"||q.k==="cop"?0:.1),q.z);
   // a hit counts where the police can see it happen, or see you fire (Codex's review of #31: a patrol beside you
   // could watch you shoot someone 40 m away and do nothing). One crime either way, never two
   const seen=(k,x,z)=>{if(!copSees(x,z)&&copSees(F.x,F.z))crime(k,F.x,F.z);else crime(k,x,z)};
@@ -1160,7 +1166,7 @@ function gunFoot(dt){
   const talking=!!TALK.p||SIT.on||WORK.panel;if(TALK.fireHold&&!talking&&!gunWant())TALK.fireHold=false;
   GUN.lock=on&&!talking?gunPick():null;
   if(on&&!talking&&!TALK.fireHold&&gunWant()&&GUN.cool<=0)gunFire();
-  const q=GUN.lock;GUN.ring.visible=!!q;if(q){GUN.ring.position.set(q.x,(q.k==="car"||q.k==="cop"?footGround(q.x,q.z)+2.1:footGround(q.x,q.z)+2.05),q.z);GUN.ring.rotation.z+=dt*2}
+  const q=GUN.lock;GUN.ring.visible=!!q;if(q){const by=q.k==="car"||q.k==="cop"?surfH(q.x,q.z):q.o.y;GUN.ring.position.set(q.x,by+(q.k==="car"||q.k==="cop"?2.1:2.05),q.z);GUN.ring.rotation.z+=dt*2}
   if(on&&(q||GUN.aimT>0)){const m=FOOT.m;m.arms[0].rotation.x=-1.45;m.elbows[0].rotation.x=-.05;
     // turn a little towards the target while aiming, so the arm points at it
     if(q)FOOT.h+=wrapA(Math.atan2(q.x-FOOT.x,q.z-FOOT.z)-FOOT.h)*Math.min(1,dt*6);m.G.rotation.y=FOOT.h}
@@ -1402,7 +1408,7 @@ function pedUpdate(dt){
   if(!PEDS.length)return;
   const me=BOAT.on?BOAT:FOOT.on?FOOT:P,on=Math.hypot(me.x-660,me.z-36)<PED_V.near;
   if(on!==pedOn){pedOn=on;if(!on){for(const p of PEDS)if(p!==RIDE.p){p.m.G.visible=false;if(p.pool)p.pool.visible=false;if(p.st==="down"&&p.out)pedRespawn(p,me)}if(typeof pedRotate==="function")pedRotate()}}
-  if(!on)return;
+  if(!on){if(typeof talkTick==="function")talkTick(dt);if(typeof emoteTick==="function")for(const p of PEDS)if(p.m.G.visible)emoteTick(p,dt);return}
   const driving=!FOOT.on&&!BOAT.on,psp=Math.hypot(P.vx,P.vz);
   for(const p of PEDS){
     if(p===RIDE.p)continue;   // a friend with you, following or riding (js/life.js: rideTick)
@@ -1567,7 +1573,8 @@ function boatBlock(x,z,h){
   const me=boatFoot(x,z,h),now=boatFoot(BOAT.x,BOAT.z,BOAT.h),deeper=f=>{const p=footPen(me,f);return p>1e-6&&p>footPen(now,f)+1e-6};
   if(deeper(PIER_FOOT))return "pier";
   const fx=Math.sin(h),fz=Math.cos(h),r=BOAT_V.r;
-  for(const k of[-BOAT_V.half+r,0,BOAT_V.half-r])if(meshH(x+fx*k,z+fz*k)>BOAT_V.depth)return "shallow";
+  // down the middle and along both gunwales (the middle alone let a side run over a shallow edge; Codex's audit)
+  for(const k of[-BOAT_V.half+r,0,BOAT_V.half-r])for(const s of[0,-.95,.95])if(meshH(x+fx*k+fz*s,z+fz*k-fx*s)>BOAT_V.depth)return "shallow";
   for(const b of BOATS){const d=Math.hypot(b.x-x,b.z-z);if(d<9&&d<Math.hypot(b.x-BOAT.x,b.z-BOAT.z)-1e-6)return "boat";
     if(d<30&&deeper(harbourFoot(b)))return "boat"}
   return "";

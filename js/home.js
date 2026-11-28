@@ -128,5 +128,7 @@ function homeSell(index){
 // Finishes are free, but count as progress even in an unfurnished room.
 function homeFinish(wall,floor){
   if(!homeEditable()||!HOME_WALLS.includes(wall)||!HOME_FLOORS.includes(floor))return false;
+  // (the finishes there already: nothing to save; Codex's audit)
+  if(save.home.wall===wall&&save.home.floor===floor)return true;
   save.home.wall=wall;save.home.floor=floor;homeChanged();return true;
 }

@@ -438,7 +438,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
    so while one shows, the test drive time steps aside; it's back as soon as you move on */
 @media (max-width:560px) and (max-height:740px){#hud:has(>#prompt:not(.hide)) #tdPill{visibility:hidden}}
 .sw{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;max-width:280px}
-.cust-on #gbar,.cust-on #gpick,.cust-on #ghint{display:none}
+.cust-on #gbar,.cust-on #gpick,.cust-on #ghint,.cust-on #garageOptions{display:none}
 #cust{position:fixed;right:16px;top:64px;bottom:16px;width:min(380px,calc(100% - 32px));z-index:40;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
   display:flex;flex-direction:column;padding:16px 18px;backdrop-filter:blur(10px)}
 #cust h3{margin:0 0 2px;font-size:10px;letter-spacing:.5em;color:var(--mute)}#cust h2{margin:0;font-family:var(--f-num);font-size:24px;font-weight:800}
@@ -501,9 +501,10 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 }
 /* on a portrait phone the car arrows stay clear of the garage's column of pills (HANG OUT, the lowest, ends at 294 px, or
    324 with NOT SAVED above it) */
-/* (and above the bar at the foot, however tall it grows: a pill or a wrapped button made it taller and the car name
-   came up under the arrows; Codex's audit. --gbar-top is the car name's top, kept by js/screens.js) */
-@media (max-width:560px) and (min-height:521px){#gpick{top:min(max(45%,calc(356px + var(--st))),calc(var(--gbar-top,100vh) - 32px))}}
+/* (midway between the lowest of the pills on the right and the car's name, however those move: fixed, a taller bar
+   brought the name up under them, and kept above the name they reached HANG OUT; Codex's audits. --gpick-mid is set by
+   js/screens.js gpickPlace) */
+@media (max-width:560px) and (min-height:521px){#gpick{top:var(--gpick-mid,max(45%,calc(356px + var(--st))))}}
 /* Short landscape screens put the equipment row above the car-selection arrows. */
 @media (min-width:561px) and (max-height:520px){
   /* REST (your needs, js/life.js) goes on a second line when the row would reach the garage's name */

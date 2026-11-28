@@ -67,6 +67,9 @@ const server = http.createServer((req, res) => {
   }
   const play = /^\/__play\/([A-HJ-NP-Z2-9]{4})$/.exec(rel);
   if (play) return relay(req, res, play[1]);
+  // the game's address on GitHub Pages works here too, so the 404 page's BACK TO THE GAME (/Port-Meridien/) leads back
+  // to the game on the local server as it does on the site (it opened another 404; Codex's audit)
+  if (rel === "/Port-Meridien" || rel.startsWith("/Port-Meridien/")) rel = rel.slice("/Port-Meridien".length) || "/";
   if (rel.endsWith("/")) rel += "index.html";
   const file = path.join(ROOT, rel);
   // never serve anything outside the repository folder, or its node_modules and git data

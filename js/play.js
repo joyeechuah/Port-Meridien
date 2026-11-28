@@ -159,7 +159,16 @@ function rivalModel(cd,key){
   while(AIC.size>6){const[id,old]=AIC.entries().next().value;if(AIM.includes(old))break;AIC.delete(id);disposeHeroCar(old)}
   return m;
 }
+// a time trial's medal, as the times are shown, to the hundredth: a run shown equal to the target earns it (graded on
+// the exact times, matching the Gold shown could earn Silver; Codex's audit)
+const hund=v=>Math.round(v*100);
+const medalOf=(t,G)=>hund(t)<=hund(G.gold)?0:hund(t)<=hund(G.silver)?1:hund(t)<=hund(G.bronze)?2:3;
+// the record's own ghost only: a cloud restore brought a 70 s best and the device kept its 90 s run, which it raced
+// (Codex's audit). The recording stays on the device, unused, until a record of its own time
+function ghostFor(E){const g=save.ghost&&save.ghost[E.id],r=save.rec[E.id];return g&&(!(r>0)||Math.abs(g.t-r)<.005)?g:null}
 function startEvent(E,cup){
+  // the grid holds from the first frame of the countdown (one physics step ran with the controls free; Codex's audit)
+  locked=true;
   // out of the boat or off your feet only now, as you agree to race: the intro used to end them as it opened, so
   // cancelling it from the room upstairs left you in the car outside (Codex's audit)
   if(BOAT.on&&typeof boatEnd==="function")boatEnd();
@@ -172,7 +181,7 @@ function startEvent(E,cup){
   // the car starts as it is: an event used to repair it for free, so entering one was the way round paying for a repair
   // (damage costs power, js/cars.js damagePower, and the intro says so)
   const R=E.route,me=curCar(),idx=CARS.indexOf(me);
-  ev={E,R,lanes:null,t:-3,phase:"count",cp:0,hint:0,s:14,sNow:14,d:99,ai:[],done:false,wrongT:0,last:4,px:null,pz:null,gate:gateOf(R,E.cps[0]),reT:0,missT:0,diff:E.type==="race"?save.diff:1,obs:[],cup:cup||null,tg:cup&&E.type==="tt"?cupTimes(E,cup.cls):E,rec:E.type==="tt"?[]:null,ghost:E.type==="tt"&&save.ghost[E.id]?save.ghost[E.id]:null};
+  ev={E,R,lanes:null,t:-3,phase:"count",cp:0,hint:0,s:14,sNow:14,d:99,ai:[],done:false,wrongT:0,last:4,px:null,pz:null,gate:gateOf(R,E.cps[0]),reT:0,missT:0,diff:E.type==="race"?save.diff:1,obs:[],cup:cup||null,tg:cup&&E.type==="tt"?cupTimes(E,cup.cls):E,rec:E.type==="tt"?[]:null,ghost:E.type==="tt"&&ghostFor(E)};
   const p=edgePos(R,14);
   // the grid: you on the outer side of the road, rivals beside and behind (mirrored when driving on the left)
   const S=SIDE(),L1=1.9*S,L2=-1.7*S;
@@ -198,7 +207,8 @@ function updateEvent(dt){
   const R=ev.R,E=ev.E;
   ev.t+=dt;
   // over the line: the car brakes to a stop (stepPlayer), then the result shows; at most 4 s
-  if(ev.phase==="finish"){ev.fin.T+=dt;locked=true;if(kphNow()<5||ev.fin.T>4){showResult();return}}
+  // (stopped means stopped: sliding sideways read as 0 km/h; Codex's audit)
+  if(ev.phase==="finish"){ev.fin.T+=dt;locked=true;if(Math.hypot(P.vx,P.vz)*3.6<5||ev.fin.T>4){showResult();return}}
   if(ev.phase==="count"){
     locked=true;P.vx*=.9;P.vz*=.9;
     const c=Math.ceil(-ev.t);$("count").classList.remove("hide");$("count").textContent=c>0?c:"GO";
@@ -314,7 +324,7 @@ function updateEvent(dt){
   else ghostHide();
   // over the line, the panel holds the time and place you finished with
   const tt=ev.fin?ev.fin.t:ev.t;
-  $("evPos").textContent=E.type==="race"?(ev.fin?ev.fin.pos:pos)+"/"+(ev.ai.length+1):(tt<=ev.tg.gold?"GOLD":tt<=ev.tg.silver?"SILVER":tt<=ev.tg.bronze?"BRONZE":"--");
+  $("evPos").textContent=E.type==="race"?(ev.fin?ev.fin.pos:pos)+"/"+(ev.ai.length+1):["GOLD","SILVER","BRONZE","--"][medalOf(tt,ev.tg)];
   $("evTime").textContent=fmtT(Math.max(0,tt));
   $("evCp").textContent=ev.cp+"/"+cps.length;
 }
@@ -326,7 +336,7 @@ function finishEvent(tx){
     rows.push(["Position",pos+" of 4"],["Difficulty",DIFFS[ev.diff].n]);
   }else{
     // (a time equal to the target shown earns it: it got the medal below; Codex's audit)
-    const G=ev.tg;medal=t<=G.gold?0:t<=G.silver?1:t<=G.bronze?2:3;title=["GOLD","SILVER","BRONZE","NO MEDAL"][medal];rew=E.rewards[medal]||0;
+    const G=ev.tg,h=v=>Math.round(v*100);medal=h(t)<=h(G.gold)?0:h(t)<=h(G.silver)?1:h(t)<=h(G.bronze)?2:3;title=["GOLD","SILVER","BRONZE","NO MEDAL"][medal];rew=E.rewards[medal]||0;
     rows.push(["Gold time",fmtT(G.gold)]);
   }
   if(E.type==="race"){rew=Math.round(rew*skillFactor("driving"));wantEvent("race");skillAward("driving",30)}
@@ -426,7 +436,8 @@ function setGPS(x,z,label,forJob){gps.t={x,z};gps.label=label;gps.job=!!forJob;g
 function clearGPS(){gps.t=null;gps.route=null;gps.job=false;$("gpsTxt").textContent=""}
 // where the route starts: where you are, on foot too (a waypoint set while walking was routed from the parked car,
 // half a kilometre away; Codex's audit). A contract's stays with the car, which does the driving
-const gpsMe=()=>typeof FOOT!=="undefined"&&FOOT.on&&!BOAT.on&&!gps.job?FOOT:P;
+const gpsMe=()=>gps.job?P:typeof BOAT!=="undefined"&&BOAT.on?BOAT:typeof FOOT!=="undefined"&&FOOT.on?FOOT:P;
+// (aboard, from the boat: a waypoint set at sea was routed from where the car was parked; Codex's audit)
 function recalcGPS(){if(!gps.t)return;const me=gpsMe();gps.route=routeBetween(me.x,me.z,gps.t.x,gps.t.z)}
 function updateGPS(dt){
   if(!gps.t||!gps.route){$("gpsTxt").textContent="";return}

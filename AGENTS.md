@@ -1,6 +1,6 @@
 # Notes for coding agents
 
-- The game's code is in `js/*.js`: nine classic scripts that `index.html` loads in order. They share one global scope, so a name declared at the top of one file can be used in the others. [docs/CODE_LAYOUT.md](docs/CODE_LAYOUT.md) says what's in each file.
+- The game's code is in `js/*.js`: the classic scripts that `index.html` loads in order (fourteen at present). They share one global scope, so a name declared at the top of one file can be used in the others. [docs/CODE_LAYOUT.md](docs/CODE_LAYOUT.md) says what's in each file.
 - Change game logic in `js/`. `index.html` holds the page's HTML and CSS, its security policy and the script tags.
 - Script tags in `index.html` keep a fixed `?v=dev`: don't stamp them. The Pages workflow publishes a copy with each tag stamped from its file's contents, so players' browsers don't keep a stale copy (`tests/support/stage-site.js`, `docs/SCRIPT_RELEASES.md`). `npm run lint` fails on a stamped tag, and `npm run stamp` puts it back to `?v=dev`.
 - Load order: code that runs while a file loads (not inside a function called later) may only use names from that file or earlier ones. `npm run lint` checks this.

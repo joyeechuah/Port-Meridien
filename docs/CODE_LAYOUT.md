@@ -1,6 +1,6 @@
 # How the game's code is laid out
 
-Port Meridien is still a static page with no build step: `index.html` holds the markup and styles, and the game's code is in nine scripts in `js/`, which the page loads in order. Until 21 November 2026 all of it was one script inside `index.html`.
+Port Meridien is still a static page with no build step: `index.html` holds the markup and styles, and the game's code is in the scripts in `js/` (fourteen, listed below and in `index.html`), which the page loads in order. Until 21 November 2026 all of it was one script inside `index.html`.
 
 ## The scripts, in the order they load
 
@@ -49,7 +49,7 @@ In the repository every tag keeps a fixed `?v=dev`, so pull requests never confl
 
 ## Tests
 
-`npm run lint` also type-checks the nine scripts with TypeScript, as plain JavaScript (`checkJs`), in load order and sharing one global scope as in the browser (`tests/support/typecheck.js`). Three.js and Firebase are declared loosely in `types/globals.d.ts`.
+`npm run lint` also type-checks the scripts with TypeScript, as plain JavaScript (`checkJs`), in load order and sharing one global scope as in the browser (`tests/support/typecheck.js`). Three.js and Firebase are declared loosely in `types/globals.d.ts`.
 
 - **Hooks:** the tests serve the real `index.html` and add their hooks to the scripts in memory (`tests/support/instrument.js`). Each hook's text must appear exactly once across all the scripts.
 - **Source text:** tests that read the game's source text use `gameSource()` from `tests/support/source.js` (the page followed by each script), not `index.html` alone.

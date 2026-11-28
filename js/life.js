@@ -336,7 +336,7 @@ function talkPad(hit){
 function lifeHurt(p,by){
   const who=personOf(p);if(!who)return;const r=rel(who.id);
   relSet(who.id,r.f-by,Math.max(1,r.n));if(TALK.p===p)talkClose();if(RIDE.p===p)rideEnd("hurt");if(GUEST.who===who)guestCancel();
-  p.mad=true;persist();
+  p.mad=true;if(!r.n&&typeof wantsTidy==="function")wantsTidy();persist();
 }
 
 /* ================================================================ REACTIONS: a bubble over a person's head */
@@ -373,14 +373,16 @@ function emote(p,kind,secs=2.4){
 }
 
 /* ================================================================ EACH FRAME (from pedUpdate, near Old Quay) */
+function talkTick(dt){
+  if(!TALK.p)return;
+  const p=TALK.p;TALK.busy=Math.max(0,TALK.busy-dt);
+  // the conversation ends when you leave it: back in a car, walked off, or they've been knocked down or startled away
+  if(!FOOT.on||p.st!=="talk"||Math.hypot(p.x-FOOT.x,p.z-FOOT.z)>FOOT_V.reach+1.2)talkClose();
+  else if(TALK.end>0&&(TALK.end-=dt)<=0)talkClose();
+}
 function lifeUpdate(dt){
   LIFE.t+=dt;const me=BOAT.on?BOAT:FOOT.on?FOOT:P;
-  if(TALK.p){
-    const p=TALK.p;TALK.busy=Math.max(0,TALK.busy-dt);
-    // the conversation ends when you leave it: back in a car, walked off, or they've been knocked down or startled away
-    if(!FOOT.on||p.st!=="talk"||Math.hypot(p.x-FOOT.x,p.z-FOOT.z)>FOOT_V.reach+1.2)talkClose();
-    else if(TALK.end>0&&(TALK.end-=dt)<=0)talkClose();
-  }
+  talkTick(dt);
   for(const p of PEDS){
     if(p===RIDE.p)continue;   // with you (rideTick)
     const who=personOf(p);
@@ -429,13 +431,14 @@ const needsOfSave=sv=>needsClean(sv&&sv.needs);
 function homeWaitClean(raw){
   const seconds=k=>Number.isFinite(raw?.[k])?clamp(Math.ceil(raw[k]),0,180):0;
   const party=seconds("party"),at=Number.isSafeInteger(raw?.partyAt)&&raw.partyAt>0?raw.partyAt:0;
-  const rest=Math.min(30,seconds("rest"));
-  return {...(rest?{rest}:{}),snack:seconds("snack"),play:seconds("play"),...(party?{party}:{}),...(at?{partyAt:at}:{})};
+  const rest=Math.min(30,seconds("rest")),meal=Math.min(30,seconds("meal"));
+  // (and the Market Kitchen's meal: a reload let you eat again at once; Codex's audit)
+  return {...(rest?{rest}:{}),...(meal?{meal}:{}),snack:seconds("snack"),play:seconds("play"),...(party?{party}:{}),...(at?{partyAt:at}:{})};
 }
 const homeUntil={snack:0,play:0,party:0,partyAt:0};
 function homeWaitLoad(raw){
   const wait=homeWaitClean(raw);save.homeWait=wait;
-  NS.restAt=NS.t+(wait.rest||0);homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;homeUntil.party=NS.t+(wait.party||0);homeUntil.partyAt=wait.partyAt||0;
+  NS.restAt=NS.t+(wait.rest||0);NS.mealAt=NS.t+(wait.meal||0);homeUntil.snack=NS.t+wait.snack;homeUntil.play=NS.t+wait.play;homeUntil.party=NS.t+(wait.party||0);homeUntil.partyAt=wait.partyAt||0;
 }
 // another device's party wait: the same party's, the shorter of the two (both count down; the longer would come back
 // up from the other device, again and again); a newer party's, theirs; an older one's, this device's own
@@ -445,12 +448,12 @@ function partyWaitMerge(raw){
   homeUntil.party=NS.t+wait;homeUntil.partyAt=Math.max(at,homeUntil.partyAt);
 }
 homeWaitLoad(save.homeWait);
-const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=NEED_ORDER.map(k=>n[k]).join(",")+(wait.rest?"/rest"+wait.rest:"");
+const needsKey=sv=>{const n=needsOfSave(sv),wait=homeWaitClean(sv.homeWait),key=NEED_ORDER.map(k=>n[k]).join(",")+(wait.rest?"/rest"+wait.rest:"")+(wait.meal?"/meal"+wait.meal:"");
   if(wait.party)return key+"/"+wait.snack+"/"+wait.play+"/"+wait.party;
   return wait.snack||wait.play?key+"/"+wait.snack+"/"+wait.play:key};
 // the save's needs become the ones in play: on loading, and when another device's are newer (js/screens.js)
 function needsLoad(n){n=needsClean(n);for(const k of NEED_ORDER){NEEDS[k]=n[k];NS.armed[k]=n[k]>25;NS.due[k]=false}NS.low=null;save.needs=n}
-function needsCommit(){save.homeWait=homeWaitClean({rest:NS.restAt-NS.t,snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t,partyAt:homeUntil.partyAt});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
+function needsCommit(){save.homeWait=homeWaitClean({rest:NS.restAt-NS.t,meal:NS.mealAt-NS.t,snack:homeUntil.snack-NS.t,play:homeUntil.play-NS.t,party:homeUntil.party-NS.t,partyAt:homeUntil.partyAt});save.needs={v:1,energy:needOf("energy"),hunger:needOf("hunger"),fun:needOf("fun"),social:needOf("social")}}
 // adds to a need (never past 100) and returns how much it really went up
 function needsAdd(k,v){const was=NEEDS[k];NEEDS[k]=clamp(was+v,0,100);if(k==="hunger"&&(state==="GARAGE"||typeof homeOnFoot==="function"&&homeOnFoot())&&NEEDS[k]>was)skillAward("cooking",hasTrait("handy")?10:5);return NEEDS[k]-was}
 // your mood: Tense while the police are after you; otherwise the lowest need at 25 or under (the first in the list on
@@ -733,7 +736,7 @@ function rideBoard(){
   rideHud();
 }
 // the ride is over: they get out (on the pavement in Old Quay, or off on their own business anywhere else)
-function rideEnd(why){
+function rideEnd(why,noSave){
   const p=RIDE.p,who=RIDE.who;if(!p)return;
   const G=p.m.G,riding=RIDE.st==="ride";
   if(G.parent!==scene){if(G.parent)G.parent.remove(G);scene.add(G)}G.userData.rider=false;G.rotation.set(0,p.h,0);
@@ -742,7 +745,9 @@ function rideEnd(why){
   // back to a walk round the blocks, from the nearest stretch of pavement: in Old Quay they step straight onto it;
   // anywhere else they stay where they got out, and are back on their pavement when you next come to town
   let best=null,bd=1e18;for(const e of PED_EDGES){if(e.cross)continue;const ax=e.b.x-e.a.x,az=e.b.z-e.a.z,k=clamp(((p.x-e.a.x)*ax+(p.z-e.a.z)*az)/(e.len*e.len),0,1),d=(e.a.x+ax*k-p.x)**2+(e.a.z+az*k-p.z)**2;if(d<bd){bd=d;best={e,s:k*e.len}}}
-  if(best){p.e=best.e;p.from=best.e.a;p.s=best.s;p.o=0;if(bd<40*40&&why!=="hurt"){const[sx,sz]=pedSpot(p);p.x=sx;p.z=sz}}
+  // (left behind by map travel, "stay", they stay just where they were: put on their pavement, they were sent half a
+  // kilometre along it; Codex's audit)
+  if(best){p.e=best.e;p.from=best.e.a;p.s=best.s;p.o=0;if(bd<40*40&&why!=="hurt"&&why!=="stay"){const[sx,sz]=pedSpot(p);p.x=sx;p.z=sz}}
   if(why!=="hurt"){p.st="idle";p.t=1.5;p.v=0}
   p.y=footGround(p.x,p.z);G.position.set(p.x,p.y,p.z);G.visible=true;
   const dest=RIDE.dest;Object.assign(RIDE,{p:null,who:null,st:"",dest:null,car:null});
@@ -750,9 +755,9 @@ function rideEnd(why){
   rideHud();
   // the friendship the ride earned goes into the save now, however it ends (a drop-off you chose left it unsaved
   // until the next write, and a reload lost it; Codex's audit)
-  if(typeof persist==="function")persist();
+  if(!noSave&&typeof persist==="function")persist();
   const say=(t)=>toast(who.name.toUpperCase(),"“"+t+"”");
-  if(why==="drop")say(riding?"Thanks for the ride!":"Another time, then.");
+  if(why==="drop"||why==="stay")say(riding?"Thanks for the ride!":"Another time, then.");
   else if(why==="out")say(riding?"Thanks for the ride!":"Another time, then.");
   else if(why==="home"&&riding)say("See you around!");
 }
@@ -795,7 +800,7 @@ function rideTick(dt){
   // company: Social now and then, and the friendship a little, up to a point each ride
   if((RIDE.soc+=dt)>=RIDE_V.social){RIDE.soc-=RIDE_V.social;needsAdd("social",1)}
   if((RIDE.fr+=dt)>=RIDE_V.friend&&RIDE.gain<RIDE_V.friendMax){RIDE.fr-=RIDE_V.friend;RIDE.gain++;relSet(who.id,r().f+1,r().n)}
-  const L=RIDE_LINES[who.trait],kph=kphNow();
+  const L=RIDE_LINES[who.trait],kph=Math.hypot(P.vx,P.vz)*3.6;
   // the police: once a chase, a word and a dent in the friendship
   if(WANTED.lvl&&!RIDE.cops){RIDE.cops=true;relSet(who.id,r().f-8,r().n);rideSay(L.cops,"frown");persist()}
   else if(!WANTED.lvl)RIDE.cops=false;
@@ -806,8 +811,9 @@ function rideTick(dt){
   else if((RIDE.chat-=dt)<=0){RIDE.chat=RIDE_V.chat[0]+Math.random()*(RIDE_V.chat[1]-RIDE_V.chat[0]);rideSay(L.chat[Math.floor(RIDE.t/7)%L.chat.length])}
   // their stop: pull up near it (slowly) and they get out, with thanks and something for the fuel
   const D=RIDE.dest;
-  if(D&&Math.hypot(P.x-D.x,P.z-D.z)<30&&kph<15){relSet(who.id,r().f+8,r().n);needsAdd("social",6);earn(RIDE_V.tip);
-    toast(who.name.toUpperCase(),"“This is me. Thanks! Here, for the fuel.” +"+fmtCr(RIDE_V.tip)+" CR","gold");rideEnd("there");persist()}
+  // (the tip last, its write holding the friendship and the ride's end with it: it wrote three times; Codex's audit)
+  if(D&&Math.hypot(P.x-D.x,P.z-D.z)<30&&kph<15&&!P.air){relSet(who.id,r().f+8,r().n);needsAdd("social",6);
+    toast(who.name.toUpperCase(),"“This is me. Thanks! Here, for the fuel.” +"+fmtCr(RIDE_V.tip)+" CR","gold");rideEnd("there",true);earn(RIDE_V.tip)}
 }
 // the bubble over someone's head, out of Old Quay too (pedUpdate isn't running there)
 function emoteTick(p,dt){const s=p.emo;if(!s||!s.sp.visible)return;s.t+=dt;const k=s.t/s.T;if(k>=1){s.sp.visible=false;return}
@@ -818,7 +824,10 @@ function rideHud(){const on=!!RIDE.p;show("ride",on);if(!on)return;$("rideWho").
   $("rideTo").textContent=RIDE.st==="follow"?"· to your car":RIDE.dest?"· to "+RIDE.dest.name:""}
 // the drive prompt, stopped with a friend aboard (updatePrompt): let them out here
 // (not in the first seconds after they get in: it read as being told to put them straight out again)
-const ridePrompt=()=>RIDE.st==="ride"&&RIDE.t>5&&kphNow()<5?{t:"Drop off "+RIDE.who.name,a:()=>rideEnd("drop")}:null;
+// (still means still, sideways too, and on the ground out of the water: a 72 km/h slide or a fall offered it; Codex's
+// audit)
+const rideStill=()=>Math.hypot(P.vx,P.vz)*3.6<5&&!P.air&&!P.water;
+const ridePrompt=()=>RIDE.st==="ride"&&RIDE.t>5&&rideStill()?{t:"Drop off "+RIDE.who.name,a:()=>rideEnd("drop")}:null;
 
 // the lines, as buttons: a number key for each on a keyboard, and goodbye last
 {const box=$("tkActs");
@@ -864,8 +873,10 @@ function guestSpot(taken=[]){
 // at home (the garage, designing included) the guest stands there, facing the room's railing; elsewhere they're out of
 // sight, and once you've hung out they've gone home
 function guestSync(s=state){
-  if(typeof partySync==="function")partySync(s);
+  // (a visit called off first, then the party's button: it was drawn while the friend still counted as over, and stayed
+  // hidden; Codex's audit)
   if(GUEST.who&&!GUEST.done&&rel(GUEST.who.id).f<RIDE_AT)guestCancel();
+  if(typeof partySync==="function")partySync(s);
   if(GUEST.done||!GUEST.who){guestDrop();show("gGuest",false);return}
   const home=s==="GARAGE";show("gGuest",home);$("gGuest").textContent="HANG OUT · "+GUEST.who.name.toUpperCase();
   if(!home){if(GUEST.m)GUEST.m.G.visible=false;return}
@@ -934,7 +945,7 @@ const partyHome=(s=state)=>s==="GARAGE"||["DRIVE","PAUSE","MAP","PHOTO","FADE","
   typeof houseIn==="function"&&houseIn(FOOT.x,FOOT.z);
 function partyAtHome(){
   return (typeof homeEditable==="function"&&homeEditable()||typeof homeOnFoot==="function"&&homeOnFoot())&&!document.hidden&&!WANTED.lvl&&
-    !(GUEST.who&&!GUEST.done)&&!(typeof clOverlayOpen==="function"&&clOverlayOpen());
+    !(GUEST.who&&!GUEST.done)&&!(typeof clOverlayOpen==="function"&&clOverlayOpen())&&!(typeof cuOpen==="function"&&cuOpen())&&!(typeof HV!=="undefined"&&HV.on);
 }
 function partyCanHost(){return partyAtHome()&&NS.t>=homeUntil.party}
 // the friend following you about (js/life.js RIDE): with you already, so not a guest
@@ -1020,8 +1031,14 @@ function partyPanel(){
   // the garage behind is out of reach while it's open (Tab used to reach DESIGN HOME, and Space opened it underneath)
   // on foot, the walker stops where they are (keys held as it opened kept them walking)
   if(state!=="GARAGE"&&typeof clearInput==="function"){clearInput();FOOT.v=0}
-  show("party",true);$("gui").inert=true;try{$("pyInvite").focus({preventScroll:true})}catch(e){}
+  // the keyboard starts on the first friend (SEND, disabled until one is chosen, took no focus; Codex's audit)
+  show("party",true);$("gui").inert=true;try{(/** @type {HTMLElement} */ ($("pyList").querySelector("button:not([disabled])"))||$("pyClose")).focus({preventScroll:true})}catch(e){}
 }
+// Tab and Shift+Tab go round the invitations while they're open (on foot they reached the page behind; Codex's audit)
+if(typeof addEventListener==="function")addEventListener("keydown",e=>{if(e.key!=="Tab"||!partyOpen())return;
+  const bs=[...$("party").querySelectorAll("button")].filter(b=>b.offsetParent&&!(/** @type {HTMLButtonElement} */(b).disabled));if(!bs.length)return;
+  const i=bs.indexOf(/** @type {HTMLElement} */(document.activeElement));e.preventDefault();
+  bs[(i<0?0:i+(e.shiftKey?-1:1)+bs.length)%bs.length].focus()},true);
 function partyPanelClose(){show("party",false);$("gui").inert=false;try{$(state==="GARAGE"?"gParty":"prompt").focus({preventScroll:true})}catch(e){}}
 // about the house on foot (each frame, from js/main.js driveUpdate): the guests are there, and walking out of the house
 // ends the party, as leaving the garage screen does

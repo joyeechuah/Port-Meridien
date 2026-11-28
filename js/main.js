@@ -157,7 +157,7 @@ function frame(ts){
   // (on the scenery's clock: in Photo Mode it stood still for the picture, the door closing in it; Codex's audit)
   const wantOpen=state==="EXIT"||houseDoorNear()?1:0;doorOpen+=(wantOpen-doorOpen)*Math.min(1,wdt*1.6);
   if(doorMesh)doorMesh.position.y=gY+3.3+doorOpen*6.3;
-  if(state==="GARAGE"||state==="LOAD")garageCam(dt);
+  if(state==="GARAGE"||state==="LOAD"){garageCam(dt);if(state==="GARAGE")gpickPlace()}
   else if(state==="ARRIVAL"){
     syncArrivalClock();
     if(arrivalSince!==null){
@@ -192,7 +192,10 @@ const STEPS=[
   ["Stocking the dealership",buildDealer],
   ["Building the harbour",buildHarbour],
   ["Waking the town",()=>{buildPeds();initGun();initKits()}],
-  ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildPostcards();buildJobs()}],
+  ["Setting up events",()=>{buildEvents();buildGates();buildRadars();buildLandmarks();buildPostcards();buildJobs();
+    // a want the save can no longer have (a landmark with the passport complete): only now are the landmarks known
+    // (Codex's audit)
+    if(wantsTidy())persist()}],
   ["Filling the roads",()=>{initTraffic();initCops();buildMapImage()}],
   ["Parking your cars",()=>{parkAll(null);carLights()}],
   // The first time a surface is drawn, its picture is sent to the graphics card and its program is built. Left

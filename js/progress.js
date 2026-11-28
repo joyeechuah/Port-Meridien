@@ -310,6 +310,8 @@ function jobEnd(how,why){
     earn(pay);
   }else{save.jobs[how==="failed"?"failed":"abandoned"]++;persist()}
   clearGPS();jobMarker(false);show("jobhud",false);
+  // a friend's lift still under way gets its directions back (the contract had taken the GPS; Codex's audit)
+  if(typeof RIDE!=="undefined"&&RIDE.p&&RIDE.st==="ride"&&RIDE.dest)setGPS(RIDE.dest.x,RIDE.dest.z,RIDE.dest.name);
   // the contract's pay first, then the promotion it earned: the next one pays the new rate
   if(how==="completed"){toast("CONTRACT COMPLETE",J.title+" · +"+fmtCr(pay)+" CR","gold");
     if(promoted)toast("CONTRACT PROMOTION",CONTRACT_RANKS[promoted].name+" · +"+CONTRACT_RANKS[promoted].bonus+"% on contracts from now","gold")}
