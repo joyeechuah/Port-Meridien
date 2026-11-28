@@ -264,7 +264,7 @@ function hvPanel(){
 function hvPanelDraw(){
   const g=$("hdGroups");g.textContent="";
   for(const[k,label]of HV_GROUPS){const t=document.createElement("button");t.className="hdt"+(k===HV.group?" on":"");t.id="hdg_"+k;t.dataset.k="g:"+k;t.textContent=label;
-    t.setAttribute("aria-pressed",String(k===HV.group));t.onclick=()=>{HV.group=k;HV.sel=null;HV.at=HV.pin=null;hvPanel();hvMarks();hvMsg("")};g.appendChild(t)}
+    t.setAttribute("aria-pressed",String(k===HV.group));t.onclick=()=>{HV.group=k;HV.sel=null;HV.at=HV.pin=HV.tap=null;hvPanel();hvMarks();hvMsg("")};g.appendChild(t)}
   const l=$("hdList");l.textContent="";
   if(HV.group==="room"){
     const FIN=/** @type {[string,string[],Object<string,number>][]} */([["Walls",HOME_WALLS,HV_WALL],["Floor",HOME_FLOORS,HV_FLOOR]]);

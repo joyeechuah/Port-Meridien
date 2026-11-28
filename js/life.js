@@ -887,6 +887,8 @@ function guestSync(s=state){
 // near, the camera within 150 m of the house)
 function guestAbout(near){
   if(state==="GARAGE"||!GUEST.who||GUEST.done)return;
+  // (no longer friends, no longer coming over; Gemini's audit)
+  if(rel(GUEST.who.id).f<RIDE_AT){guestCancel();return}
   if(!near){if(GUEST.m)GUEST.m.G.visible=false;return}
   if(!GUEST.m){const id=GUEST.who.id;GUEST.h=.94+rnd(id,38)*.12;GUEST.m=pedModel(id,GUEST.h,pedLook(id));GUEST.seat=guestSeat();guestPlace(GUEST.m,GUEST.h,GUEST.seat,[]);GUEST.shown=GUEST.m.G.visible}
   GUEST.m.G.visible=!!GUEST.shown;
@@ -919,6 +921,7 @@ function guestDrop(){if(!GUEST.m)return;scene.remove(GUEST.m.G);GUEST.m.face.m.d
 // up to +8 in a comfortable home; then they go
 function guestHangOut(){
   const who=GUEST.who;if(!who||GUEST.done||!(state==="GARAGE"||typeof homeOnFoot==="function"&&homeOnFoot())||tabIdle)return false;
+  if(rel(who.id).f<RIDE_AT){guestCancel();return false}
   const r=rel(who.id),comfy=typeof homeComfort==="function"?homeComfort(save.home):0,gain=4+Math.floor(comfy/25);
   const lift=typeof homeComfort==="function"?homeLift():1;
   relSet(who.id,r.f+gain,r.n+1);needsAdd("social",30*lift);needsAdd("fun",10*lift);skillAward("charisma",4);if(typeof feel==="function")feel("happy",who.name+" came over");

@@ -498,9 +498,9 @@ function modsInPlace(c,to){
   if(M.roof!==to.roof){const r=MOD_ROOF[to.roof];c.glass.material.color.copy(r===null?c.bodyM.color:new THREE.Color(r))}
   if(M.rimC!==to.rimC)R.rimMeshes.forEach(m=>m.material=R.Mt.rims[to.rimC]||R.Mt.rim);
   if(M.cal!==to.cal)R.calM.color.setHex(to.cal>0?MOD_CAL[to.cal]:R.S.cal);
-  if(M.exhC!==to.exhC){const old=R.tips[0]&&R.tips[0].material,m=tipMat(to.exhC,R.env,R.Mt);R.tips.forEach(t=>t.material=m);if(old&&old!==R.Mt.chrome){CAR_ENV.mats.delete(old);old.dispose()}}
+  if(M.exhC!==to.exhC){const old=R.tips[0]&&R.tips[0].material,m=tipMat(to.exhC,carEnvTex(),R.Mt);R.tips.forEach(t=>t.material=m);if(old&&old!==R.Mt.chrome){CAR_ENV.mats.delete(old);old.dispose()}}
   if(M.livC!==to.livC)R.livMats.forEach(m=>m.color.setHex(MOD_LIVC[to.livC]));
-  if(M.tint!==to.tint)R.tintMesh.material=glassTint(R.parts,to.tint,R.env,R.hi);
+  if(M.tint!==to.tint)R.tintMesh.material=glassTint(R.parts,to.tint,carEnvTex(),R.hi);   // (the reflection in use now: the one the car was built with is let go when the sky is redrawn; Gemini's audit)
   if(M.plate!==to.plate){const m=plateMat(to.plate);R.plates.forEach(p=>{if(p.material!==m)p.material.dispose();p.material=m})}
   Object.assign(M,to);return true;
 }
@@ -1370,7 +1370,7 @@ function updateTraffic(dt){
         if(wa>0&&wa<Math.max(14,7+t.v*t.v/14)&&Math.abs(wx*-tz+wz*tx)<1.9){target=Math.min(target,wa<7?0:Math.sqrt(14*(wa-7)));if(wa<9)close=true}};
       if(FOOT.on)stopFor(FOOT.x,FOOT.z);
       if(pedOn)for(const p of PEDS)if(p.st==="cross"||p.st==="down")stopFor(p.x,p.z)}
-    const ln=RT[t.e.type].lanes,offT=t.passT>0?(ln.length>1&&t.lane===0?ln[1]:-ln[0])*SIDE():t.off;
+    const ln=RT[t.e.type].lanes,offT=t.passT>0?(ln.length>1?ln[1-t.lane]:-ln[0])*SIDE():t.off;   // (round by the other lane going their way: from the outer lane of a highway they crossed into the oncoming one; Gemini's audit)
     t.offCur+=clamp(offT-t.offCur,-2.2*dt,2.2*dt);
     t.v+=clamp(target-t.v,-(close?20:9)*dt,3*dt);
     t.s+=t.v*dt*t.dir;

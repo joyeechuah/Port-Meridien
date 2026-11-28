@@ -421,8 +421,10 @@ function cupBlocked(cls){
 function cupStart(cls){
   const C=cupOf(cls);if(!C||cupBlocked(cls))return false;
   // (a finished cup's last result stays until its first round starts: js/play.js startEvent)
-  const c=champOf(cls),fresh=c.r>=3;
-  persist();openIntro(evById(C.ev[fresh?0:c.r]),{cls,round:fresh?0:c.r,fresh});return true;
+  // (read, not made: opening the intro and backing out wrote an empty cup into the save, so a new game no longer
+  // counted as new to the cloud save; Gemini's audit)
+  const c=save.champ[cls],r=c?c.r:0,fresh=r>=3;
+  openIntro(evById(C.ev[fresh?0:r]),{cls,round:fresh?0:r,fresh});return true;
 }
 // after a cup round: its points, and at the third round whether the cup is won (the prize is paid the first time)
 // The prize scales with the easiest race round, as each round's own reward does (a cup won on EASY used to pay

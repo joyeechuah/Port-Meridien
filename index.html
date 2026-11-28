@@ -22,8 +22,8 @@
 /* Full-bleed 3D canvas. HUD in the four screen corners: money/level top-left,
    menu chips top-right, GPS minimap bottom-left, dial speedometer bottom-right. */
 :root{
-  --bg:#07090c; --ink:#f4f5f6; --mute:#9aa1a8; --dim:#5f666e;
-  --panel:rgba(12,14,17,.72); --panel2:rgba(12,14,17,.94); --line:rgba(255,255,255,.14);
+  --bg:#07090c; --ink:#f4f5f6; --mute:#b2b9c2; --dim:#7b838d;
+  --panel:rgba(12,14,17,.80); --panel2:rgba(12,14,17,.94); --line:rgba(255,255,255,.14);
   --acc:#f2b33d; --acc-hi:#ffd27a; --bad:#e2483d;
   --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-num:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
@@ -206,12 +206,14 @@ body.touch #lhint{display:none}
 #streak .bar i{display:block;height:100%;background:var(--acc)}
 #evhud{position:absolute;top:calc(14px + var(--st));left:50%;transform:translateX(-50%);display:flex;gap:4px;filter:drop-shadow(0 3px 10px rgba(0,0,0,.5))}
 #evhud>div{background:var(--panel2);padding:6px 12px;text-align:center;min-width:76px}
-#evhud span{display:block;font-size:9px;letter-spacing:.25em;color:var(--mute);font-weight:700}
+#evhud span{display:block;font-size:10px;letter-spacing:.18em;color:var(--mute);font-weight:700}
 #evhud b{font-family:var(--f-num);font-size:22px;font-variant-numeric:tabular-nums}
 #evGap.ahead{color:#7be08f}#evGap.behind{color:#ff8a7a}
 #wrong{position:absolute;top:30%;left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;font-weight:800;letter-spacing:.4em;padding:10px 26px;font-size:14px}
 #count{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);font-family:var(--f-num);font-size:120px;font-weight:800;text-shadow:0 6px 30px rgba(0,0,0,.6)}
-#toasts{position:absolute;top:calc(64px + var(--st));right:calc(14px + var(--sr));display:flex;flex-direction:column;gap:6px;align-items:flex-end;width:min(300px,70vw)}
+/* (on the page itself, not in the HUD: hidden with it on the garage screen, the dealership and the menus, the messages
+   given there were never seen; Gemini's audit) */
+#toasts{position:fixed;z-index:85;pointer-events:none;top:calc(64px + var(--st));right:calc(14px + var(--sr));display:flex;flex-direction:column;gap:6px;align-items:flex-end;width:min(300px,70vw)}
 .toast{background:var(--panel2);border-left:3px solid #fff;padding:8px 14px;font-size:12px;transition:opacity .35s,transform .35s;max-width:100%}
 .toast b{display:block;font-size:12px;letter-spacing:.18em}
 .toast span{color:var(--mute);font-size:12px}
@@ -242,7 +244,7 @@ body.touch #lhint{display:none}
 #tkActs .btn.bad{color:#a3261c}
 #tkActs .btn.sel{outline:2px solid #f2b33d;outline-offset:1px}
 #tkActs:not(.giving)>[data-present],#tkActs.giving>:not([data-present]){display:none}
-#tkActs kbd{opacity:.55;font-size:10px}
+#tkActs kbd{opacity:.78;font-size:10.5px}
 body.touch #tkActs kbd{display:none}
 /* at the bottom of the screen, so the person you're talking to stays in view; the touch pads and key hints do nothing
    while you talk, so they make way */
@@ -291,6 +293,9 @@ body.walking #hud>#prompt{left:auto;right:calc(14px + var(--sr));top:calc(62px +
 #bG{width:84px;height:84px} #bB{width:66px;height:66px} #bB.rev{font-size:10px;letter-spacing:.02em} #bH{width:58px;height:58px;font-size:10px}
 
 /* overlays */
+/* the cloud save's dialog and chooser over everything but the "playing in another tab" screen: opened from the loading
+   screen (z-index 200) they were behind it, out of reach (Gemini's audit) */
+#cloud,#cloudPick{z-index:250}
 .ov{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(5,6,8,.62);backdrop-filter:blur(10px);padding:16px}
 .card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:26px 28px;width:min(420px,100%);max-height:100%;overflow:auto}
 .card h3{margin:0 0 4px;font-size:10px;letter-spacing:.5em;color:var(--mute)}
@@ -351,7 +356,11 @@ body.touch #toasts{top:calc(196px + var(--st))}
 @media (max-height:520px){body.touch #toasts{top:calc(130px + var(--st));right:auto;left:50%;transform:translateX(-50%);align-items:center;width:min(300px,40vw)}}
 /* there's room for one message between the top bar and a prompt: while a prompt shows, only the newest message does
    (new messages go in first; Codex's review of #32 caught that the oldest was kept) */
-@media (max-height:520px) and (min-width:561px){#hud:has(>#prompt:not(.hide)) #toasts>.toast:not(:first-child){display:none}}
+@media (max-height:520px) and (min-width:561px){body:has(#hud:not(.hide)>#prompt:not(.hide)) #toasts>.toast:not(:first-child){display:none}}
+/* with the HUD away (the garage, the dealership, the menus), down the left side: the garage's buttons fill the right */
+body:has(#hud.hide) #toasts{top:calc(38% + var(--st));right:auto;left:calc(14px + var(--sl));transform:none;align-items:flex-start;width:min(300px,calc(50% - 24px))}
+@media (max-width:560px){body:has(#hud.hide) #toasts{top:calc(21% + var(--st))}}   /* a phone: under the title, above the arrows */
+@media (max-height:520px) and (min-width:561px){body:has(#hud.hide) #toasts{top:calc(100px + var(--st));left:50%;transform:translateX(-50%);align-items:center;width:min(300px,44vw)}}   /* a phone on its side: over the car, between the arrows */
 /* and on the shortest (360 px tall), the smaller minimap and its GPS line sit higher, clear of the steering buttons */
 @media (max-height:400px){body.touch #minWrap{top:calc(124px + var(--st) + var(--tlx,0px))}}
 /* landscape phones: the damage pill, the wanted stars and the pistol and health bar sit beside the money, level and
@@ -419,7 +428,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
      sits over the road just ahead of the car */
   #evhud{top:calc(192px + var(--st));left:auto;right:calc(14px + var(--sr));transform:none;flex-direction:column;gap:3px;width:136px}
   #evhud>div{min-width:0;padding:4px 9px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-  #evhud span{font-size:8px;letter-spacing:.16em}
+  #evhud span{font-size:10px;letter-spacing:.14em}
   #evhud b{font-size:17px}
   /* messages go in the same column, in free ride, a race or a contract, under the score or the panel when one is showing
      (toastFit works out how far down and how many fit above the car): they used to stack over the score, the minimap
@@ -443,7 +452,7 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
   display:flex;flex-direction:column;padding:16px 18px;backdrop-filter:blur(10px)}
 #cust h3{margin:0 0 2px;font-size:10px;letter-spacing:.5em;color:var(--mute)}#cust h2{margin:0;font-family:var(--f-num);font-size:24px;font-weight:800}
 #cuCar{font-size:11px;letter-spacing:.16em;color:var(--mute);margin-top:2px}#cuHint{font-size:11px;color:var(--mute);margin-top:4px}
-#cuViews{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}#cuViews .co{background:transparent;border:1px solid var(--line);padding:6px 8px;font-size:9px;letter-spacing:.14em;border-radius:3px;cursor:pointer;font-weight:700;color:inherit}
+#cuViews{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}#cuViews .co{background:transparent;border:1px solid var(--line);padding:6px 9px;font-size:10.5px;letter-spacing:.12em;border-radius:3px;cursor:pointer;font-weight:700;color:inherit}
 #cuViews .co.on{background:#fff;color:#0b0c0e;border-color:#fff}
 #cuMin{position:absolute;right:12px;top:10px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:transparent;color:inherit;font-size:14px;cursor:pointer;display:none}
 #cust.mini #cuList,#cust.mini #cuHint{display:none}#cust.mini{height:auto}
@@ -460,6 +469,9 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 @media (max-width:640px){#cust{left:8px;right:8px;width:auto;top:auto;bottom:8px;height:48%;padding:12px 14px}#cust h2{font-size:20px}#cuMin{display:block}#cust.mini{height:auto}}
 @media (max-height:520px) and (min-width:641px){#cust{top:8px;bottom:8px;width:min(340px,48%)}}
 .swb{width:19px;height:19px;border-radius:50%;border:2px solid rgba(255,255,255,.28);cursor:pointer;padding:0;flex:none}
+/* larger on touch screens, the ten colours still on one row (at 30 px they took two, and on a phone the car's name rose
+   into the garage's arrows) */
+@media (pointer:coarse){.sw{gap:7px;max-width:320px}.swb{width:25px;height:25px}.co,#cuViews .co{min-height:36px;padding:8px 11px}}
 .swb:hover{border-color:rgba(255,255,255,.7)}
 .swb.on{border-color:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 0 4px rgba(255,255,255,.9)}
 #mapZoom{position:absolute;right:calc(16px + var(--sr));bottom:calc(16px + var(--sb));display:flex;flex-direction:column;gap:6px}
@@ -640,13 +652,13 @@ body.touch #keys,body.touch #prompt kbd,body.touch #mapClose kbd{display:none}
 #cpList{overflow:auto;margin-top:10px;flex:1;min-height:80px}#cpStats{font-size:12px;color:var(--mute)}#cpNote{font-size:12px;color:var(--acc);margin-top:6px}#cpNote:empty{display:none}#gcups{color:var(--acc)}
 .jbr{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
 .jbr>div{flex:1;min-width:0}
-.jbr i{display:block;font-style:normal;font-size:9px;letter-spacing:.3em;color:var(--acc);font-weight:700}
+.jbr i{display:block;font-style:normal;font-size:10.5px;letter-spacing:.24em;color:var(--acc);font-weight:700}
 .jbr b{display:block;font-size:13px;margin-top:2px}
 .jbr span{display:block;font-size:12px;color:var(--mute);margin-top:2px}
 .jbr .mbtn{width:auto;margin:0;padding:8px 14px;flex:none}
 .mbtn:disabled{opacity:.4;cursor:not-allowed}
 #jobhud{position:absolute;top:calc(14px + var(--st));left:50%;transform:translateX(-50%);background:var(--panel2);padding:8px 16px;text-align:center;min-width:240px;max-width:min(440px,calc(100% - 32px));filter:drop-shadow(0 3px 10px rgba(0,0,0,.5))}
-#jbType{font-size:9px;letter-spacing:.3em;color:var(--acc);font-weight:700}
+#jbType{font-size:10.5px;letter-spacing:.24em;color:var(--acc);font-weight:700}
 #jbObj{font-size:13px;font-weight:700;margin-top:2px}
 #jobhud .jm{display:flex;justify-content:center;gap:14px;margin-top:2px}
 #jobhud .jm b{font-size:18px}#jobhud .jm b:empty{display:none}
@@ -773,7 +785,6 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   <div id="jobhud" class="hide"><div id="jbType"></div><div id="jbObj"></div><div class="jm"><b id="jbTime" class="num"></b><b id="jbPay" class="num"></b></div></div>
   <div id="wrong" class="hide">WRONG WAY</div>
   <div id="count" class="hide"></div>
-  <div id="toasts"></div>
   <div id="minWrap"><canvas id="mini"></canvas><div id="gpsTxt"></div></div>
   <canvas id="speedo"></canvas>
   <button id="prompt" class="hide"><kbd>E</kbd> <span id="promptTxt"></span></button>
@@ -1021,6 +1032,7 @@ if(location.hostname==="joyeechuah.github.io"&&!navigator.globalPrivacyControl&&
   </div>
 </div>
 
+<div id="toasts"></div>
 <div id="fade"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>

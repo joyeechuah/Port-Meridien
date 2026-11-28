@@ -77,6 +77,8 @@ test("a friend over counts as something done at home: a Homebody gets 20% more s
   const r = await game.eval(() => {
     const T = __T;
     T.save.traits = { v: 1, ids: ["homebody"], day: -1 };
+    // (a Friend: one who isn't any more doesn't stay over)
+    T.save.rel[T.PEOPLE[0].id] = { f: 60, n: 3 };
     T.GUEST.who = T.PEOPLE[0]; T.GUEST.done = false;
     T.NEEDS.social = 40; T.NEEDS.fun = 50;
     return { comfort: T.homeComfort(T.save.home), ok: T.guestHangOut(), social: T.NEEDS.social, fun: T.NEEDS.fun };

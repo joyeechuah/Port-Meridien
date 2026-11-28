@@ -17,7 +17,7 @@ const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3)
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
 function setState(s){if(typeof partyOpen==="function"&&partyOpen()&&s!=="GARAGE"&&s!=="DRIVE"&&typeof partyPanelClose==="function")partyPanelClose();if(typeof partyLeft==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyLeft();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
-  if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
+  if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){if(typeof GUN!=="undefined"&&GUN.ring){GUN.ring.visible=false;GUN.lock=null}promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick"){syncArrivalClock();clInert()}}
 // while the cloud save's dialog (or its chooser) is open, everything behind it is out of reach of Tab, and closing it
 // puts the keyboard back where it was (Tab used to walk on into the garage's buttons; Codex's audit). What was inert
@@ -1088,6 +1088,8 @@ const tabCh=typeof BroadcastChannel==="function"?new BroadcastChannel("port-meri
 function tabStop(){if(tabIdle)return;tabIdle=true;if(state==="DRIVE")pauseOn();clearInput();audioOn(false);
   if(typeof NET!=="undefined"&&(NET.tx||NET.room)&&typeof netLeave==="function")netLeave();
   if(AC){try{const p=AC.suspend();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
+  // everything behind it out of reach of Tab (it only comes back with a reload; Gemini's audit)
+  if(typeof document!=="undefined")for(const el of /** @type {HTMLElement[]} */ ([...document.body.children])){if(el.id!=="tabIdle"&&el.tagName!=="SCRIPT")el.inert=true}
   show("tabIdle",true);try{$("tiHere").focus({preventScroll:true})}catch(e){}}
 // by BroadcastChannel; a browser without it gets a note in storage instead (the save stays the only key otherwise)
 function tabHello(){const m={t:"hello",id:TAB_ID};if(tabCh){tabCh.postMessage(m);return}try{localStorage.setItem(TAB_KEY,JSON.stringify(Object.assign({at:Date.now()},m)))}catch(e){}}

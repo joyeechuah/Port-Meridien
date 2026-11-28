@@ -50,10 +50,14 @@ function netFirebase(){
     return write(d,ref).then(()=>dead?quiet(ref.remove()):ref.onDisconnect().remove().then(()=>{if(dead)return quiet(ref.remove())}),e=>{if(seat===i)seat=-1;throw e})};
   // back online after a drop: the database may have emptied my seat meanwhile, so sit in it again, or in another if
   // someone has taken it (and cancel the request to empty the old one, which is theirs now)
+  // (a free seat someone else sits in first is tried again, up to three times: one lost race used to put you out of
+  // the room; Gemini's audit)
   const reseat=()=>{if(moving||!last||dead||!room||seat<0)return;
     const r=room,ref=at(r,seat);
+    const claim=n=>seats(r).then(t=>{if(dead)return;const i=pick(t);if(i<0)throw new Error("full");
+      return take(i,last).catch(e=>{if(denied(e)&&n<3)return claim(n+1);throw e})});
     moving=write(last,ref).then(()=>dead?quiet(ref.remove()):ref.onDisconnect().remove(),e=>{if(dead)return;if(!denied(e))throw e;
-        return quiet(ref.onDisconnect().cancel()).then(()=>seats(r)).then(t=>{if(dead)return;const i=pick(t);if(i<0)throw new Error("full");return take(i,last)})})
+        return quiet(ref.onDisconnect().cancel()).then(()=>claim(0))})
       .catch(e=>{if(!dead){console.warn("Play together: lost my seat ("+e.message+")");on.lost()}}).then(()=>{moving=null})};
   return{
     connect(){
@@ -122,7 +126,9 @@ function netRelay(){
 
 /* ---------- joining, starting and leaving ---------- */
 function netNote(t){NET.note=t;if(!$("play").classList.contains("hide"))netRender()}
-function netFail(e){NET.busy=false;NET.joining=false;if(NET.tx&&!NET.room){try{NET.tx.close()}catch(_){}NET.tx=null;for(const p of NET.peers.values())netDrop(p);NET.peers.clear()}
+// (the connection is let go before it's closed: close() goes offline only once NET.tx no longer names it, and with it
+// still named the database connection stayed open; Gemini's audit)
+function netFail(e){NET.busy=false;NET.joining=false;if(NET.tx&&!NET.room){const tx=NET.tx;NET.tx=null;try{tx.close()}catch(_){}for(const p of NET.peers.values())netDrop(p);NET.peers.clear()}
   const m=e&&e.message||"";netNote(/^(There's|That room)/.test(m)?m:"Couldn't connect. Check your internet connection and try again.");
   if(!/^(There's|That room)/.test(m))console.warn("Play together: "+m)}
 function netBegin(code,create){
@@ -147,10 +153,13 @@ const netWithin=(p,s)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new
 function netLost(){if(!NET.room)return;netLeave();netNote("Your connection dropped, and the room filled up before it came back.");toast("ROOM FULL","You lost your place while offline")}
 function netStart(){netBegin(netNewCode(),true)}
 function netJoin(){const c=netCodeOf($("plCode").value);if(!NET_CODE.test(c)){netNote("A room code is four letters and numbers, like K7PM.");return}netBegin(c,false)}
+// (all of it let go first, then the connection closed: closed while still named, it never went offline; and a join
+// under way is over too, or a late answer to it still seated you; Gemini's audit)
 function netLeave(){
-  if(NET.tx){try{NET.tx.close()}catch(e){}}
+  const tx=NET.tx;NET.tx=null;NET.room=null;NET.busy=false;NET.joining=false;
+  if(tx){try{tx.close()}catch(e){}}
   for(const p of NET.peers.values())netDrop(p);
-  NET.peers.clear();NET.tx=null;NET.room=null;NET.busy=false;netNote("");
+  NET.peers.clear();netNote("");
 }
 addEventListener("pagehide",()=>{if(NET.room&&NET.tx){try{NET.tx.close()}catch(e){}}});
 
@@ -165,7 +174,8 @@ function netState(){
   else if(FOOT.on){d.m=1;d.y=r(FOOT.y,100);d.v=r(FOOT.v||0,10)}
   else{d.m=0;d.y=r(pc.G.position.y,100);d.v=r(speedF(),10);d.c=STREET.has(curId)?STREET.get(curId).base:curCar().id;d.p=testDrive?testDrive.paint:paintOf(curId);const q=pc.G.quaternion;d.q=[q.x,q.y,q.z,q.w].map(v=>r(v,1000))}
   if(state!=="DRIVE")d.v=0;
-  d.x=r(a.x,100);d.z=r(a.z,100);d.h=r(a.h,1000);
+  // (the heading as an angle from -pi to pi: the car's grows without limit as it turns, and the room's rules bound it)
+  d.x=r(a.x,100);d.z=r(a.z,100);d.h=r(Math.atan2(Math.sin(a.h||0),Math.cos(a.h||0)),1000);
   return d;
 }
 function netSend(force){
@@ -188,8 +198,11 @@ const NET_OK=d=>d&&typeof d==="object"&&[d.x,d.y,d.z,d.h,d.v].every(v=>typeof v=
   Math.abs(d.x)<=NET_LIM.xz&&Math.abs(d.z)<=NET_LIM.xz&&d.y>=NET_LIM.y[0]&&d.y<=NET_LIM.y[1]&&Math.abs(d.v)<=NET_LIM.v;
 // a car's rotation: four finite numbers, or none (then the heading is used). The rules accept part of one, and the
 // database may hand it back as an object, so it's checked here rather than trusted
+// a car's turn, as a unit quaternion (normalised: rounded for sending, or bent on the way, it skewed the car drawn;
+// Gemini's audit)
 const NET_Q=q=>{const a=Array.isArray(q)?q:q&&typeof q==="object"?[q[0],q[1],q[2],q[3]]:null;
-  return a&&a.length===4&&a.every(v=>typeof v==="number"&&Number.isFinite(v))&&Math.hypot(a[0],a[1],a[2],a[3])>.5?a:undefined};
+  if(!a||a.length!==4||!a.every(v=>typeof v==="number"&&Number.isFinite(v)))return undefined;
+  const len=Math.hypot(a[0],a[1],a[2],a[3]);return len>.5&&len<2?a.map(v=>v/len):undefined};
 function netGot(uid,d){
   if(!NET_OK(d)||(!NET.room&&!NET.joining))return;
   d=Object.assign({},d,{q:NET_Q(d.q)});
