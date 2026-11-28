@@ -1008,6 +1008,7 @@ function copOfficer(dt,ch,still,indoors=false){
   const level=Math.abs((me.y===undefined?O.y:me.y)-O.y)<1.5;
   O.ph+=O.v*dt*3.3;const sw=Math.sin(O.ph)*Math.min(.9,O.v*.3),G=O.m.G;
   G.position.set(O.x,O.y,O.z);G.rotation.y=O.h;O.m.legs[0].rotation.x=sw;O.m.legs[1].rotation.x=-sw;O.m.arms[0].rotation.x=-sw*.8;O.m.arms[1].rotation.x=sw*.8;
+  // (cover checked at their height, as the pistol's is: up in the room it was the ground floor's walls)
   // at three stars or more an officer fires at you while you're on foot, from within 20 m with a clear line: about
   // one shot in three hits at 10 m, fewer further off, 10 health a hit (the violence setting changes how hits look,
   // not the rules)
