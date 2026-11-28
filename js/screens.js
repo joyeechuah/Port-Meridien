@@ -15,7 +15,7 @@ let headLight=null,fillLight=null,curId=save.cur,testDrive=null;
 // the two street lamps nearest the car shine for real, so the car (not just the road) lights up as it passes under them
 const LAMP_LIGHTS=[0,1].map(()=>{const l=new THREE.PointLight(0xffc68a,0,26,1.3);scene.add(l);return l});
 const curCar=()=>{const st=STREET.get(curId);return CARS.find(c=>c.id===(st?st.base:curId))||CARS[0]};
-function setState(s){if(typeof partyOpen==="function"&&partyOpen()&&s!=="GARAGE"&&s!=="DRIVE"&&typeof partyPanelClose==="function")partyPanelClose();if(typeof partyLeft==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyLeft();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
+function setState(s){if(s!=="GARAGE"&&typeof gMoreSet==="function")gMoreSet(false);if(typeof partyOpen==="function"&&partyOpen()&&s!=="GARAGE"&&s!=="DRIVE"&&typeof partyPanelClose==="function")partyPanelClose();if(typeof partyLeft==="function"&&!(typeof partyHome==="function"&&partyHome(s)))partyLeft();if(s==="GARAGE"){gunSync();hintHome()}if(typeof HV!=="undefined"){if(s!=="GARAGE")hvClose();hvShow(s)}if(typeof guestSync==="function")guestSync(s);if(s!=="DRIVE"){workClose();talkClose();FOOT.stop=0}   // a conversation ends with any other screen, the pause menu and Photo Mode too (js/life.js), and so does stopping to get out
   if(s==="GARAGE"||s==="DEALER"||s==="LOAD")rideEnd("home");   // indoors, a friend with you goes on their way
   if(BOAT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))boatEnd();if(FOOT.on&&(s==="GARAGE"||s==="DEALER"||s==="EXIT"||s==="LOAD"))footEnd();state=s;if(typeof sleepSync==="function")sleepSync();carIndoors(s==="GARAGE"||s==="DEALER"||s==="LOAD");$("c").style.cursor="default";if(s!=="DRIVE"){if(typeof GUN!=="undefined"&&GUN.ring){GUN.ring.visible=false;GUN.lock=null}promptAct=null;const p=document.getElementById("prompt");if(p)p.classList.add("hide")}}
 function show(id,on){$(id).classList.toggle("hide",!on);if(id==="cloud"||id==="cloudPick"){syncArrivalClock();clInert()}}
@@ -34,7 +34,8 @@ function clInert(){
 }
 // on a phone held upright, the car arrows midway between the lowest pill on the right and the car's name (index.html
 // #gpick), checked each garage frame as pills come and go and the bar's height changes
-const GPICK_PILLS=["gMus","gCloud","gGun","gBedActions","gSnack","gPlay","gGuest","gParty"];let gpickWas="";
+// (OPTIONS opens over the others: its three don't move the arrows)
+const GPICK_PILLS=["gMore","gBedActions","gSnack","gPlay","gGuest","gParty"];let gpickWas="";
 function gpickPlace(){
   if(!matchMedia("(max-width:560px) and (min-height:521px)").matches){if(gpickWas){gpickWas="";document.documentElement.style.removeProperty("--gpick-mid")}return}
   const n=$("gbar").querySelector(".cname");if(!n||!n.offsetParent)return;
@@ -446,6 +447,14 @@ function goGarage(fromFade){
 }
 function gunSync(){const b=$("gGun");b.textContent=save.armed?"PISTOL: TAKING IT":"PISTOL: LEFT HERE";b.setAttribute("aria-pressed",save.armed?"true":"false")}
 $("gGun").onclick=()=>{if(state!=="GARAGE")return;save.armed=!save.armed;persist();gunSync()};
+// OPTIONS, on a phone (index.html): MUSIC, SAVE MY PROGRESS and the pistol, opened over the other pills. It closes with
+// a second tap, a tap anywhere else, Escape, or leaving the garage
+function gMoreSet(on){const b=$("gMore");if(b.getAttribute("aria-expanded")!==(on?"true":"false"))b.setAttribute("aria-expanded",on?"true":"false")}
+const gMoreOpen=()=>$("gMore").getAttribute("aria-expanded")==="true";
+$("gMore").onclick=()=>{gMoreSet(!gMoreOpen());if(gMoreOpen())try{$("gMus").focus({preventScroll:true})}catch(e){}};
+if(typeof addEventListener==="function"){
+  addEventListener("pointerdown",e=>{const t=/** @type {Element} */ (e.target);if(gMoreOpen()&&!(t&&t.closest&&t.closest("#gMore,#gUtil")))gMoreSet(false)},true);
+  addEventListener("keydown",e=>{if(e.key==="Escape"&&gMoreOpen()){gMoreSet(false);e.stopPropagation();try{$("gMore").focus({preventScroll:true})}catch(_){}}},true)}
 function prepareDrive(){
   audioInit();audioOn(true);
   GUN.ammo=save.armed?GUN.max:0;HEALTH.hp=HEALTH.max;

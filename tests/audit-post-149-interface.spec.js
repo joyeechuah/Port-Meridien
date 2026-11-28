@@ -209,8 +209,8 @@ test("a multiplayer connection started before hiding announces the player as awa
 });
 
 // Open: at 360 x 640 with every button's text doubled the garage can't hold its pills, car arrows and bottom bar
-// on one screen as it is laid out (pills at fixed heights, two-column actions). It needs a layout decision for small
-// phones with large text (a scrolling garage panel, or fewer pills shown at once), not a patch.
+// on one screen as it is laid out (pills at fixed heights, two-column actions). OPTIONS (three pills fewer) isn't
+// enough on its own: the pills at fixed heights still overlap, and the actions run off the side.
 test.fixme("the garage controls remain reachable with large text, a bed and a waiting friend", async ({ game, page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   const home = { v: 1, items: [
@@ -228,7 +228,8 @@ test.fixme("the garage controls remain reachable with large text, a bed and a wa
     const controls = [...$("gui").querySelectorAll("button")].filter(el => el.offsetParent);
     for (const el of controls) el.style.fontSize = parseFloat(getComputedStyle(el).fontSize) * 2 + "px";
   });
-  const targets = ["gRest", "gSleep", "gGuest", "gCloud", "gUp", "gprev", "gnext", "drive"];
+  // (SAVE MY PROGRESS is under OPTIONS on a phone: js/screens.js gMoreSet)
+  const targets = ["gRest", "gSleep", "gGuest", "gMore", "gUp", "gprev", "gnext", "drive"];
   const blocked = await page.evaluate(ids => ids.filter(id => {
     const el = document.getElementById(id), r = el.getBoundingClientRect();
     return !r.width || !r.height || r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1
